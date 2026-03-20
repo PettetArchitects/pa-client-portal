@@ -7,6 +7,7 @@ import {
   Home, Grid3X3, FileDown, ArrowUpDown, SlidersHorizontal, Search,
   List, LayoutGrid,
 } from 'lucide-react'
+import { GROUP_ICONS } from '../components/SketchIcons'
 
 const KIND_ICONS = {
   product: Package,
@@ -356,14 +357,20 @@ export default function Decisions({ projectId }) {
                   onClick={() => toggleGroup(group.group_key)}
                   className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/20 transition-colors"
                 >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-medium">{group.group_name}</h2>
-                      <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded">
-                        {group.items.length}
-                      </span>
+                  <div className="flex items-center gap-3">
+                    {(() => {
+                      const GroupIcon = GROUP_ICONS[group.group_key]
+                      return GroupIcon ? <GroupIcon size={22} className="text-[var(--color-muted)] shrink-0" /> : null
+                    })()}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-sm font-medium">{group.group_name}</h2>
+                        <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded">
+                          {group.items.length}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[var(--color-muted)] font-light mt-0.5">{group.description}</p>
                     </div>
-                    <p className="text-[11px] text-[var(--color-muted)] font-light mt-0.5">{group.description}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {group.pending > 0 && (

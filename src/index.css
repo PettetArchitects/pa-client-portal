@@ -8,10 +8,10 @@
   --color-muted: #555550;
   --color-border: #E8E8E5;
   --color-accent: #1A1A1A;
-  --color-pending: #D4A017;
-  --color-approved: #3D8B40;
-  --color-urgent: #BF360C;
-  --color-change: #B71C1C;
+  --color-pending: #8B6914;
+  --color-approved: #4A6741;
+  --color-urgent: #8B4513;
+  --color-change: #6B3A2A;
 }
 
 body {

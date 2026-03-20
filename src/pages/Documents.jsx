@@ -190,7 +190,7 @@ export default function Documents({ projectId }) {
                   <div className="border-t border-white/30">
                     {/* Table header */}
                     <div className="grid gap-3 px-5 py-2 text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium"
-                      style={{ gridTemplateColumns: '32px 2.5fr 3fr 1.5fr 80px' }}>
+                      style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 80px' }}>
                       <div></div>
                       <div>Item</div>
                       <div>Product / Finish</div>
@@ -206,38 +206,38 @@ export default function Documents({ projectId }) {
                         const Icon = KIND_ICONS[sel.selection_kind] || Package
                         return (
                           <div key={item.id} className="grid gap-3 px-5 py-3 text-[12px] hover:bg-white/20 transition-colors items-start"
-                            style={{ gridTemplateColumns: '32px 2.5fr 3fr 1.5fr 80px' }}>
+                            style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 80px' }}>
                             <div>
                               {item.portal_image_url ? (
                                 <img src={item.portal_image_url} alt="" style={{
-                                  width: 28, height: 28, borderRadius: 6, objectFit: 'cover',
+                                  width: 48, height: 48, borderRadius: 8, objectFit: 'cover',
                                   border: '1px solid rgba(0,0,0,0.06)',
                                 }} loading="lazy"
-                                onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
+                                onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
                                 />
                               ) : (
                                 <div style={{
-                                  width: 28, height: 28, borderRadius: 6,
+                                  width: 48, height: 48, borderRadius: 8,
                                   background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 }}>
-                                  <Icon size={12} style={{ color: 'var(--color-border)' }} />
+                                  <Icon size={16} style={{ color: 'var(--color-border)' }} />
                                 </div>
                               )}
                             </div>
                             <div>
-                              <div className="font-medium leading-snug">{sel.title || '—'}</div>
+                              <div className="font-medium leading-snug text-[var(--color-text)]">{sel.title || '—'}</div>
                               {sel.selection_kind && (
                                 <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{sel.selection_kind.replace(/_/g, ' ')}</span>
                               )}
                             </div>
-                            <div className="text-[var(--color-muted)] text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
+                            <div className="text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
                               {sel.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{sel.manufacturer_name}</span>}
                               {sel.manufacturer_name && sel.model && <br />}
-                              {sel.model || (!sel.manufacturer_name && '—')}
+                              <span className="text-[var(--color-muted)]">{sel.model || (!sel.manufacturer_name && '—')}</span>
                             </div>
-                            <div className="text-[var(--color-muted)] text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
-                              {attrs.colour || '—'}
+                            <div className="text-[var(--color-text)] text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
+                              {attrs.colour || <span className="text-[var(--color-muted)]">—</span>}
                             </div>
                             <div>
                               <span className={`text-[9px] px-1.5 py-0.5 rounded ${

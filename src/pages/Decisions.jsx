@@ -362,7 +362,7 @@ export default function Decisions({ projectId }) {
                         onRequestChange={handleRequestChange}
                       />
                     ) : (
-                      <ScheduleView items={group.items} />
+                      <ScheduleView items={group.items} onApproveItem={handleApproveItem} onRequestChange={handleRequestChange} />
                     )}
                   </div>
                 )}
@@ -589,13 +589,13 @@ function ReviewView({ items, groupKey, hasPending, pendingCount, onApproveItem, 
   )
 }
 
-/* ── Schedule view: clean tabular list with mini thumbnails ── */
-function ScheduleView({ items }) {
+/* ── Schedule view: clean tabular list with thumbnails + inline approve ── */
+function ScheduleView({ items, onApproveItem, onRequestChange }) {
   return (
     <div className="divide-y divide-white/20">
       {/* Table header */}
       <div className="grid gap-3 px-5 py-2.5 text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium"
-        style={{ gridTemplateColumns: '32px 2.5fr 3fr 1.5fr 80px' }}>
+        style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 100px' }}>
         <div></div>
         <div>Item</div>
         <div>Product / Finish</div>
@@ -608,59 +608,83 @@ function ScheduleView({ items }) {
         const st = STATUS_STYLES[item.approval_status] || STATUS_STYLES.not_applicable
         const colourBg = getColourBackground(attrs.colour)
         const Icon = KIND_ICONS[sel.selection_kind] || Package
+        const isPending = item.approval_status === 'pending'
+        const isChangeReq = item.approval_status === 'change_requested'
         return (
           <div key={item.id} className="grid gap-3 px-5 py-3 text-[12px] hover:bg-white/20 transition-colors items-start"
-            style={{ gridTemplateColumns: '32px 2.5fr 3fr 1.5fr 80px' }}>
-            {/* Mini thumbnail */}
-            <div className="pt-0.5">
+            style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 100px' }}>
+            {/* Thumbnail */}
+            <div>
               {item.portal_image_url ? (
                 <img src={item.portal_image_url} alt="" style={{
-                  width: 28, height: 28, borderRadius: 6, objectFit: 'cover',
+                  width: 48, height: 48, borderRadius: 8, objectFit: 'cover',
                   border: '1px solid rgba(0,0,0,0.06)',
                 }} loading="lazy"
-                onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
+                onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
                 />
               ) : colourBg ? (
                 <div style={{
-                  width: 28, height: 28, borderRadius: 6,
+                  width: 48, height: 48, borderRadius: 8,
                   background: colourBg, border: '1px solid rgba(0,0,0,0.06)',
                 }} />
               ) : (
                 <div style={{
-                  width: 28, height: 28, borderRadius: 6,
+                  width: 48, height: 48, borderRadius: 8,
                   background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Icon size={12} style={{ color: 'var(--color-border)' }} />
+                  <Icon size={16} style={{ color: 'var(--color-border)' }} />
                 </div>
               )}
             </div>
             <div>
-              <div className="font-medium leading-snug">{sel.title || item.selection_title}</div>
+              <div className="font-medium leading-snug text-[var(--color-text)]">{sel.title || item.selection_title}</div>
               {sel.selection_kind && (
                 <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{sel.selection_kind.replace(/_/g, ' ')}</span>
               )}
             </div>
-            <div className="text-[var(--color-muted)] text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
+            <div className="text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
               {sel.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{sel.manufacturer_name}</span>}
               {sel.manufacturer_name && sel.model && <br />}
-              {sel.model || (!sel.manufacturer_name && '\u2014')}
+              <span className="text-[var(--color-muted)]">{sel.model || (!sel.manufacturer_name && '\u2014')}</span>
             </div>
-            <div className="text-[11px] text-[var(--color-muted)] flex items-start gap-1.5" style={{ wordBreak: 'break-word' }}>
+            <div className="text-[11px] text-[var(--color-text)] flex items-start gap-1.5" style={{ wordBreak: 'break-word' }}>
               {attrs.colour && (
                 <>
                   <ColourDot colour={attrs.colour} />
                   <span className="leading-snug">{attrs.colour}</span>
                 </>
               )}
-              {!attrs.colour && '\u2014'}
+              {!attrs.colour && <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
             </div>
-            <div className="text-right pt-0.5">
-              <span className="text-[9px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap" style={{
-                background: st.bg, color: st.text, border: `1px solid ${st.border}`
-              }}>
-                {st.label}
-              </span>
+            <div className="text-right flex items-start justify-end gap-1">
+              {(isPending || isChangeReq) && onApproveItem && (
+                <>
+                  <button
+                    onClick={() => onApproveItem(item.id)}
+                    className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(61,139,64,0.1)]"
+                    style={{ border: '1px solid rgba(61,139,64,0.3)', color: 'var(--color-approved)' }}
+                    title="Approve"
+                  >
+                    <Check size={11} />
+                  </button>
+                  <button
+                    onClick={() => onRequestChange(item.id)}
+                    className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(191,54,12,0.08)]"
+                    style={{ border: '1px solid rgba(232,232,229,0.8)', color: 'var(--color-muted)' }}
+                    title="Request change"
+                  >
+                    <MessageSquare size={10} />
+                  </button>
+                </>
+              )}
+              {!isPending && !isChangeReq && (
+                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap" style={{
+                  background: st.bg, color: st.text, border: `1px solid ${st.border}`
+                }}>
+                  {st.label}
+                </span>
+              )}
             </div>
           </div>
         )
@@ -690,14 +714,14 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
     <div className="flex items-start gap-3 p-3 rounded-xl transition-all" style={{
       background: st.bg, border: `1px solid ${st.border}`,
     }}>
-      {/* Visual thumbnail — Programa style */}
-      <div className="shrink-0" style={{ width: 56, height: 56 }}>
+      {/* Visual thumbnail */}
+      <div className="shrink-0" style={{ width: 72, height: 72 }}>
         {imageUrl ? (
           <img
             src={imageUrl}
             alt={sel.title || ''}
             style={{
-              width: 56, height: 56, borderRadius: 10,
+              width: 72, height: 72, borderRadius: 10,
               objectFit: 'cover',
               border: '1px solid rgba(0,0,0,0.06)',
             }}
@@ -705,20 +729,20 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
             onError={e => {
               e.target.style.display = 'none'
               e.target.parentElement.innerHTML = colourBg
-                ? `<div style="width:56px;height:56px;border-radius:10px;background:${colourBg};border:1px solid rgba(0,0,0,0.06)"></div>`
-                : `<div style="width:56px;height:56px;border-radius:10px;background:rgba(255,255,255,0.6);border:1px solid rgba(0,0,0,0.04);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-border)" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg></div>`
+                ? `<div style="width:72px;height:72px;border-radius:10px;background:${colourBg};border:1px solid rgba(0,0,0,0.06)"></div>`
+                : `<div style="width:72px;height:72px;border-radius:10px;background:rgba(255,255,255,0.6);border:1px solid rgba(0,0,0,0.04);display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-border)" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg></div>`
             }}
           />
         ) : colourBg ? (
           <div style={{
-            width: 56, height: 56, borderRadius: 10,
+            width: 72, height: 72, borderRadius: 10,
             background: colourBg,
             border: '1px solid rgba(0,0,0,0.06)',
             display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end',
-            padding: 4,
+            padding: 5,
           }}>
             <span style={{
-              fontSize: 7, color: 'rgba(0,0,0,0.25)', fontWeight: 500,
+              fontSize: 8, color: 'rgba(0,0,0,0.3)', fontWeight: 500,
               letterSpacing: '0.5px', textTransform: 'uppercase',
             }}>
               {attrs.colour?.split(' ').slice(0, 2).join(' ')}
@@ -726,12 +750,12 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
           </div>
         ) : (
           <div style={{
-            width: 56, height: 56, borderRadius: 10,
+            width: 72, height: 72, borderRadius: 10,
             background: 'rgba(255,255,255,0.6)',
             border: '1px solid rgba(0,0,0,0.04)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <Icon size={18} style={{ color: 'var(--color-border)' }} />
+            <Icon size={22} style={{ color: 'var(--color-border)' }} />
           </div>
         )}
       </div>

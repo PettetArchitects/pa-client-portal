@@ -220,7 +220,7 @@ export default function Overview({ projectId }) {
 
       {/* Timeline */}
       {milestones.length > 0 && (
-        <div>
+        <div className="backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-base font-medium tracking-wide">Project Timeline</h2>
             <span className="text-xs text-[var(--color-muted)] font-light">
@@ -229,7 +229,7 @@ export default function Overview({ projectId }) {
           </div>
 
           <div className="mb-8">
-            <div className="h-1.5 bg-[var(--color-border)] rounded-full overflow-hidden">
+            <div className="h-1.5 bg-white/50 rounded-full overflow-hidden">
               <div className="h-full bg-[var(--color-accent)] rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
             </div>
           </div>

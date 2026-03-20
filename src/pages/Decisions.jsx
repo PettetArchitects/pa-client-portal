@@ -215,7 +215,7 @@ export default function Decisions({ projectId }) {
   return (
     <div className="max-w-4xl">
       {/* Header */}
-      <div className="mb-6">
+      <div className="backdrop-blur-xl bg-white/60 rounded-xl border border-white/40 px-5 py-4 mb-6">
         <h1 className="text-2xl font-light tracking-tight mb-1">{viewTitle}</h1>
         <p className="text-sm text-[var(--color-muted)] font-light">
           {totalPending > 0
@@ -227,7 +227,7 @@ export default function Decisions({ projectId }) {
       </div>
 
       {/* Progress bar */}
-      <div className="backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 p-4 mb-6">
+      <div className="backdrop-blur-xl bg-white/60 rounded-xl border border-white/40 p-4 mb-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] tracking-[1.5px] uppercase text-[var(--color-muted)] font-medium">
             Selection progress
@@ -950,7 +950,7 @@ function Stat({ label, value, color }) {
   return (
     <div className="flex items-center gap-1.5">
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, display: 'inline-block' }} />
-      <span className="text-[10px] text-[var(--color-muted)]">{value} {label}</span>
+      <span className="text-[10px] text-[var(--color-text)] font-medium">{value} {label}</span>
     </div>
   )
 }

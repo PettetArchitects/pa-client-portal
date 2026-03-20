@@ -95,7 +95,7 @@ export default function Overview({ projectId }) {
     <div className="relative max-w-3xl">
 
       {/* Welcome + current stage */}
-      <div className="mb-8">
+      <div className="backdrop-blur-xl bg-white/60 rounded-xl border border-white/40 px-5 py-4 mb-8">
         <h1 className="text-2xl font-light tracking-tight mb-1">Welcome back</h1>
         {currentMilestone && (
           <p className="text-sm text-[var(--color-muted)] font-light">

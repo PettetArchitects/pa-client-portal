@@ -653,97 +653,160 @@ function ReviewView({ items, groupKey, hasPending, pendingCount, onApproveItem, 
   )
 }
 
-/* ── Schedule view: clean tabular list with thumbnails + inline approve ── */
+/* ── Parse code from title: "MX1 — Shower mixer" → { code: "MX1", name: "Shower mixer" } ── */
+function parseCode(title) {
+  if (!title) return { code: null, name: title }
+  // Match patterns: "CODE — Name" or "CODE - Name" where CODE is alphanumeric with dots
+  const m = title.match(/^([A-Z][A-Z0-9]*(?:\.[0-9]+)?)\s*[—–\-]\s*(.+)$/i)
+  if (m) return { code: m[1], name: m[2] }
+  // Match "Joinery J01.1" style
+  const j = title.match(/^Joinery\s+(J\d+(?:\.\d+)?)\s*$/i)
+  if (j) return { code: j[1], name: 'Joinery' }
+  return { code: null, name: title }
+}
+
+/* ── Sub-group items by selection_kind within a schedule group ── */
+const KIND_GROUP_ORDER = {
+  joinery_item: 1, door_type: 2, window_type: 3, facade_system: 4,
+  product: 5, hardware_set: 6, material: 7, finish: 8, other: 9,
+}
+const KIND_GROUP_LABELS = {
+  joinery_item: 'Joinery Items', door_type: 'Doors', window_type: 'Windows',
+  facade_system: 'Facade', product: 'Products', hardware_set: 'Hardware',
+  material: 'Materials', finish: 'Finishes', other: 'Other',
+}
+
+function groupItemsByKind(items) {
+  const kindMap = {}
+  items.forEach(item => {
+    const sel = item.project_selections || {}
+    // Components group under their parent kind label
+    const kind = sel.is_component ? 'finish' : (sel.selection_kind || 'other')
+    if (!kindMap[kind]) kindMap[kind] = []
+    kindMap[kind].push(item)
+  })
+  return Object.entries(kindMap)
+    .map(([kind, kindItems]) => ({
+      kind,
+      label: KIND_GROUP_LABELS[kind] || kind.replace(/_/g, ' '),
+      order: KIND_GROUP_ORDER[kind] || 99,
+      items: kindItems,
+    }))
+    .sort((a, b) => a.order - b.order)
+}
+
+/* ── Schedule view: clean tabular list with codes above items, sub-grouped by kind ── */
 function ScheduleView({ items, onApproveItem, onRequestChange }) {
+  const subGroups = groupItemsByKind(items)
+  const needsSubHeaders = subGroups.length > 1
+
   return (
-    <div className="px-4 py-3 space-y-2">
-      {items.map(item => {
-        const sel = item.project_selections || {}
-        const attrs = sel.attributes || {}
-        const st = STATUS_STYLES[item.approval_status] || STATUS_STYLES.not_applicable
-        const colourBg = getColourBackground(attrs.colour)
-        const Icon = KIND_ICONS[sel.selection_kind] || Package
-        const isPending = item.approval_status === 'pending'
-        const isChangeReq = item.approval_status === 'change_requested'
-        return (
-          <div key={item.id} className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/40 transition-colors items-start"
-            style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 100px' }}>
-            {/* Thumbnail */}
-            <div>
-              {item.portal_image_url ? (
-                <img src={item.portal_image_url} alt="" style={{
-                  width: 48, height: 48, borderRadius: 8, objectFit: 'cover',
-                  border: '1px solid rgba(0,0,0,0.06)',
-                }} loading="lazy"
-                onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
-                />
-              ) : colourBg ? (
-                <div style={{
-                  width: 48, height: 48, borderRadius: 8,
-                  background: colourBg, border: '1px solid rgba(0,0,0,0.06)',
-                }} />
-              ) : (
-                <div style={{
-                  width: 48, height: 48, borderRadius: 8,
-                  background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Icon size={16} style={{ color: 'var(--color-border)' }} />
+    <div className="px-4 py-3 space-y-1">
+      {subGroups.map(sg => (
+        <div key={sg.kind}>
+          {needsSubHeaders && (
+            <div className="px-1 pt-3 pb-1.5 first:pt-0">
+              <span className="text-[9px] tracking-[1.5px] uppercase text-[var(--color-muted)] font-medium">
+                {sg.label}
+              </span>
+              <span className="text-[9px] text-[var(--color-muted)] ml-1.5 font-light">{sg.items.length}</span>
+            </div>
+          )}
+          <div className="space-y-2">
+            {sg.items.map(item => {
+              const sel = item.project_selections || {}
+              const attrs = sel.attributes || {}
+              const st = STATUS_STYLES[item.approval_status] || STATUS_STYLES.not_applicable
+              const colourBg = getColourBackground(attrs.colour)
+              const Icon = KIND_ICONS[sel.selection_kind] || Package
+              const isPending = item.approval_status === 'pending'
+              const isChangeReq = item.approval_status === 'change_requested'
+              const { code, name } = parseCode(sel.title || item.selection_title)
+              return (
+                <div key={item.id} className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/40 transition-colors items-start"
+                  style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 100px' }}>
+                  {/* Thumbnail */}
+                  <div>
+                    {item.portal_image_url ? (
+                      <img src={item.portal_image_url} alt="" style={{
+                        width: 48, height: 48, borderRadius: 8, objectFit: 'cover',
+                        border: '1px solid rgba(0,0,0,0.06)',
+                      }} loading="lazy"
+                      onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
+                      />
+                    ) : colourBg ? (
+                      <div style={{
+                        width: 48, height: 48, borderRadius: 8,
+                        background: colourBg, border: '1px solid rgba(0,0,0,0.06)',
+                      }} />
+                    ) : (
+                      <div style={{
+                        width: 48, height: 48, borderRadius: 8,
+                        background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Icon size={16} style={{ color: 'var(--color-border)' }} />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    {code && (
+                      <span className="text-[9px] font-mono tracking-wider text-[var(--color-muted)] uppercase block mb-0.5">{code}</span>
+                    )}
+                    <div className="font-medium leading-snug text-[var(--color-text)]">{name}</div>
+                    {!code && sel.selection_kind && (
+                      <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{sel.selection_kind.replace(/_/g, ' ')}</span>
+                    )}
+                  </div>
+                  <div className="text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
+                    {sel.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{sel.manufacturer_name}</span>}
+                    {sel.manufacturer_name && sel.model && <br />}
+                    <span className="text-[var(--color-muted)]">{sel.model || (!sel.manufacturer_name && '\u2014')}</span>
+                  </div>
+                  <div className="text-[11px] text-[var(--color-text)] flex items-start gap-1.5" style={{ wordBreak: 'break-word' }}>
+                    {attrs.colour && (
+                      <>
+                        <ColourDot colour={attrs.colour} />
+                        <span className="leading-snug">{attrs.colour}</span>
+                      </>
+                    )}
+                    {!attrs.colour && <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
+                  </div>
+                  <div className="text-right flex items-start justify-end gap-1">
+                    {(isPending || isChangeReq) && onApproveItem && (
+                      <>
+                        <button
+                          onClick={() => onApproveItem(item.id)}
+                          className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(61,139,64,0.1)]"
+                          style={{ border: '1px solid rgba(61,139,64,0.3)', color: 'var(--color-approved)' }}
+                          title="Approve"
+                        >
+                          <Check size={11} />
+                        </button>
+                        <button
+                          onClick={() => onRequestChange(item.id)}
+                          className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(191,54,12,0.08)]"
+                          style={{ border: '1px solid rgba(232,232,229,0.8)', color: 'var(--color-muted)' }}
+                          title="Request change"
+                        >
+                          <MessageSquare size={10} />
+                        </button>
+                      </>
+                    )}
+                    {!isPending && !isChangeReq && (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap" style={{
+                        background: st.bg, color: st.text, border: `1px solid ${st.border}`
+                      }}>
+                        {st.label}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
-            <div>
-              <div className="font-medium leading-snug text-[var(--color-text)]">{sel.title || item.selection_title}</div>
-              {sel.selection_kind && (
-                <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{sel.selection_kind.replace(/_/g, ' ')}</span>
-              )}
-            </div>
-            <div className="text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
-              {sel.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{sel.manufacturer_name}</span>}
-              {sel.manufacturer_name && sel.model && <br />}
-              <span className="text-[var(--color-muted)]">{sel.model || (!sel.manufacturer_name && '\u2014')}</span>
-            </div>
-            <div className="text-[11px] text-[var(--color-text)] flex items-start gap-1.5" style={{ wordBreak: 'break-word' }}>
-              {attrs.colour && (
-                <>
-                  <ColourDot colour={attrs.colour} />
-                  <span className="leading-snug">{attrs.colour}</span>
-                </>
-              )}
-              {!attrs.colour && <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
-            </div>
-            <div className="text-right flex items-start justify-end gap-1">
-              {(isPending || isChangeReq) && onApproveItem && (
-                <>
-                  <button
-                    onClick={() => onApproveItem(item.id)}
-                    className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(61,139,64,0.1)]"
-                    style={{ border: '1px solid rgba(61,139,64,0.3)', color: 'var(--color-approved)' }}
-                    title="Approve"
-                  >
-                    <Check size={11} />
-                  </button>
-                  <button
-                    onClick={() => onRequestChange(item.id)}
-                    className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(191,54,12,0.08)]"
-                    style={{ border: '1px solid rgba(232,232,229,0.8)', color: 'var(--color-muted)' }}
-                    title="Request change"
-                  >
-                    <MessageSquare size={10} />
-                  </button>
-                </>
-              )}
-              {!isPending && !isChangeReq && (
-                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap" style={{
-                  background: st.bg, color: st.text, border: `1px solid ${st.border}`
-                }}>
-                  {st.label}
-                </span>
-              )}
-            </div>
+              )
+            })}
           </div>
-        )
-      })}
+        </div>
+      ))}
     </div>
   )
 }
@@ -817,10 +880,15 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
 
       {/* Content */}
       <div className="flex-1 min-w-0 py-0.5">
-        <div className="flex items-center gap-2">
-          <h3 className="text-[13px] font-medium leading-snug">{sel.title || item.selection_title}</h3>
-          {isApproved && <Check size={12} className="text-[var(--color-approved)] shrink-0" />}
-        </div>
+        {(() => { const { code, name } = parseCode(sel.title || item.selection_title); return (<>
+          {code && (
+            <span className="text-[9px] font-mono tracking-wider text-[var(--color-muted)] uppercase block mb-0.5">{code}</span>
+          )}
+          <div className="flex items-center gap-2">
+            <h3 className="text-[13px] font-medium leading-snug">{name}</h3>
+            {isApproved && <Check size={12} className="text-[var(--color-approved)] shrink-0" />}
+          </div>
+        </>)})()}
 
         {/* Product details */}
         <div className="mt-1" style={{ wordBreak: 'break-word' }}>

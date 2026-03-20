@@ -112,13 +112,6 @@ export default function Documents({ projectId }) {
 
   return (
     <div className="max-w-4xl">
-      <div className="backdrop-blur-xl bg-white/60 rounded-xl border border-white/40 px-5 py-4 mb-6">
-        <h1 className="text-2xl font-light tracking-tight mb-1">Documents & Schedules</h1>
-        <p className="text-sm text-[var(--color-muted)] font-light">
-          {totalScheduleItems} schedule items across {scheduleGroups.length} categories{docs.length > 0 ? ` · ${docs.length} shared document${docs.length !== 1 ? 's' : ''}` : ''}
-        </p>
-      </div>
-
       {/* Tab bar */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex gap-1 backdrop-blur-xl bg-white/40 rounded-lg p-0.5 border border-white/40">

@@ -214,18 +214,6 @@ export default function Decisions({ projectId }) {
 
   return (
     <div className="max-w-4xl">
-      {/* Header */}
-      <div className="backdrop-blur-xl bg-white/60 rounded-xl border border-white/40 px-5 py-4 mb-6">
-        <h1 className="text-2xl font-light tracking-tight mb-1">{viewTitle}</h1>
-        <p className="text-sm text-[var(--color-muted)] font-light">
-          {totalPending > 0
-            ? `${totalPending} item${totalPending !== 1 ? 's' : ''} need your review`
-            : totalApproved > 0
-            ? 'All looking good \u2014 thank you'
-            : `${totalConfirmed} selections confirmed`}
-        </p>
-      </div>
-
       {/* Progress bar */}
       <div className="backdrop-blur-xl bg-white/60 rounded-xl border border-white/40 p-4 mb-6">
         <div className="flex items-center justify-between mb-2">
@@ -251,7 +239,7 @@ export default function Decisions({ projectId }) {
       </div>
 
       {/* Toolbar — Programa style */}
-      <div className="flex items-center justify-between mb-4 backdrop-blur-xl bg-white/40 rounded-xl border border-white/30 px-2 py-1.5">
+      <div className="flex items-center justify-between mb-4 backdrop-blur-xl bg-white/40 rounded-xl border border-white/30 px-2 py-1.5 relative z-30">
         {/* Left: actions */}
         <div className="flex items-center gap-0.5">
           <button
@@ -280,7 +268,7 @@ export default function Decisions({ projectId }) {
               <SlidersHorizontal size={13} />
             </button>
             {showFilter && (
-              <div className="absolute top-full left-0 mt-1 backdrop-blur-xl bg-white/90 rounded-lg border border-white/60 shadow-lg py-1 z-50 min-w-[140px]">
+              <div className="absolute top-full left-0 mt-1 backdrop-blur-2xl bg-white/95 rounded-lg border border-white/60 shadow-xl py-1 z-50 min-w-[140px]">
                 {[
                   { key: 'all', label: 'All items' },
                   { key: 'pending', label: `To review (${totalPending})` },

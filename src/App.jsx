@@ -124,6 +124,21 @@ const LOADING_QUOTES = [
   { text: 'To create, one must first question everything.', author: 'Eileen Gray' },
   { text: 'We shape our buildings; thereafter they shape us.', author: 'Winston Churchill' },
   { text: 'A great building must begin with the immeasurable, must go through measurable means when it is being designed, and in the end must be unmeasurable.', author: 'Louis Kahn' },
+  { text: 'Architecture is the thoughtful making of space.', author: 'Louis Kahn' },
+  { text: 'The mother art is architecture. Without an architecture of our own we have no soul of our own civilization.', author: 'Frank Lloyd Wright' },
+  { text: 'In pure architecture the smallest detail should have a meaning or serve a purpose.', author: 'Augustus W. N. Pugin' },
+  { text: 'Space and light and order. Those are the things that men need just as much as they need bread or a place to sleep.', author: 'Le Corbusier' },
+  { text: 'I think one can achieve a very pleasant environment without necessarily going the whole way to a tropical garden.', author: 'Harry Seidler' },
+  { text: 'The dialogue between client and architect is about as intimate as any conversation you can have, because when you are talking about building a house, you are talking about dreams.', author: 'Robert A.M. Stern' },
+  { text: 'I believe that architecture, as anything else in life, is evolutionary. Ideas evolve; they don\'t come from outer space and land in the drawing board.', author: 'Zaha Hadid' },
+  { text: 'When I am working on a problem, I never think about beauty but when I have finished, if the solution is not beautiful, I know it is wrong.', author: 'R. Buckminster Fuller' },
+  { text: 'The sun does not realise how wonderful it is until after a room is made.', author: 'Louis Kahn' },
+  { text: 'Build for the climate, for the place, for the people.', author: 'Glenn Murcutt' },
+  { text: 'Touch the earth lightly.', author: 'Glenn Murcutt' },
+  { text: 'Architecture is basically the design of interiors, the art of organising interior space.', author: 'Philip Johnson' },
+  { text: 'Any work of architecture that does not express serenity is a mistake.', author: 'Luis Barragán' },
+  { text: 'A house is a machine for living in.', author: 'Le Corbusier' },
+  { text: 'The home should be the treasure chest of living.', author: 'Le Corbusier' },
 ]
 
 function LoadingScreen() {

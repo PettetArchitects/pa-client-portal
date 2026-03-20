@@ -5,7 +5,7 @@ import {
   Check, ChevronDown, ChevronRight, MessageSquare, ArrowUpRight,
   ThumbsUp, Eye, EyeOff, Package, Palette, Wrench, AlertCircle,
   Home, Grid3X3, FileDown, SlidersHorizontal, Search,
-  List, Map,
+  List, Map, BarChart3, Layers,
 } from 'lucide-react'
 import { GROUP_ICONS, ROOM_ICONS } from '../components/SketchIcons'
 import InteractivePlan from '../components/InteractivePlan'
@@ -69,12 +69,13 @@ export default function Decisions({ projectId }) {
   const [groups, setGroups] = useState([])
   const [items, setItems] = useState([])
   const [roomMappings, setRoomMappings] = useState([])
+  const [natspecMap, setNatspecMap] = useState({})
   const [loading, setLoading] = useState(true)
   const [expandedGroups, setExpandedGroups] = useState(new Set())
   const [viewMode, setViewMode] = useState('schedule') // 'schedule', 'plan'
   const [filter, setFilter] = useState('all') // 'all', 'pending', 'approved', 'confirmed'
   const [search, setSearch] = useState('')
-  const [sortBy, setSortBy] = useState('group') // 'group', 'title', 'status'
+  const [sortBy, setSortBy] = useState('group') // 'group', 'room', 'boq'
   const [showFilter, setShowFilter] = useState(false)
   // showSort removed — inline segmented buttons now
 
@@ -95,9 +96,28 @@ export default function Decisions({ projectId }) {
       `).eq('project_id', projectId).eq('active', true),
       supabase.from('portal_selection_rooms').select('*').eq('project_id', projectId),
     ])
+
     setGroups(grpRes.data || [])
     setItems(selRes.data || [])
     setRoomMappings(roomRes.data || [])
+
+    // Fetch NATSPEC links
+    const selIds = (selRes.data || []).map(i => i.project_selection_id).filter(Boolean)
+    const natspecRes = selIds.length > 0
+      ? await supabase.from('project_selection_natspec_links')
+          .select('project_selection_id, natspec_sections:section_id(section_ref, section_title)')
+          .in('project_selection_id', selIds)
+      : { data: [] }
+
+    // Build NATSPEC lookup: project_selection_id → array of { ref, title }
+    const nMap = {}
+    ;(natspecRes.data || []).forEach(link => {
+      const selId = link.project_selection_id
+      const ns = link.natspec_sections
+      if (!nMap[selId]) nMap[selId] = []
+      if (ns?.section_ref) nMap[selId].push({ ref: ns.section_ref, title: ns.section_title })
+    })
+    setNatspecMap(nMap)
     setLoading(false)
 
     // Auto-expand groups with pending items
@@ -195,6 +215,9 @@ export default function Decisions({ projectId }) {
   // Build room-grouped data (for rooms mode)
   const roomGroupedData = buildRoomGroups(filteredItems, items, roomMappings)
 
+  // Build component-grouped data (by parent assembly)
+  const componentGroupedData = buildComponentGroups(filteredItems, items)
+
   // Summary stats
   const totalItems = items.length
   const totalPending = items.filter(i => i.approval_status === 'pending').length
@@ -213,7 +236,7 @@ export default function Decisions({ projectId }) {
     )
   }
 
-  const viewTitle = viewMode === 'plan' ? 'Floor Plan' : sortBy === 'room' ? 'By Room' : sortBy === 'component' ? 'By Component' : 'Selections'
+  const viewTitle = viewMode === 'plan' ? 'Floor Plan' : sortBy === 'boq' ? 'Bill of Quantities' : sortBy === 'room' ? 'By Room' : sortBy === 'component' ? 'By Component' : 'Selections'
 
   return (
     <div className="max-w-4xl">
@@ -265,6 +288,8 @@ export default function Decisions({ projectId }) {
             {[
               { key: 'group', label: 'Schedule', icon: Grid3X3 },
               { key: 'room', label: 'Room', icon: Home },
+              { key: 'component', label: 'Component', icon: Layers },
+              { key: 'boq', label: 'BoQ', icon: BarChart3 },
             ].map(s => (
               <button
                 key={s.key}
@@ -355,6 +380,17 @@ export default function Decisions({ projectId }) {
           onApproveItem={handleApproveItem}
           onRequestChange={handleRequestChange}
         />
+      ) : sortBy === 'boq' ? (
+        <BoQView groupedData={groupedData} natspecMap={natspecMap} />
+      ) : sortBy === 'component' ? (
+        <ComponentGroupedView
+          components={componentGroupedData}
+          expandedGroups={expandedGroups}
+          toggleGroup={toggleGroup}
+          onApproveItem={handleApproveItem}
+          onRequestChange={handleRequestChange}
+          natspecMap={natspecMap}
+        />
       ) : sortBy === 'room' ? (
         <RoomGroupedView
           rooms={roomGroupedData}
@@ -363,6 +399,7 @@ export default function Decisions({ projectId }) {
           onApproveItem={handleApproveItem}
           onApproveRoom={handleApproveRoom}
           onRequestChange={handleRequestChange}
+          natspecMap={natspecMap}
         />
       ) : (
         <div className="space-y-3">
@@ -427,7 +464,7 @@ export default function Decisions({ projectId }) {
                 {/* Expanded items */}
                 {isExpanded && (
                   <div className="border-t border-white/30">
-                    <ScheduleView items={group.items} onApproveItem={handleApproveItem} onRequestChange={handleRequestChange} />
+                    <ScheduleView items={group.items} natspecMap={natspecMap} onApproveItem={handleApproveItem} onRequestChange={handleRequestChange} />
                   </div>
                 )}
               </div>
@@ -436,7 +473,7 @@ export default function Decisions({ projectId }) {
         </div>
       )}
 
-      {((sortBy !== 'room' && groupedData.length === 0) || (sortBy === 'room' && roomGroupedData.length === 0)) && (
+      {((sortBy === 'group' && groupedData.length === 0) || (sortBy === 'room' && roomGroupedData.length === 0) || (sortBy === 'component' && componentGroupedData.length === 0) || (sortBy === 'boq' && groupedData.length === 0)) && (
         <div className="text-center py-20 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
           <Package size={24} className="mx-auto text-[var(--color-border)] mb-3" />
           <p className="text-sm text-[var(--color-text)] font-light">
@@ -515,8 +552,92 @@ function buildRoomGroups(filteredItems, allItems, roomMappings) {
   return rooms
 }
 
+/* ── Build component-grouped data: group by parent assembly ── */
+function buildComponentGroups(filteredItems, allItems) {
+  // Find all parent items (non-component items that have children)
+  const childrenByParent = {}
+  const parentItems = {}
+
+  allItems.forEach(item => {
+    const sel = item.project_selections || {}
+    if (sel.is_component && sel.parent_selection_id) {
+      if (!childrenByParent[sel.parent_selection_id]) childrenByParent[sel.parent_selection_id] = []
+      childrenByParent[sel.parent_selection_id].push(item)
+    }
+    if (!sel.is_component && sel.id) {
+      parentItems[sel.id] = item
+    }
+  })
+
+  const filteredIds = new Set(filteredItems.map(i => i.project_selection_id))
+
+  // Build groups: one per parent that has children
+  const groups = []
+  const usedIds = new Set()
+
+  Object.entries(childrenByParent).forEach(([parentId, children]) => {
+    const parent = parentItems[parentId]
+    if (!parent) return
+
+    const parentSel = parent.project_selections || {}
+    const parentAttrs = parentSel.attributes || {}
+    const code = parentAttrs.code || parseCode(parentSel.title).code || ''
+
+    // Filter children to only those in filteredItems
+    const visibleChildren = children.filter(c => filteredIds.has(c.project_selection_id))
+    const allChildren = children
+
+    // Stats
+    const allGroupItems = [parent, ...allChildren]
+    const pending = allGroupItems.filter(i => i.approval_status === 'pending').length
+    const approved = allGroupItems.filter(i => i.approval_status === 'approved').length
+    const confirmed = allGroupItems.filter(i => i.approval_status === 'not_applicable').length
+    const changeReq = allGroupItems.filter(i => i.approval_status === 'change_requested').length
+
+    groups.push({
+      parentId,
+      parent,
+      code,
+      label: parentSel.title || 'Assembly',
+      children: visibleChildren.sort((a, b) =>
+        (a.project_selections?.component_order || 99) - (b.project_selections?.component_order || 99)
+      ),
+      pending, approved, confirmed, changeReq,
+      total: allGroupItems.length,
+      totalVisible: (filteredIds.has(parent.project_selection_id) ? 1 : 0) + visibleChildren.length,
+    })
+
+    usedIds.add(parent.project_selection_id)
+    children.forEach(c => usedIds.add(c.project_selection_id))
+  })
+
+  // Standalone items (no children, not a component)
+  const standalone = filteredItems.filter(item => {
+    const sel = item.project_selections || {}
+    return !usedIds.has(item.project_selection_id) && !sel.is_component
+  })
+
+  if (standalone.length > 0) {
+    groups.push({
+      parentId: '__standalone__',
+      parent: null,
+      code: '',
+      label: 'Other Items',
+      children: standalone,
+      pending: standalone.filter(i => i.approval_status === 'pending').length,
+      approved: standalone.filter(i => i.approval_status === 'approved').length,
+      confirmed: standalone.filter(i => i.approval_status === 'not_applicable').length,
+      changeReq: standalone.filter(i => i.approval_status === 'change_requested').length,
+      total: standalone.length,
+      totalVisible: standalone.length,
+    })
+  }
+
+  return groups.filter(g => g.totalVisible > 0).sort((a, b) => a.code.localeCompare(b.code))
+}
+
 /* ── Room-grouped view ── */
-function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, onApproveRoom, onRequestChange }) {
+function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, onApproveRoom, onRequestChange, natspecMap }) {
   return (
     <div className="space-y-3">
       {rooms.map(room => {
@@ -598,6 +719,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
                         <SelectionCard
                           key={item.id}
                           item={item}
+                          natspecMap={natspecMap}
                           onApprove={() => onApproveItem(item.id)}
                           onRequestChange={() => onRequestChange(item.id)}
                         />
@@ -615,6 +737,90 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
                     >
                       <ThumbsUp size={13} /> Approve all {room.pending} in {room.label}
                     </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ── Component-grouped view: by parent assembly ── */
+function ComponentGroupedView({ components, expandedGroups, toggleGroup, onApproveItem, onRequestChange, natspecMap }) {
+  return (
+    <div className="space-y-3">
+      {components.map(comp => {
+        const isExpanded = expandedGroups.has(comp.parentId)
+        const hasPending = comp.pending > 0 || comp.changeReq > 0
+        const parentSel = comp.parent?.project_selections || {}
+        const parentAttrs = parentSel.attributes || {}
+
+        return (
+          <div key={comp.parentId} className={`backdrop-blur-xl bg-white/50 rounded-xl border overflow-hidden transition-all ${
+            hasPending ? 'border-[var(--color-pending)]/30' : 'border-white/40'
+          }`}>
+            {/* Assembly header */}
+            <button
+              onClick={() => toggleGroup(comp.parentId)}
+              className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
+            >
+              <div className="flex items-start gap-3">
+                {/* System code badge */}
+                <div className="flex items-center gap-2.5 shrink-0 mt-0.5">
+                  {comp.code ? (
+                    <span className="text-[11px] font-mono tracking-wider text-[var(--color-text)] bg-white/60 px-2.5 py-1.5 rounded-lg font-medium border border-white/40">
+                      {comp.code}
+                    </span>
+                  ) : (
+                    <span className="text-[13px] font-semibold text-[var(--color-text)] bg-white/50 w-8 h-8 rounded-lg inline-flex items-center justify-center">
+                      {comp.totalVisible}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h2 className="text-sm font-medium mt-0.5">{comp.label}</h2>
+                  <p className="text-[10px] text-[var(--color-text)] font-light mt-0.5">
+                    {comp.children.length} component{comp.children.length !== 1 ? 's' : ''}
+                    {parentAttrs.size && <span className="ml-2 text-[var(--color-muted)]">{parentAttrs.size}</span>}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {comp.pending > 0 && (
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded" style={{
+                    background: 'rgba(107,79,0,0.1)', color: 'var(--color-pending)'
+                  }}>{comp.pending} to review</span>
+                )}
+                {comp.pending === 0 && comp.changeReq === 0 && (
+                  <Check size={14} className="text-[var(--color-approved)]" />
+                )}
+                <div className="w-12 h-1 bg-white/40 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-[var(--color-approved)]/60" style={{
+                    width: `${comp.total > 0 ? ((comp.approved + comp.confirmed) / comp.total) * 100 : 0}%`
+                  }} />
+                </div>
+                {isExpanded
+                  ? <ChevronDown size={14} className="text-[var(--color-muted)]" />
+                  : <ChevronRight size={14} className="text-[var(--color-muted)]" />}
+              </div>
+            </button>
+
+            {/* Expanded: parent item + children */}
+            {isExpanded && (
+              <div className="border-t border-white/30 px-4 py-3 space-y-2">
+                {/* Parent item */}
+                {comp.parent && (
+                  <ItemRow item={comp.parent} onApproveItem={onApproveItem} onRequestChange={onRequestChange} natspecMap={natspecMap} />
+                )}
+                {/* Children */}
+                {comp.children.length > 0 && (
+                  <div className="ml-6 pl-4 border-l-2 border-white/20 space-y-1 mt-1">
+                    {comp.children.map(child => (
+                      <CompactChildRow key={child.id} item={child} onApproveItem={onApproveItem} onRequestChange={onRequestChange} natspecMap={natspecMap} />
+                    ))}
                   </div>
                 )}
               </div>
@@ -655,15 +861,16 @@ function ReviewView({ items, groupKey, hasPending, pendingCount, onApproveItem, 
 }
 
 /* ── Parse code from title: "MX1 — Shower mixer" → { code: "MX1", name: "Shower mixer" } ── */
-function parseCode(title) {
-  if (!title) return { code: null, name: title }
+function parseCode(title, attrs) {
+  const sysCode = attrs?.code || null
+  if (!title) return { code: sysCode, name: title }
   // Match patterns: "CODE — Name" or "CODE - Name" where CODE is alphanumeric with dots
   const m = title.match(/^([A-Z][A-Z0-9]*(?:\.[0-9]+)?)\s*[—–\-]\s*(.+)$/i)
-  if (m) return { code: m[1], name: m[2] }
+  if (m) return { code: sysCode || m[1], name: m[2] }
   // Match "Joinery J01.1" style
   const j = title.match(/^Joinery\s+(J\d+(?:\.\d+)?)\s*$/i)
-  if (j) return { code: j[1], name: 'Joinery' }
-  return { code: null, name: title }
+  if (j) return { code: sysCode || j[1], name: 'Joinery' }
+  return { code: sysCode, name: title }
 }
 
 /* ── Sub-group items by selection_kind within a schedule group ── */
@@ -746,7 +953,7 @@ const ROLE_LABELS = {
 }
 
 /* ── Schedule view: parent-child nesting with codes ── */
-function ScheduleView({ items, onApproveItem, onRequestChange }) {
+function ScheduleView({ items, natspecMap, onApproveItem, onRequestChange }) {
   const tree = buildItemTree(items)
   const subGroups = groupTreeByKind(tree)
   const needsSubHeaders = subGroups.length > 1
@@ -766,11 +973,11 @@ function ScheduleView({ items, onApproveItem, onRequestChange }) {
           <div className="space-y-2">
             {sg.nodes.map(node => (
               <div key={node.item.id}>
-                <ItemRow item={node.item} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+                <ItemRow item={node.item} natspecMap={natspecMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
                 {node.children.length > 0 && (
                   <div className="ml-6 pl-4 border-l-2 border-white/20 space-y-1 mt-1 mb-2">
                     {node.children.map(child => (
-                      <CompactChildRow key={child.id} item={child} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+                      <CompactChildRow key={child.id} item={child} natspecMap={natspecMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
                     ))}
                   </div>
                 )}
@@ -784,7 +991,7 @@ function ScheduleView({ items, onApproveItem, onRequestChange }) {
 }
 
 /* ── Parent item row (full-size) ── */
-function ItemRow({ item, onApproveItem, onRequestChange }) {
+function ItemRow({ item, natspecMap, onApproveItem, onRequestChange }) {
   const sel = item.project_selections || {}
   const attrs = sel.attributes || {}
   const st = STATUS_STYLES[item.approval_status] || STATUS_STYLES.not_applicable
@@ -792,7 +999,8 @@ function ItemRow({ item, onApproveItem, onRequestChange }) {
   const Icon = KIND_ICONS[sel.selection_kind] || Package
   const isPending = item.approval_status === 'pending'
   const isChangeReq = item.approval_status === 'change_requested'
-  const { code, name } = parseCode(sel.title || item.selection_title)
+  const { code, name } = parseCode(sel.title || item.selection_title, attrs)
+  const natspecCodes = (natspecMap && natspecMap[item.project_selection_id]) || []
   return (
     <div className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/40 transition-colors items-start"
       style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 100px' }}>
@@ -814,6 +1022,11 @@ function ItemRow({ item, onApproveItem, onRequestChange }) {
       </div>
       <div>
         {code && <span className="text-[9px] font-mono tracking-wider text-[var(--color-muted)] uppercase block mb-0.5">{code}</span>}
+        {natspecCodes.length > 0 && (
+          <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] opacity-70 block mb-0.5">
+            {natspecCodes.map(n => n.ref).join(' · ')}
+          </span>
+        )}
         <div className="font-medium leading-snug text-[var(--color-text)]">{name}</div>
         {!code && sel.selection_kind && <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{sel.selection_kind.replace(/_/g, ' ')}</span>}
       </div>
@@ -821,6 +1034,9 @@ function ItemRow({ item, onApproveItem, onRequestChange }) {
         {sel.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{sel.manufacturer_name}</span>}
         {sel.manufacturer_name && sel.model && <br />}
         <span className="text-[var(--color-muted)]">{sel.model || (!sel.manufacturer_name && '\u2014')}</span>
+        {attrs.size && (
+          <span className="text-[10px] text-[var(--color-muted)] block mt-0.5">{attrs.size}</span>
+        )}
       </div>
       <div className="text-[11px] text-[var(--color-text)] flex items-start gap-1.5" style={{ wordBreak: 'break-word' }}>
         {attrs.colour ? (<><ColourDot colour={attrs.colour} /><span className="leading-snug">{attrs.colour}</span></>) : <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
@@ -839,7 +1055,7 @@ function ItemRow({ item, onApproveItem, onRequestChange }) {
 }
 
 /* ── Compact child/component row (indented, smaller) ── */
-function CompactChildRow({ item, onApproveItem, onRequestChange }) {
+function CompactChildRow({ item, natspecMap, onApproveItem, onRequestChange }) {
   const sel = item.project_selections || {}
   const attrs = sel.attributes || {}
   const st = STATUS_STYLES[item.approval_status] || STATUS_STYLES.not_applicable
@@ -847,6 +1063,7 @@ function CompactChildRow({ item, onApproveItem, onRequestChange }) {
   const isPending = item.approval_status === 'pending'
   const isChangeReq = item.approval_status === 'change_requested'
   const roleLabel = ROLE_LABELS[sel.component_role] || sel.component_role?.replace(/_/g, ' ') || ''
+  const natspecCodes = (natspecMap && natspecMap[item.project_selection_id]) || []
 
   return (
     <div className="grid gap-2 px-3 py-2 text-[11px] rounded-md border border-white/20 bg-white/5 hover:bg-white/30 transition-colors items-center"
@@ -863,11 +1080,19 @@ function CompactChildRow({ item, onApproveItem, onRequestChange }) {
       </div>
       <div>
         <span className="text-[8px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium block">{roleLabel}</span>
+        {natspecCodes.length > 0 && (
+          <span className="text-[7px] font-mono tracking-wider text-[var(--color-muted)] opacity-70 block">
+            {natspecCodes.map(n => n.ref).join(' · ')}
+          </span>
+        )}
         <div className="font-medium leading-snug text-[var(--color-text)] text-[11px]">{sel.title || item.selection_title}</div>
       </div>
       <div className="text-[10px] leading-relaxed text-[var(--color-muted)]" style={{ wordBreak: 'break-word' }}>
         {sel.manufacturer_name && <span className="text-[var(--color-text)]">{sel.manufacturer_name} </span>}
         {sel.model || ''}
+        {attrs.size && (
+          <span className="text-[9px] text-[var(--color-muted)] block mt-0.5">{attrs.size}</span>
+        )}
       </div>
       <div className="text-[10px] text-[var(--color-text)] flex items-center gap-1" style={{ wordBreak: 'break-word' }}>
         {attrs.colour ? (<><ColourDot colour={attrs.colour} /><span>{attrs.colour}</span></>) : <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
@@ -885,7 +1110,7 @@ function CompactChildRow({ item, onApproveItem, onRequestChange }) {
 }
 
 /* ── Selection card: Programa-style visual item with product image ── */
-function SelectionCard({ item, onApprove, onRequestChange }) {
+function SelectionCard({ item, natspecMap, onApprove, onRequestChange }) {
   const sel = item.project_selections || {}
   const attrs = sel.attributes || {}
   const isPending = item.approval_status === 'pending'
@@ -895,6 +1120,7 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
   const st = STATUS_STYLES[item.approval_status] || STATUS_STYLES.not_applicable
   const productUrl = attrs.product_url || attrs.image_url
   const Icon = KIND_ICONS[sel.selection_kind] || Package
+  const natspecCodes = (natspecMap && natspecMap[item.project_selection_id]) || []
 
   // Image pipeline: portal_image_url > colour swatch > kind icon
   const imageUrl = item.portal_image_url
@@ -953,9 +1179,14 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
 
       {/* Content */}
       <div className="flex-1 min-w-0 py-0.5">
-        {(() => { const { code, name } = parseCode(sel.title || item.selection_title); return (<>
+        {(() => { const { code, name } = parseCode(sel.title || item.selection_title, attrs); return (<>
           {code && (
             <span className="text-[9px] font-mono tracking-wider text-[var(--color-muted)] uppercase block mb-0.5">{code}</span>
+          )}
+          {natspecCodes.length > 0 && (
+            <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] opacity-70 block mb-0.5">
+              {natspecCodes.map(n => n.ref).join(' · ')}
+            </span>
           )}
           <div className="flex items-center gap-2">
             <h3 className="text-[13px] font-medium leading-snug">{name}</h3>
@@ -970,6 +1201,9 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
           )}
           {sel.model && (
             <p className="text-[11px] text-[var(--color-text)] leading-relaxed mt-0.5">{sel.model}</p>
+          )}
+          {attrs.size && (
+            <span className="text-[10px] text-[var(--color-muted)] block mt-0.5">{attrs.size}</span>
           )}
         </div>
 
@@ -1093,6 +1327,107 @@ function ColourDot({ colour }) {
   )
 }
 
+/* ── BoQ View ── */
+function BoQView({ groupedData, natspecMap }) {
+  // Calculate totals
+  let grandLow = 0
+  let grandHigh = 0
+
+  return (
+    <div className="space-y-3">
+      {/* Summary card */}
+      <div className="glass p-5">
+        <div className="flex justify-between items-baseline mb-3">
+          <h2 className="text-sm font-medium">Bill of Quantities Summary</h2>
+          <div className="text-right">
+            <span className="text-[11px] text-[var(--color-muted)]">Estimated range</span>
+          </div>
+        </div>
+        {/* Per-group rows */}
+        <div className="space-y-1">
+          {groupedData.map(group => {
+            let groupLow = 0
+            let groupHigh = 0
+            group.items.forEach(item => {
+              const attrs = item.project_selections?.attributes || {}
+              groupLow += parseFloat(attrs.cost_low) || 0
+              groupHigh += parseFloat(attrs.cost_high) || 0
+            })
+            grandLow += groupLow
+            grandHigh += groupHigh
+            return (
+              <div key={group.group_key} className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/30 transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] w-6 text-center font-mono">
+                    {group.items.length}
+                  </span>
+                  <span className="text-[12px] text-[var(--color-text)]">{group.group_name}</span>
+                </div>
+                <div className="text-[11px] text-[var(--color-text)] font-mono">
+                  {groupLow > 0 || groupHigh > 0
+                    ? `$${formatK(groupLow)} – $${formatK(groupHigh)}`
+                    : <span className="text-[var(--color-muted)]">TBC</span>
+                  }
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div className="border-t border-[var(--color-border)] mt-3 pt-3 flex justify-between items-baseline">
+          <span className="text-[12px] font-medium">Total estimated range</span>
+          <span className="text-[14px] font-medium font-mono">
+            ${formatK(grandLow)} – ${formatK(grandHigh)}
+          </span>
+        </div>
+      </div>
+
+      {/* Detailed items by group */}
+      {groupedData.map(group => (
+        <div key={group.group_key} className="glass-s overflow-hidden">
+          <div className="px-4 py-3 border-b border-white/30">
+            <h3 className="text-[12px] font-medium">{group.group_name}</h3>
+          </div>
+          <div className="divide-y divide-white/20">
+            {group.items.map(item => {
+              const sel = item.project_selections || {}
+              const attrs = sel.attributes || {}
+              const { code, name } = parseCode(sel.title, attrs)
+              const nsCodes = natspecMap[item.project_selection_id] || []
+              return (
+                <div key={item.id} className="grid gap-2 px-4 py-2.5 text-[11px] items-center"
+                  style={{ gridTemplateColumns: '60px 1fr 120px 100px' }}>
+                  <div>
+                    {code && <span className="font-mono text-[9px] text-[var(--color-muted)]">{code}</span>}
+                    {nsCodes.length > 0 && <span className="font-mono text-[8px] text-[var(--color-muted)] block opacity-70">{nsCodes[0]?.ref}</span>}
+                  </div>
+                  <div>
+                    <span className="text-[var(--color-text)]">{name || sel.title}</span>
+                    {attrs.size && <span className="text-[10px] text-[var(--color-muted)] ml-2">{attrs.size}</span>}
+                  </div>
+                  <div className="text-[10px] text-[var(--color-muted)]">
+                    {attrs.quantity && attrs.unit ? `${attrs.quantity} ${attrs.unit}` : ''}
+                  </div>
+                  <div className="text-right font-mono text-[10px]">
+                    {(attrs.cost_low || attrs.cost_high)
+                      ? `$${formatK(parseFloat(attrs.cost_low) || 0)} – $${formatK(parseFloat(attrs.cost_high) || 0)}`
+                      : <span className="text-[var(--color-muted)]">PS</span>
+                    }
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function formatK(n) {
+  if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k'
+  return n.toFixed(0)
+}
+
 /* ── Plan View ── */
 function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveItem, onRequestChange }) {
   const [selectedRoom, setSelectedRoom] = useState(null)
@@ -1117,7 +1452,7 @@ function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveIt
       {/* Room selection list */}
       {selectedRoom && roomItems.length > 0 && (
         <div className="mt-4">
-          <ScheduleView items={roomItems} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+          <ScheduleView items={roomItems} natspecMap={{}} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
         </div>
       )}
 

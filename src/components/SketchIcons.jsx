@@ -423,6 +423,24 @@ export function IconRoomGeneric({ size = 20, className = '' }) {
   )
 }
 
+export function IconThermalEnvelope({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      {/* Outer wall outline */}
+      <rect x="3" y="6" width="18" height="12" rx="1" {...s} />
+      {/* Insulation batts — wavy lines */}
+      <path d="M5 8.5c1-0.5 1.5-1.5 3-1.5s2 1 3 1.5" {...s} />
+      <path d="M5 11c1-0.5 1.5-1.5 3-1.5s2 1 3 1.5" {...s} />
+      <path d="M5 13.5c1-0.5 1.5-1.5 3-1.5s2 1 3 1.5" {...s} />
+      <path d="M13 8.5c1-0.5 1.5-1.5 3-1.5s2 1 3 1.5" {...s} />
+      <path d="M13 11c1-0.5 1.5-1.5 3-1.5s2 1 3 1.5" {...s} />
+      <path d="M13 13.5c1-0.5 1.5-1.5 3-1.5s2 1 3 1.5" {...s} />
+      {/* Center divider showing layers */}
+      <path d="M12 6v12" {...s} strokeDasharray="2 2" />
+    </svg>
+  )
+}
+
 // ── Lookup maps ──
 
 export const ROOM_ICONS = {
@@ -446,6 +464,7 @@ export const ROOM_ICONS = {
 
 export const GROUP_ICONS = {
   exterior: IconExterior,
+  thermal_envelope: IconThermalEnvelope,
   kitchen: IconKitchen,
   bathrooms: IconBathrooms,
   flooring: IconFlooring,

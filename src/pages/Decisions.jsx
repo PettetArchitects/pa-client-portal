@@ -594,13 +594,12 @@ function ScheduleView({ items }) {
   return (
     <div className="divide-y divide-white/20">
       {/* Table header */}
-      <div className="grid gap-2 px-5 py-2 text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium"
-        style={{ gridTemplateColumns: '28px 3fr 2.5fr 1.5fr 1fr 1.2fr' }}>
+      <div className="grid gap-3 px-5 py-2.5 text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium"
+        style={{ gridTemplateColumns: '32px 2.5fr 3fr 1.5fr 80px' }}>
         <div></div>
         <div>Item</div>
         <div>Product / Finish</div>
         <div>Colour</div>
-        <div>Kind</div>
         <div className="text-right">Status</div>
       </div>
       {items.map(item => {
@@ -610,52 +609,54 @@ function ScheduleView({ items }) {
         const colourBg = getColourBackground(attrs.colour)
         const Icon = KIND_ICONS[sel.selection_kind] || Package
         return (
-          <div key={item.id} className="grid gap-2 px-5 py-2 text-[11px] hover:bg-white/20 transition-colors items-center"
-            style={{ gridTemplateColumns: '28px 3fr 2.5fr 1.5fr 1fr 1.2fr' }}>
+          <div key={item.id} className="grid gap-3 px-5 py-3 text-[12px] hover:bg-white/20 transition-colors items-start"
+            style={{ gridTemplateColumns: '32px 2.5fr 3fr 1.5fr 80px' }}>
             {/* Mini thumbnail */}
-            <div>
+            <div className="pt-0.5">
               {item.portal_image_url ? (
                 <img src={item.portal_image_url} alt="" style={{
-                  width: 24, height: 24, borderRadius: 5, objectFit: 'cover',
+                  width: 28, height: 28, borderRadius: 6, objectFit: 'cover',
                   border: '1px solid rgba(0,0,0,0.06)',
                 }} loading="lazy"
-                onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
+                onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
                 />
               ) : colourBg ? (
                 <div style={{
-                  width: 24, height: 24, borderRadius: 5,
+                  width: 28, height: 28, borderRadius: 6,
                   background: colourBg, border: '1px solid rgba(0,0,0,0.06)',
                 }} />
               ) : (
                 <div style={{
-                  width: 24, height: 24, borderRadius: 5,
+                  width: 28, height: 28, borderRadius: 6,
                   background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Icon size={10} style={{ color: 'var(--color-border)' }} />
+                  <Icon size={12} style={{ color: 'var(--color-border)' }} />
                 </div>
               )}
             </div>
-            <div className="font-medium truncate">{sel.title || item.selection_title}</div>
-            <div className="text-[var(--color-muted)] truncate">
-              {[sel.manufacturer_name, sel.model].filter(Boolean).join(' \u2014 ') || '\u2014'}
+            <div>
+              <div className="font-medium leading-snug">{sel.title || item.selection_title}</div>
+              {sel.selection_kind && (
+                <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{sel.selection_kind.replace(/_/g, ' ')}</span>
+              )}
             </div>
-            <div className="text-[var(--color-muted)] truncate flex items-center gap-1.5">
+            <div className="text-[var(--color-muted)] text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
+              {sel.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{sel.manufacturer_name}</span>}
+              {sel.manufacturer_name && sel.model && <br />}
+              {sel.model || (!sel.manufacturer_name && '\u2014')}
+            </div>
+            <div className="text-[11px] text-[var(--color-muted)] flex items-start gap-1.5" style={{ wordBreak: 'break-word' }}>
               {attrs.colour && (
                 <>
                   <ColourDot colour={attrs.colour} />
-                  {attrs.colour}
+                  <span className="leading-snug">{attrs.colour}</span>
                 </>
               )}
               {!attrs.colour && '\u2014'}
             </div>
-            <div>
-              <span className="text-[9px] text-[var(--color-muted)] bg-white/40 px-1.5 py-0.5 rounded">
-                {sel.selection_kind || '\u2014'}
-              </span>
-            </div>
-            <div className="text-right">
-              <span className="text-[9px] font-medium px-1.5 py-0.5 rounded" style={{
+            <div className="text-right pt-0.5">
+              <span className="text-[9px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap" style={{
                 background: st.bg, color: st.text, border: `1px solid ${st.border}`
               }}>
                 {st.label}
@@ -738,31 +739,31 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
       {/* Content */}
       <div className="flex-1 min-w-0 py-0.5">
         <div className="flex items-center gap-2">
-          <h3 className="text-xs font-medium truncate">{sel.title || item.selection_title}</h3>
+          <h3 className="text-[13px] font-medium leading-snug">{sel.title || item.selection_title}</h3>
           {isApproved && <Check size={12} className="text-[var(--color-approved)] shrink-0" />}
         </div>
 
         {/* Product details */}
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+        <div className="mt-1" style={{ wordBreak: 'break-word' }}>
           {sel.manufacturer_name && (
             <span className="text-[11px] text-[var(--color-muted)]">{sel.manufacturer_name}</span>
           )}
           {sel.model && (
-            <span className="text-[11px] text-[var(--color-text)]">{sel.model}</span>
+            <p className="text-[11px] text-[var(--color-text)] leading-relaxed mt-0.5">{sel.model}</p>
           )}
         </div>
 
         {/* Colour chip — only if no colour swatch thumbnail */}
         {attrs.colour && !colourBg && (
-          <div className="flex items-center gap-1.5 mt-1">
+          <div className="flex items-start gap-1.5 mt-1.5">
             <ColourDot colour={attrs.colour} />
-            <span className="text-[10px] text-[var(--color-muted)]">{attrs.colour}</span>
+            <span className="text-[10px] text-[var(--color-muted)] leading-snug">{attrs.colour}</span>
           </div>
         )}
 
         {/* Notes */}
         {sel.notes && (
-          <p className="text-[10px] text-[var(--color-muted)] font-light mt-1 italic leading-relaxed line-clamp-2">{sel.notes}</p>
+          <p className="text-[10px] text-[var(--color-muted)] font-light mt-1.5 italic leading-relaxed">{sel.notes}</p>
         )}
 
         {/* Change request note */}

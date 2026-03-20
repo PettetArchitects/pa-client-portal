@@ -189,13 +189,13 @@ export default function Documents({ projectId }) {
                 {isExpanded && (
                   <div className="border-t border-white/30">
                     {/* Table header */}
-                    <div className="grid gap-2 px-5 py-2 text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium"
-                      style={{ gridTemplateColumns: '32px 3fr 2.5fr 1.5fr 1fr' }}>
+                    <div className="grid gap-3 px-5 py-2 text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium"
+                      style={{ gridTemplateColumns: '32px 2.5fr 3fr 1.5fr 80px' }}>
                       <div></div>
                       <div>Item</div>
                       <div>Product / Finish</div>
                       <div>Colour</div>
-                      <div>Kind</div>
+                      <div>Status</div>
                     </div>
 
                     {/* Rows */}
@@ -205,8 +205,8 @@ export default function Documents({ projectId }) {
                         const attrs = sel.attributes || {}
                         const Icon = KIND_ICONS[sel.selection_kind] || Package
                         return (
-                          <div key={item.id} className="grid gap-2 px-5 py-2.5 text-[11px] hover:bg-white/20 transition-colors items-center"
-                            style={{ gridTemplateColumns: '32px 3fr 2.5fr 1.5fr 1fr' }}>
+                          <div key={item.id} className="grid gap-3 px-5 py-3 text-[12px] hover:bg-white/20 transition-colors items-start"
+                            style={{ gridTemplateColumns: '32px 2.5fr 3fr 1.5fr 80px' }}>
                             <div>
                               {item.portal_image_url ? (
                                 <img src={item.portal_image_url} alt="" style={{
@@ -225,16 +225,27 @@ export default function Documents({ projectId }) {
                                 </div>
                               )}
                             </div>
-                            <div className="font-medium truncate">{sel.title || '—'}</div>
-                            <div className="text-[var(--color-muted)] truncate">
-                              {[sel.manufacturer_name, sel.model].filter(Boolean).join(' — ') || '—'}
+                            <div>
+                              <div className="font-medium leading-snug">{sel.title || '—'}</div>
+                              {sel.selection_kind && (
+                                <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{sel.selection_kind.replace(/_/g, ' ')}</span>
+                              )}
                             </div>
-                            <div className="text-[var(--color-muted)] truncate">
+                            <div className="text-[var(--color-muted)] text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
+                              {sel.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{sel.manufacturer_name}</span>}
+                              {sel.manufacturer_name && sel.model && <br />}
+                              {sel.model || (!sel.manufacturer_name && '—')}
+                            </div>
+                            <div className="text-[var(--color-muted)] text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
                               {attrs.colour || '—'}
                             </div>
                             <div>
-                              <span className="text-[9px] text-[var(--color-muted)] bg-white/40 px-1.5 py-0.5 rounded">
-                                {sel.selection_kind || '—'}
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+                                item.approval_status === 'locked' ? 'bg-[var(--color-confirmed)]/10 text-[var(--color-confirmed)]' :
+                                item.approval_status === 'proposed' ? 'bg-[var(--color-pending)]/10 text-[var(--color-pending)]' :
+                                'bg-white/40 text-[var(--color-muted)]'
+                              }`}>
+                                {STATUS_LABELS[item.approval_status] || item.approval_status || '—'}
                               </span>
                             </div>
                           </div>

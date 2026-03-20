@@ -75,7 +75,7 @@ function ProtectedApp() {
     <Routes>
       <Route element={<Shell projectName={pname} />}>
         <Route index element={<Overview projectId={pid} />} />
-        <Route path="decisions" element={<Decisions projectId={pid} />} />
+        <Route path="selections" element={<Decisions projectId={pid} />} />
         <Route path="documents" element={<Documents projectId={pid} />} />
         <Route path="timeline" element={<Timeline projectId={pid} />} />
         <Route path="messages" element={<Messages projectId={pid} />} />

@@ -68,7 +68,7 @@ export default function Decisions({ projectId }) {
   const [roomMappings, setRoomMappings] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedGroups, setExpandedGroups] = useState(new Set())
-  const [viewMode, setViewMode] = useState('review') // 'review', 'schedule', or 'rooms'
+  const [viewMode, setViewMode] = useState('schedule') // 'schedule', 'review', or 'rooms'
   const [filter, setFilter] = useState('all') // 'all', 'pending', 'approved', 'confirmed'
 
   useEffect(() => {
@@ -199,7 +199,7 @@ export default function Decisions({ projectId }) {
     )
   }
 
-  const viewTitle = viewMode === 'review' ? 'Decisions' : viewMode === 'rooms' ? 'By Room' : 'Finishes Schedule'
+  const viewTitle = viewMode === 'schedule' ? 'Selections' : viewMode === 'rooms' ? 'By Room' : 'Review'
 
   return (
     <div className="max-w-4xl">
@@ -243,9 +243,9 @@ export default function Decisions({ projectId }) {
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex gap-1 backdrop-blur-xl bg-white/30 rounded-lg p-0.5 border border-white/40">
           {[
+            { key: 'schedule', label: 'Schedule', icon: Grid3X3 },
             { key: 'review', label: 'Review' },
             { key: 'rooms', label: 'By Room', icon: Home },
-            { key: 'schedule', label: 'Full schedule', icon: Grid3X3 },
           ].map(m => (
             <button
               key={m.key}

@@ -68,9 +68,9 @@ export default function Overview({ projectId }) {
 
   const quickLinks = [
     {
-      to: '/decisions',
+      to: '/selections',
       icon: CheckSquare,
-      label: 'Decisions',
+      label: 'Selections',
       value: stats?.pendingApproval || 0,
       sub: stats?.pendingApproval ? `${stats.pendingApproval} awaiting input` : 'All confirmed',
       accent: stats?.pendingApproval > 0,
@@ -107,7 +107,7 @@ export default function Overview({ projectId }) {
       {/* Urgent banner */}
       {stats?.urgentItems > 0 && (
         <Link
-          to="/decisions"
+          to="/selections"
           className="flex items-center gap-3 p-4 mb-8 rounded-xl border border-[var(--color-urgent)]/30 backdrop-blur-xl bg-[var(--color-urgent)]/10 hover:bg-[var(--color-urgent)]/15 transition-colors"
         >
           <AlertCircle size={18} className="text-[var(--color-urgent)] shrink-0" />

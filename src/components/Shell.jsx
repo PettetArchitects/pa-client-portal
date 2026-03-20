@@ -13,7 +13,7 @@ import {
 
 const baseNavItems = [
   { to: '/', icon: LayoutGrid, label: 'Overview' },
-  { to: '/decisions', icon: CheckSquare, label: 'Decisions' },
+  { to: '/selections', icon: CheckSquare, label: 'Selections' },
   { to: '/documents', icon: FileText, label: 'Documents' },
   { to: '/messages', icon: MessageCircle, label: 'Messages' },
   { to: '/profile', icon: Settings, label: 'Profile' },

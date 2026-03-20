@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useProject } from '../hooks/useProject'
+import { useAuth } from '../hooks/useAuth'
 import {
   FileText, Eye, Clock, Search, Folder, ChevronDown, ChevronRight,
-  Package, Palette, Wrench, Grid3X3, ListChecks
+  Package, Palette, Wrench, Grid3X3, ListChecks, Download, ExternalLink
 } from 'lucide-react'
 
 const KIND_ICONS = {
@@ -23,9 +25,26 @@ const STATUS_LABELS = {
   provisional_sum: 'PS',
 }
 
+const DOC_TYPE_LABELS = {
+  tender_document_register: 'Tender Register',
+  tender_drawing_detail_matrix: 'Drawing Matrix',
+  tender_delivery_work_plan: 'Work Plan',
+  tender_pack_qa_run_summary: 'QA Summary',
+  geotechnical_report: 'Geotech Report',
+  consultant_report: 'Consultant Report',
+  specification: 'Specification',
+  drawing_set: 'Drawing Set',
+  presentation: 'Presentation',
+  schedule: 'Schedule',
+  transmittal: 'Transmittal',
+}
+
 export default function Documents({ projectId }) {
-  const [activeTab, setActiveTab] = useState('schedules')
+  const { isArchitect } = useProject()
+  const { user } = useAuth()
+  const [activeTab, setActiveTab] = useState('documents')
   const [docs, setDocs] = useState([])
+  const [allProjectDocs, setAllProjectDocs] = useState([])
   const [scheduleGroups, setScheduleGroups] = useState([])
   const [selections, setSelections] = useState([])
   const [search, setSearch] = useState('')
@@ -38,28 +57,48 @@ export default function Documents({ projectId }) {
   }, [projectId])
 
   async function loadAll() {
-    const [docRes, grpRes, selRes] = await Promise.all([
+    const queries = [
+      // Shared documents (for client view)
       supabase
         .from('homeowner_document_shares')
-        .select(`*, project_documents:project_document_id (title, doc_type, storage_path, file_size_bytes, version, issued_at, notes)`)
+        .select(`*, project_documents:project_document_id (id, title, doc_type, storage_path, file_size_bytes, version, issued_at, notes, status, stage)`)
         .eq('project_id', projectId)
         .eq('active', true)
         .order('shared_at', { ascending: false }),
+      // Schedule groups
       supabase
         .from('schedule_groups')
         .select('*')
         .eq('project_id', projectId)
         .eq('visible_to_homeowner', true)
         .order('display_order'),
+      // Selections for schedule view
       supabase
         .from('homeowner_selections_portal')
         .select(`*, project_selections:project_selection_id (title, selection_kind, manufacturer_name, supplier_name, model, spec_reference, notes, attributes)`)
         .eq('project_id', projectId)
         .eq('active', true),
-    ])
+    ]
+
+    // Architect gets all project documents directly
+    if (isArchitect) {
+      queries.push(
+        supabase
+          .from('project_documents')
+          .select('*')
+          .eq('project_id', projectId)
+          .eq('is_current', true)
+          .order('hierarchy_order')
+      )
+    }
+
+    const results = await Promise.all(queries)
+    const [docRes, grpRes, selRes] = results
+
     setDocs(docRes.data || [])
     setScheduleGroups(grpRes.data || [])
     setSelections(selRes.data || [])
+    if (results[3]) setAllProjectDocs(results[3].data || [])
     setLoading(false)
   }
 
@@ -91,14 +130,29 @@ export default function Documents({ projectId }) {
     return { ...g, items }
   }).filter(g => g.items.length > 0)
 
-  // Filter docs by search
-  const filteredDocs = docs.filter(d => {
+  // For architects: show all project documents; for clients: show shared documents
+  const documentList = isArchitect ? allProjectDocs : docs
+  const filteredDocs = documentList.filter(d => {
     if (!search) return true
-    const pd = d.project_documents || {}
-    return [pd.title, pd.doc_type, d.share_note].join(' ').toLowerCase().includes(search.toLowerCase())
+    const title = isArchitect ? d.title : (d.project_documents?.title || '')
+    const docType = isArchitect ? d.doc_type : (d.project_documents?.doc_type || '')
+    return [title, docType].join(' ').toLowerCase().includes(search.toLowerCase())
   })
 
+  // Group project docs by hierarchy_group for architect view
+  const groupedDocs = isArchitect
+    ? Object.entries(
+        filteredDocs.reduce((acc, d) => {
+          const group = d.hierarchy_group || 'Other'
+          if (!acc[group]) acc[group] = []
+          acc[group].push(d)
+          return acc
+        }, {})
+      )
+    : null
+
   const totalScheduleItems = selections.length
+  const totalDocs = isArchitect ? allProjectDocs.length : docs.length
 
   if (loading) {
     return (
@@ -116,8 +170,8 @@ export default function Documents({ projectId }) {
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex gap-1 backdrop-blur-xl bg-white/40 rounded-lg p-0.5 border border-white/40">
           {[
+            { key: 'documents', label: 'Documents', icon: FileText, count: totalDocs },
             { key: 'schedules', label: 'Schedules', icon: Grid3X3, count: totalScheduleItems },
-            { key: 'documents', label: 'Documents', icon: FileText, count: docs.length },
           ].map(t => (
             <button
               key={t.key}
@@ -146,11 +200,57 @@ export default function Documents({ projectId }) {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder={activeTab === 'schedules' ? 'Search selections…' : 'Search documents…'}
+            placeholder={activeTab === 'schedules' ? 'Search selections\u2026' : 'Search documents\u2026'}
             className="pl-7 pr-3 py-1.5 rounded-lg border border-white/40 backdrop-blur-xl bg-white/40 text-[11px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors w-48"
           />
         </div>
       </div>
+
+      {/* Documents tab */}
+      {activeTab === 'documents' && (
+        <div>
+          {isArchitect && groupedDocs ? (
+            // Architect view — grouped by hierarchy_group
+            <div className="space-y-4">
+              {groupedDocs.map(([group, items]) => (
+                <div key={group}>
+                  <h3 className="text-[10px] tracking-[2px] uppercase text-[var(--color-muted)] font-medium mb-2 px-1">
+                    {group.replace(/_/g, ' ')}
+                  </h3>
+                  <div className="space-y-2">
+                    {items.map(doc => (
+                      <ArchitectDocRow key={doc.id} doc={doc} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            // Client view — shared documents
+            <div>
+              {filteredDocs.map(doc => (
+                <div key={doc.id} className="mb-2">
+                  <ClientDocRow doc={doc} onView={() => markViewed(doc.id)} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {filteredDocs.length === 0 && (
+            <div className="text-center py-20 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
+              <FileText size={24} className="mx-auto text-[var(--color-border)] mb-3" />
+              <p className="text-sm text-[var(--color-muted)] font-light">
+                {search ? 'No documents match your search.' : 'No documents shared yet.'}
+              </p>
+              {!isArchitect && (
+                <p className="text-xs text-[var(--color-muted)] font-light mt-1">
+                  Documents will appear here when your architect shares them.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Schedules tab */}
       {activeTab === 'schedules' && (
@@ -181,57 +281,57 @@ export default function Documents({ projectId }) {
 
                 {isExpanded && (
                   <div className="border-t border-white/30 px-4 py-3 space-y-2">
-                      {group.items.map(item => {
-                        const sel = item.project_selections || {}
-                        const attrs = sel.attributes || {}
-                        const Icon = KIND_ICONS[sel.selection_kind] || Package
-                        return (
-                          <div key={item.id} className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/40 transition-colors items-start"
-                            style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 80px' }}>
-                            <div>
-                              {item.portal_image_url ? (
-                                <img src={item.portal_image_url} alt="" style={{
-                                  width: 48, height: 48, borderRadius: 8, objectFit: 'cover',
-                                  border: '1px solid rgba(0,0,0,0.06)',
-                                }} loading="lazy"
-                                onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
-                                />
-                              ) : (
-                                <div style={{
-                                  width: 48, height: 48, borderRadius: 8,
-                                  background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                }}>
-                                  <Icon size={16} style={{ color: 'var(--color-border)' }} />
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <div className="font-medium leading-snug text-[var(--color-text)]">{sel.title || '—'}</div>
-                              {sel.selection_kind && (
-                                <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{sel.selection_kind.replace(/_/g, ' ')}</span>
-                              )}
-                            </div>
-                            <div className="text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
-                              {sel.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{sel.manufacturer_name}</span>}
-                              {sel.manufacturer_name && sel.model && <br />}
-                              <span className="text-[var(--color-muted)]">{sel.model || (!sel.manufacturer_name && '—')}</span>
-                            </div>
-                            <div className="text-[var(--color-text)] text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
-                              {attrs.colour || <span className="text-[var(--color-muted)]">—</span>}
-                            </div>
-                            <div>
-                              <span className={`text-[9px] px-1.5 py-0.5 rounded ${
-                                item.approval_status === 'locked' ? 'bg-[var(--color-confirmed)]/10 text-[var(--color-confirmed)]' :
-                                item.approval_status === 'proposed' ? 'bg-[var(--color-pending)]/10 text-[var(--color-pending)]' :
-                                'bg-white/40 text-[var(--color-muted)]'
-                              }`}>
-                                {STATUS_LABELS[item.approval_status] || item.approval_status || '—'}
-                              </span>
-                            </div>
+                    {group.items.map(item => {
+                      const sel = item.project_selections || {}
+                      const attrs = sel.attributes || {}
+                      const Icon = KIND_ICONS[sel.selection_kind] || Package
+                      return (
+                        <div key={item.id} className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/40 transition-colors items-start"
+                          style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 80px' }}>
+                          <div>
+                            {item.portal_image_url ? (
+                              <img src={item.portal_image_url} alt="" style={{
+                                width: 48, height: 48, borderRadius: 8, objectFit: 'cover',
+                                border: '1px solid rgba(0,0,0,0.06)',
+                              }} loading="lazy"
+                              onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
+                              />
+                            ) : (
+                              <div style={{
+                                width: 48, height: 48, borderRadius: 8,
+                                background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                                <Icon size={16} style={{ color: 'var(--color-border)' }} />
+                              </div>
+                            )}
                           </div>
-                        )
-                      })}
+                          <div>
+                            <div className="font-medium leading-snug text-[var(--color-text)]">{sel.title || '\u2014'}</div>
+                            {sel.selection_kind && (
+                              <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{sel.selection_kind.replace(/_/g, ' ')}</span>
+                            )}
+                          </div>
+                          <div className="text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
+                            {sel.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{sel.manufacturer_name}</span>}
+                            {sel.manufacturer_name && sel.model && <br />}
+                            <span className="text-[var(--color-muted)]">{sel.model || (!sel.manufacturer_name && '\u2014')}</span>
+                          </div>
+                          <div className="text-[var(--color-text)] text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
+                            {attrs.colour || <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
+                          </div>
+                          <div>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+                              item.approval_status === 'locked' ? 'bg-[var(--color-confirmed)]/10 text-[var(--color-confirmed)]' :
+                              item.approval_status === 'proposed' ? 'bg-[var(--color-pending)]/10 text-[var(--color-pending)]' :
+                              'bg-white/40 text-[var(--color-muted)]'
+                            }`}>
+                              {STATUS_LABELS[item.approval_status] || item.approval_status || '\u2014'}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -248,50 +348,51 @@ export default function Documents({ projectId }) {
           )}
         </div>
       )}
-
-      {/* Documents tab */}
-      {activeTab === 'documents' && (
-        <div>
-          {filteredDocs.map(doc => (
-            <div key={doc.id} className="mb-2">
-              <DocumentRow doc={doc} onView={() => markViewed(doc.id)} />
-            </div>
-          ))}
-
-          {filteredDocs.length === 0 && (
-            <div className="text-center py-20 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
-              <FileText size={24} className="mx-auto text-[var(--color-border)] mb-3" />
-              <p className="text-sm text-[var(--color-muted)] font-light">
-                {search ? 'No documents match your search.' : 'No documents shared yet.'}
-              </p>
-              <p className="text-xs text-[var(--color-muted)] font-light mt-1">
-                Documents will appear here when your architect shares them.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
 
-function DocumentRow({ doc, onView }) {
+/* ── Architect document row ── */
+function ArchitectDocRow({ doc }) {
+  const typeLabel = DOC_TYPE_LABELS[doc.doc_type] || doc.doc_type?.replace(/_/g, ' ') || 'Document'
+
+  const statusColor = {
+    approved: 'var(--color-approved)',
+    for_review: 'var(--color-pending)',
+    draft: 'var(--color-muted)',
+    issued: 'var(--color-accent)',
+  }[doc.status] || 'var(--color-muted)'
+
+  return (
+    <div className="flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-white/50 border border-white/40 hover:bg-white/60 transition-all">
+      <div className="w-9 h-9 rounded-lg bg-white/60 flex items-center justify-center shrink-0">
+        <FileText size={16} strokeWidth={1.5} className="text-[var(--color-muted)]" />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <h3 className="text-sm font-normal truncate text-[var(--color-text)]">{doc.title}</h3>
+        <div className="flex items-center gap-3 mt-0.5">
+          <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded">{typeLabel}</span>
+          <span className="text-[10px] font-medium" style={{ color: statusColor }}>
+            {doc.status?.replace(/_/g, ' ')}
+          </span>
+          {doc.version && <span className="text-[10px] text-[var(--color-muted)] font-light">{doc.version}</span>}
+          {doc.file_size_bytes && <span className="text-[10px] text-[var(--color-muted)] font-light">{formatSize(doc.file_size_bytes)}</span>}
+        </div>
+      </div>
+
+      <span className="text-[10px] text-[var(--color-muted)] bg-white/40 px-2 py-0.5 rounded shrink-0">
+        {doc.stage}
+      </span>
+    </div>
+  )
+}
+
+/* ── Client document row ── */
+function ClientDocRow({ doc, onView }) {
   const pd = doc.project_documents || {}
   const isNew = !doc.viewed_at
-
-  function formatSize(bytes) {
-    if (!bytes) return ''
-    if (bytes < 1024) return bytes + ' B'
-    if (bytes < 1048576) return (bytes / 1024).toFixed(0) + ' KB'
-    return (bytes / 1048576).toFixed(1) + ' MB'
-  }
-
-  function formatDate(d) {
-    if (!d) return ''
-    return new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
-  }
-
-  const typeLabel = (pd.doc_type || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  const typeLabel = DOC_TYPE_LABELS[pd.doc_type] || (pd.doc_type || '').replace(/_/g, ' ') || 'Document'
 
   return (
     <div className={`flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-white/40 border transition-all hover:shadow-sm ${
@@ -325,11 +426,23 @@ function DocumentRow({ doc, onView }) {
 
       <button
         onClick={onView}
-        className="shrink-0 w-8 h-8 rounded-lg border border-[var(--color-border)] flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)] hover:border-[var(--color-accent)] transition-colors"
+        className="shrink-0 w-8 h-8 rounded-lg border border-white/40 flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)] hover:border-[var(--color-accent)] transition-colors"
         title="View document"
       >
         <Eye size={14} />
       </button>
     </div>
   )
+}
+
+function formatSize(bytes) {
+  if (!bytes) return ''
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1048576) return (bytes / 1024).toFixed(0) + ' KB'
+  return (bytes / 1048576).toFixed(1) + ' MB'
+}
+
+function formatDate(d) {
+  if (!d) return ''
+  return new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
 }

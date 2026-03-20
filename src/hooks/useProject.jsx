@@ -11,6 +11,7 @@ export function ProjectProvider({ children }) {
   const [selectedProject, setSelectedProject] = useState(null)
   const [accessLevel, setAccessLevel] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [clientPreview, setClientPreview] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -74,7 +75,10 @@ export function ProjectProvider({ children }) {
       switchProject,
       accessLevel,
       loading,
-      isArchitect: accessLevel === 'architect',
+      isArchitect: accessLevel === 'architect' && !clientPreview,
+      isActualArchitect: accessLevel === 'architect',
+      clientPreview,
+      setClientPreview,
     }}>
       {children}
     </ProjectContext.Provider>

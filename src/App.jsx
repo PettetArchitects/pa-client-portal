@@ -35,15 +35,27 @@ function ProtectedApp() {
 
   // Preload satellite image as soon as project data is available
   useEffect(() => {
-    const url = project?.satellite_image_url
-    if (!url) {
-      // No satellite image — don't block on it
-      if (project) setSatelliteReady(true)
+    if (!project) return
+    // Build the same ESRI URL that ProjectHero uses
+    const lat = parseFloat(project.latitude)
+    const lng = parseFloat(project.longitude)
+    if (!lat || !lng) {
+      // Fall back to stored URL or skip
+      const url = project.satellite_image_url
+      if (!url) { setSatelliteReady(true); return }
+      const img = new Image()
+      img.onload = () => setSatelliteReady(true)
+      img.onerror = () => setSatelliteReady(true)
+      img.src = url
       return
     }
+    const dLng = 0.004
+    const dLat = dLng * (1080 / 1920) * 1.2
+    const bbox = [lng - dLng, lat - dLat, lng + dLng, lat + dLat].join(',')
+    const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bbox}&bboxSR=4326&size=1920,1080&imageSR=4326&format=jpg&f=image`
     const img = new Image()
     img.onload = () => setSatelliteReady(true)
-    img.onerror = () => setSatelliteReady(true) // Don't block on failure
+    img.onerror = () => setSatelliteReady(true)
     img.src = url
   }, [project])
 

@@ -8,7 +8,7 @@ import { usePractice } from '../hooks/usePractice'
 import ProjectHero from './ProjectHero'
 import {
   LayoutGrid, ClipboardList, FileText, Home,
-  MessageCircle, LogOut, ChevronDown, Settings, Users, Database, Compass
+  MessageCircle, LogOut, ChevronDown, Settings, Users, Database, Compass, Eye
 } from 'lucide-react'
 
 const baseNavItems = [
@@ -47,7 +47,7 @@ function formatDMS(decimal, isLat) {
 
 export default function Shell({ projectName }) {
   const { user, signOut } = useAuth()
-  const { projects, project, switchProject, isArchitect } = useProject()
+  const { projects, project, switchProject, isArchitect, isActualArchitect, clientPreview, setClientPreview } = useProject()
   const { practice } = usePractice()
   const [showSwitcher, setShowSwitcher] = useState(false)
   const switcherBtnRef = useRef(null)
@@ -194,6 +194,21 @@ export default function Shell({ projectName }) {
             )}
           </div>
           <div className="flex items-center gap-3">
+            {/* Architect / Client preview toggle */}
+            {isActualArchitect && (
+              <button
+                onClick={() => setClientPreview(p => !p)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-medium tracking-[0.5px] transition-all border ${
+                  clientPreview
+                    ? 'bg-[var(--color-pending)] text-white border-[var(--color-pending)]'
+                    : 'bg-white/40 text-[var(--color-muted)] border-white/50 hover:bg-white/60'
+                }`}
+                title={clientPreview ? 'Viewing as client — click to return to architect view' : 'Preview what the client sees'}
+              >
+                <Eye size={11} />
+                {clientPreview ? 'Client view' : 'Preview'}
+              </button>
+            )}
             {/* Coordinates */}
             {project.latitude && project.longitude && (
               <span className="text-[9px] font-mono text-[var(--color-muted)] tracking-wide hidden sm:inline">
@@ -271,7 +286,7 @@ export default function Shell({ projectName }) {
         </nav>
 
         {/* Main content — transparent so satellite shows through */}
-        <main className="flex-1 p-6 md:pl-14 md:pr-10 md:pt-10 md:pb-10 pb-24 overflow-y-auto bg-transparent">
+        <main className="flex-1 p-6 md:pl-14 md:pr-10 md:pt-10 md:pb-10 pb-24 overflow-y-auto backdrop-blur-md bg-white/30">
           <Outlet />
         </main>
       </div>

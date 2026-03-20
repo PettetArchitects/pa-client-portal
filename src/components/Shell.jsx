@@ -7,22 +7,43 @@ import { useProject } from '../hooks/useProject'
 import { usePractice } from '../hooks/usePractice'
 import ProjectHero from './ProjectHero'
 import {
-  LayoutGrid, CheckSquare, FileText,
-  Clock, MessageCircle, LogOut, ChevronDown, Settings, Users, Database
+  LayoutGrid, ClipboardList, FileText, Home,
+  MessageCircle, LogOut, ChevronDown, Settings, Users, Database, Compass
 } from 'lucide-react'
 
 const baseNavItems = [
-  { to: '/', icon: LayoutGrid, label: 'Overview' },
-  { to: '/selections', icon: CheckSquare, label: 'Selections' },
+  { to: '/', icon: LayoutGrid, label: 'Dashboard' },
+  { to: '/selections', icon: ClipboardList, label: 'Schedules' },
   { to: '/documents', icon: FileText, label: 'Documents' },
   { to: '/messages', icon: MessageCircle, label: 'Messages' },
-  { to: '/profile', icon: Settings, label: 'Profile' },
 ]
 
 const architectNavItems = [
   { to: '/data', icon: Database, label: 'Project Data' },
-  { to: '/admin', icon: Users, label: 'Clients' },
+  { to: '/admin', icon: Users, label: 'Team' },
 ]
+
+/* ── Hand-drawn north point SVG ── */
+function NorthPoint({ size = 28, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" className={className} style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))' }}>
+      <circle cx="20" cy="20" r="18" stroke="currentColor" strokeWidth="1" opacity="0.3" />
+      <path d="M20 4 L23 18 L20 36 L17 18 Z" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="0.8" />
+      <path d="M20 4 L23 18 L20 14 L17 18 Z" fill="currentColor" opacity="0.6" />
+      <text x="20" y="9" textAnchor="middle" fontSize="7" fontWeight="600" fill="currentColor" fontFamily="system-ui">N</text>
+    </svg>
+  )
+}
+
+/* ── Format coordinates as DMS ── */
+function formatDMS(decimal, isLat) {
+  const abs = Math.abs(decimal)
+  const d = Math.floor(abs)
+  const m = Math.floor((abs - d) * 60)
+  const s = ((abs - d - m / 60) * 3600).toFixed(1)
+  const dir = isLat ? (decimal >= 0 ? 'N' : 'S') : (decimal >= 0 ? 'E' : 'W')
+  return `${d}°${String(m).padStart(2, '0')}'${s}"${dir}`
+}
 
 export default function Shell({ projectName }) {
   const { user, signOut } = useAuth()
@@ -152,6 +173,39 @@ export default function Shell({ projectName }) {
           </button>
         </div>
       </header>
+
+      {/* Project info strip — stage + coordinates + north point */}
+      {project && (
+        <div className="h-9 border-b border-white/15 backdrop-blur-xl bg-white/35 flex items-center justify-between px-6 shrink-0" style={{ position: 'relative', zIndex: Z.CHROME }}>
+          <div className="flex items-center gap-4">
+            {/* Stage */}
+            <span className="text-[10px] font-medium tracking-[1.5px] uppercase text-[var(--color-text)]">
+              {project.stage || ''}
+            </span>
+            {/* Address */}
+            <span className="text-[10px] text-[var(--color-muted)] font-light hidden sm:inline">
+              {project.address}
+            </span>
+            {/* Lot/Plan */}
+            {project.cadastral_lot && (
+              <span className="text-[9px] text-[var(--color-muted)] font-mono hidden lg:inline">
+                Lot {project.cadastral_lot} / {project.cadastral_plan}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Coordinates */}
+            {project.latitude && project.longitude && (
+              <span className="text-[9px] font-mono text-[var(--color-muted)] tracking-wide hidden sm:inline">
+                {formatDMS(parseFloat(project.latitude), true)}{' '}
+                {formatDMS(parseFloat(project.longitude), false)}
+              </span>
+            )}
+            {/* North point */}
+            <NorthPoint size={22} className="text-[var(--color-muted)]" />
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-1" style={{ position: 'relative', zIndex: Z.CHROME }}>
         {/* Sidebar — glass */}

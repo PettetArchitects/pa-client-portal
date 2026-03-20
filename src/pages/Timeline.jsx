@@ -23,7 +23,7 @@ export default function Timeline({ projectId }) {
     setLoading(false)
   }
 
-  const completed = milestones.filter(m => m.milestone_status === 'completed').length
+  const completed = milestones.filter(m => m.milestone_status === 'complete').length
   const total = milestones.length
   const progress = total > 0 ? Math.round((completed / total) * 100) : 0
 
@@ -61,7 +61,7 @@ export default function Timeline({ projectId }) {
 
         <div className="space-y-0">
           {milestones.map((m, i) => {
-            const isCompleted = m.milestone_status === 'completed'
+            const isCompleted = m.milestone_status === 'complete'
             const isActive = m.milestone_status === 'in_progress'
             const isPending = m.milestone_status === 'pending' || m.milestone_status === 'upcoming'
 

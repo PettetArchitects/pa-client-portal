@@ -32,7 +32,7 @@ export default function Messages({ projectId }) {
 
     // Mark unread as read
     if (data?.length) {
-      const unread = data.filter(m => !m.read_at && m.sender_role !== 'homeowner')
+      const unread = data.filter(m => !m.read_at && m.sender_role === 'practice')
       for (const m of unread) {
         await supabase.from('homeowner_messages')
           .update({ read_at: new Date().toISOString() })
@@ -116,6 +116,7 @@ export default function Messages({ projectId }) {
           lastDate = dateLabel
 
           const isOwn = msg.sender_role === 'homeowner'
+          const isFromPractice = msg.sender_role === 'practice'
 
           return (
             <div key={msg.id}>
@@ -133,9 +134,9 @@ export default function Messages({ projectId }) {
                 <div className={`max-w-[75%] ${
                   isOwn
                     ? 'bg-[var(--color-accent)] text-white rounded-2xl rounded-br-md'
-                    : 'bg-white border border-[var(--color-border)] rounded-2xl rounded-bl-md'
+                    : 'backdrop-blur-xl bg-white/40 border border-white/40 rounded-2xl rounded-bl-md'
                 } px-4 py-2.5`}>
-                  {!isOwn && (
+                  {isFromPractice && (
                     <p className="text-[10px] tracking-[1px] uppercase font-medium mb-1 opacity-60">
                       Sean Pettet
                     </p>
@@ -154,7 +155,7 @@ export default function Messages({ projectId }) {
 
       {/* Compose */}
       <form onSubmit={handleSend} className="shrink-0 flex gap-2 items-end">
-        <div className="flex-1 bg-white rounded-xl border border-[var(--color-border)] flex items-end">
+        <div className="flex-1 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 flex items-end">
           <textarea
             value={newMsg}
             onChange={e => setNewMsg(e.target.value)}

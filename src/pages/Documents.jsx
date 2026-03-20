@@ -76,7 +76,7 @@ export default function Documents({ projectId }) {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search documents…"
-            className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-white text-sm font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+            className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-white/40 backdrop-blur-xl bg-white/40 text-sm font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors"
           />
         </div>
       )}
@@ -127,10 +127,10 @@ function DocumentRow({ doc, onView }) {
   }
 
   return (
-    <div className={`flex items-center gap-4 p-4 rounded-xl bg-white border transition-all hover:shadow-sm ${
-      isNew ? 'border-[var(--color-pending)]/40 border-l-[3px]' : 'border-[var(--color-border)]'
+    <div className={`flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-white/40 border transition-all hover:shadow-sm ${
+      isNew ? 'border-[var(--color-pending)]/40 border-l-[3px]' : 'border-white/40'
     }`}>
-      <div className="w-9 h-9 rounded-lg bg-[#F4F4F2] flex items-center justify-center shrink-0">
+      <div className="w-9 h-9 rounded-lg bg-white/50 flex items-center justify-center shrink-0">
         <FileText size={16} strokeWidth={1.5} className="text-[var(--color-muted)]" />
       </div>
 

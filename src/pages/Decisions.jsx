@@ -204,6 +204,7 @@ export default function Decisions({ projectId }) {
   // Build grouped data (for review + schedule modes)
   const groupedData = groups.map(g => {
     const gItems = filteredItems.filter(i => i.schedule_group === g.group_key)
+      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
     const allItems = items.filter(i => i.schedule_group === g.group_key)
     const pending = allItems.filter(i => i.approval_status === 'pending').length
     const approved = allItems.filter(i => i.approval_status === 'approved').length
@@ -553,87 +554,119 @@ function buildRoomGroups(filteredItems, allItems, roomMappings) {
 }
 
 /* ── Build component-grouped data: group by parent assembly ── */
+/* ── IFC family derivation — automatic from selection data ── */
+const IFC_FAMILIES = {
+  IfcRoof:                   { label: 'Roofing',              order: 1 },
+  IfcWall:                   { label: 'Walls & Facade',       order: 2 },
+  IfcSlab:                   { label: 'Floors & Slabs',       order: 3 },
+  IfcCovering:               { label: 'Coverings & Finishes', order: 4 },
+  IfcDoor:                   { label: 'Doors',                order: 5 },
+  IfcWindow:                 { label: 'Windows & Glazing',    order: 6 },
+  IfcFurniture:              { label: 'Joinery & Furniture',  order: 7 },
+  IfcSanitaryTerminal:       { label: 'Sanitary Fixtures',    order: 8 },
+  IfcFlowTerminal:           { label: 'Tapware & Ventilation',order: 9 },
+  IfcLightFixture:           { label: 'Lighting',             order: 10 },
+  IfcEnergyConversionDevice: { label: 'Energy Systems',       order: 11 },
+  IfcFlowStorageDevice:      { label: 'Water & Storage',      order: 12 },
+  IfcShadingDevice:          { label: 'Shading & Screens',    order: 13 },
+  IfcBuildingElementProxy:   { label: 'General Elements',     order: 99 },
+}
+
+function deriveIfcFamily(item) {
+  const sel = item.project_selections || {}
+  const attrs = sel.attributes || {}
+  const title = (sel.title || '').toLowerCase()
+  const kind = sel.selection_kind || ''
+  const role = sel.component_role || ''
+  const group = item.schedule_group || ''
+
+  // Explicit attribute takes priority
+  if (attrs.ifc_class && IFC_FAMILIES[attrs.ifc_class]) return attrs.ifc_class
+
+  // Derive from selection_kind
+  if (kind === 'door_type') return 'IfcDoor'
+  if (kind === 'window_type') return 'IfcWindow'
+  if (kind === 'facade_system') return 'IfcWall'
+  if (kind === 'joinery_item') return 'IfcFurniture'
+
+  // Derive from title keywords
+  if (title.includes('roof')) return 'IfcRoof'
+  if (title.includes('slab') || title.match(/\bcon\d/)) return 'IfcSlab'
+  if (title.includes('carpet') || title.match(/\bca\d/)) return 'IfcCovering'
+  if (title.includes('wall') && (title.includes('cladding') || title.includes('facade'))) return 'IfcWall'
+  if (title.includes('insulation') || title.includes('membrane') || title.includes('air barrier')) return 'IfcCovering'
+  if (title.includes('tile') || title.includes('paint') || title.includes('grout') || title.includes('silicone')) return 'IfcCovering'
+  if (title.includes('colour') && kind === 'finish') return 'IfcCovering'
+  if (title.includes('skirting') || title.includes('architrave') || title.includes('cornice')) return 'IfcCovering'
+  if (title.includes('ceiling') || title.includes('plasterboard')) return 'IfcCovering'
+  if (title.includes('basin') || title.includes('toilet') || title.includes('bath') || title.includes('wc')) return 'IfcSanitaryTerminal'
+  if (title.includes('shower') || title.includes('mixer') || title.includes('towel') || title.includes('tapware') || title.includes('rangehood') || title.includes('exhaust')) return 'IfcFlowTerminal'
+  if (title.includes('light') || title.match(/\blt\d/)) return 'IfcLightFixture'
+  if (title.includes('solar') || title.includes('battery') || title.includes('inverter')) return 'IfcEnergyConversionDevice'
+  if (title.includes('rainwater') || title.includes('hot water') || title.includes('tank')) return 'IfcFlowStorageDevice'
+  if (title.includes('screen') || title.includes('blind') || title.includes('shade')) return 'IfcShadingDevice'
+  if (title.includes('door')) return 'IfcDoor'
+  if (title.includes('window')) return 'IfcWindow'
+
+  // Derive from component_role
+  if (role === 'insulation' || role === 'membrane' || role === 'lining' || role === 'substrate') return 'IfcCovering'
+  if (role === 'finish_internal' || role === 'finish_external' || role === 'accent') return 'IfcCovering'
+  if (role === 'hardware' || role === 'hinge' || role === 'closer') return 'IfcBuildingElementProxy'
+
+  // Derive from schedule_group
+  if (group === 'exterior') return 'IfcWall'
+  if (group === 'flooring') return 'IfcCovering'
+  if (group === 'internal_finishes') return 'IfcCovering'
+  if (group === 'thermal_envelope') return 'IfcCovering'
+  if (group === 'mechanical') return 'IfcFlowTerminal'
+  if (group === 'lighting_electrical') return 'IfcLightFixture'
+  if (group === 'services_infra') return 'IfcFlowStorageDevice'
+
+  if (kind === 'finish') return 'IfcCovering'
+  if (kind === 'hardware_set') return 'IfcBuildingElementProxy'
+
+  return 'IfcBuildingElementProxy'
+}
+
 function buildComponentGroups(filteredItems, allItems) {
-  // Find all parent items (non-component items that have children)
-  const childrenByParent = {}
-  const parentItems = {}
-
-  allItems.forEach(item => {
-    const sel = item.project_selections || {}
-    if (sel.is_component && sel.parent_selection_id) {
-      if (!childrenByParent[sel.parent_selection_id]) childrenByParent[sel.parent_selection_id] = []
-      childrenByParent[sel.parent_selection_id].push(item)
-    }
-    if (!sel.is_component && sel.id) {
-      parentItems[sel.id] = item
-    }
-  })
-
   const filteredIds = new Set(filteredItems.map(i => i.project_selection_id))
 
-  // Build groups: one per parent that has children
-  const groups = []
-  const usedIds = new Set()
-
-  Object.entries(childrenByParent).forEach(([parentId, children]) => {
-    const parent = parentItems[parentId]
-    if (!parent) return
-
-    const parentSel = parent.project_selections || {}
-    const parentAttrs = parentSel.attributes || {}
-    const code = parentAttrs.code || parseCode(parentSel.title).code || ''
-
-    // Filter children to only those in filteredItems
-    const visibleChildren = children.filter(c => filteredIds.has(c.project_selection_id))
-    const allChildren = children
-
-    // Stats
-    const allGroupItems = [parent, ...allChildren]
-    const pending = allGroupItems.filter(i => i.approval_status === 'pending').length
-    const approved = allGroupItems.filter(i => i.approval_status === 'approved').length
-    const confirmed = allGroupItems.filter(i => i.approval_status === 'not_applicable').length
-    const changeReq = allGroupItems.filter(i => i.approval_status === 'change_requested').length
-
-    groups.push({
-      parentId,
-      parent,
-      code,
-      label: parentSel.title || 'Assembly',
-      children: visibleChildren.sort((a, b) =>
-        (a.project_selections?.component_order || 99) - (b.project_selections?.component_order || 99)
-      ),
-      pending, approved, confirmed, changeReq,
-      total: allGroupItems.length,
-      totalVisible: (filteredIds.has(parent.project_selection_id) ? 1 : 0) + visibleChildren.length,
-    })
-
-    usedIds.add(parent.project_selection_id)
-    children.forEach(c => usedIds.add(c.project_selection_id))
+  // Derive IFC family for every item and group
+  const familyGroups = {}
+  filteredItems.forEach(item => {
+    const family = deriveIfcFamily(item)
+    if (!familyGroups[family]) familyGroups[family] = { items: [], allItems: [] }
+    familyGroups[family].items.push(item)
+  })
+  // Also count all items (for stats)
+  allItems.forEach(item => {
+    const family = deriveIfcFamily(item)
+    if (!familyGroups[family]) familyGroups[family] = { items: [], allItems: [] }
+    familyGroups[family].allItems.push(item)
   })
 
-  // Standalone items (no children, not a component)
-  const standalone = filteredItems.filter(item => {
-    const sel = item.project_selections || {}
-    return !usedIds.has(item.project_selection_id) && !sel.is_component
-  })
-
-  if (standalone.length > 0) {
-    groups.push({
-      parentId: '__standalone__',
-      parent: null,
-      code: '',
-      label: 'Other Items',
-      children: standalone,
-      pending: standalone.filter(i => i.approval_status === 'pending').length,
-      approved: standalone.filter(i => i.approval_status === 'approved').length,
-      confirmed: standalone.filter(i => i.approval_status === 'not_applicable').length,
-      changeReq: standalone.filter(i => i.approval_status === 'change_requested').length,
-      total: standalone.length,
-      totalVisible: standalone.length,
+  return Object.entries(familyGroups)
+    .map(([family, data]) => {
+      const meta = IFC_FAMILIES[family] || IFC_FAMILIES.IfcBuildingElementProxy
+      const all = data.allItems
+      return {
+        parentId: family,
+        parent: null,
+        code: family.replace('Ifc', ''),
+        label: meta.label,
+        children: data.items.sort((a, b) => (a.display_order || 0) - (b.display_order || 0)),
+        pending: all.filter(i => i.approval_status === 'pending').length,
+        approved: all.filter(i => i.approval_status === 'approved').length,
+        confirmed: all.filter(i => i.approval_status === 'not_applicable').length,
+        changeReq: all.filter(i => i.approval_status === 'change_requested').length,
+        total: all.length,
+        totalVisible: data.items.length,
+        order: meta.order,
+        ifcClass: family,
+      }
     })
-  }
-
-  return groups.filter(g => g.totalVisible > 0).sort((a, b) => a.code.localeCompare(b.code))
+    .filter(g => g.totalVisible > 0)
+    .sort((a, b) => a.order - b.order)
 }
 
 /* ── Room-grouped view ── */
@@ -755,36 +788,26 @@ function ComponentGroupedView({ components, expandedGroups, toggleGroup, onAppro
       {components.map(comp => {
         const isExpanded = expandedGroups.has(comp.parentId)
         const hasPending = comp.pending > 0 || comp.changeReq > 0
-        const parentSel = comp.parent?.project_selections || {}
-        const parentAttrs = parentSel.attributes || {}
 
         return (
           <div key={comp.parentId} className={`backdrop-blur-xl bg-white/50 rounded-xl border overflow-hidden transition-all ${
             hasPending ? 'border-[var(--color-pending)]/30' : 'border-white/40'
           }`}>
-            {/* Assembly header */}
+            {/* IFC family header */}
             <button
               onClick={() => toggleGroup(comp.parentId)}
               className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
             >
               <div className="flex items-start gap-3">
-                {/* System code badge */}
                 <div className="flex items-center gap-2.5 shrink-0 mt-0.5">
-                  {comp.code ? (
-                    <span className="text-[11px] font-mono tracking-wider text-[var(--color-text)] bg-white/60 px-2.5 py-1.5 rounded-lg font-medium border border-white/40">
-                      {comp.code}
-                    </span>
-                  ) : (
-                    <span className="text-[13px] font-semibold text-[var(--color-text)] bg-white/50 w-8 h-8 rounded-lg inline-flex items-center justify-center">
-                      {comp.totalVisible}
-                    </span>
-                  )}
+                  <span className="text-[13px] font-semibold text-[var(--color-text)] bg-white/50 w-8 h-8 rounded-lg inline-flex items-center justify-center">
+                    {comp.totalVisible}
+                  </span>
                 </div>
                 <div>
                   <h2 className="text-sm font-medium mt-0.5">{comp.label}</h2>
-                  <p className="text-[10px] text-[var(--color-text)] font-light mt-0.5">
-                    {comp.children.length} component{comp.children.length !== 1 ? 's' : ''}
-                    {parentAttrs.size && <span className="ml-2 text-[var(--color-muted)]">{parentAttrs.size}</span>}
+                  <p className="text-[9px] text-[var(--color-muted)] font-mono tracking-wider mt-0.5">
+                    {comp.ifcClass}
                   </p>
                 </div>
               </div>
@@ -808,21 +831,10 @@ function ComponentGroupedView({ components, expandedGroups, toggleGroup, onAppro
               </div>
             </button>
 
-            {/* Expanded: parent item + children */}
+            {/* Expanded: all items in this IFC family */}
             {isExpanded && (
-              <div className="border-t border-white/30 px-4 py-3 space-y-2">
-                {/* Parent item */}
-                {comp.parent && (
-                  <ItemRow item={comp.parent} onApproveItem={onApproveItem} onRequestChange={onRequestChange} natspecMap={natspecMap} />
-                )}
-                {/* Children */}
-                {comp.children.length > 0 && (
-                  <div className="ml-6 pl-4 border-l-2 border-white/20 space-y-1 mt-1">
-                    {comp.children.map(child => (
-                      <CompactChildRow key={child.id} item={child} onApproveItem={onApproveItem} onRequestChange={onRequestChange} natspecMap={natspecMap} />
-                    ))}
-                  </div>
-                )}
+              <div className="border-t border-white/30">
+                <ScheduleView items={comp.children} natspecMap={natspecMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
               </div>
             )}
           </div>
@@ -940,7 +952,7 @@ function groupTreeByKind(tree) {
       kind,
       label: KIND_GROUP_LABELS[kind] || kind.replace(/_/g, ' '),
       order: KIND_GROUP_ORDER[kind] || 99,
-      nodes,
+      nodes: nodes.sort((a, b) => (a.item.display_order || 0) - (b.item.display_order || 0)),
     }))
     .sort((a, b) => a.order - b.order)
 }
@@ -1003,7 +1015,8 @@ function ItemRow({ item, natspecMap, onApproveItem, onRequestChange }) {
   const natspecCodes = (natspecMap && natspecMap[item.project_selection_id]) || []
   return (
     <div className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/40 transition-colors items-start"
-      style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 100px' }}>
+      style={{ gridTemplateColumns: '20px 48px 2.5fr 3fr 1.5fr 100px' }}>
+      <span className="text-[9px] font-mono text-[var(--color-muted)] pt-4 text-right tabular-nums">{item.display_order || ''}</span>
       <div>
         {item.portal_image_url ? (
           <img src={item.portal_image_url} alt="" style={{

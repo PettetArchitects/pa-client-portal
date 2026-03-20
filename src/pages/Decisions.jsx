@@ -981,40 +981,143 @@ const ROLE_LABELS = {
   shelf: 'Shelf', frame: 'Frame', glazing: 'Glazing', other: 'Other',
 }
 
-/* ── Schedule view: parent-child nesting with codes ── */
+/* ── Derive the dominant element_type for a list of items ── */
+function getDominantElementType(items) {
+  const counts = {}
+  items.forEach(i => {
+    const et = i.project_selections?.element_type || 'other'
+    counts[et] = (counts[et] || 0) + 1
+  })
+  // Find the most common element type (excluding 'other')
+  let best = 'other', bestCount = 0
+  Object.entries(counts).forEach(([k, v]) => {
+    if (k !== 'other' && v > bestCount) { best = k; bestCount = v }
+  })
+  return best
+}
+
+/* ── Schedule view: proper tabular schedule with column headers ── */
 function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequestChange }) {
   const tree = buildItemTree(items)
-  const subGroups = groupTreeByKind(tree)
-  const needsSubHeaders = subGroups.length > 1
+  const allItems = tree.flatMap(n => [n.item, ...n.children])
+  const elementType = getDominantElementType(allItems)
+  const specFields = (subCriteriaMap && subCriteriaMap[elementType]) || []
+  // Show up to 5 spec columns
+  const cols = specFields.slice(0, 5)
+
+  // Column widths: # | Item | Product | Brand | spec cols... | Status
+  const colTemplate = `28px minmax(140px, 2fr) minmax(80px, 1fr) minmax(70px, 0.8fr) ${cols.map(() => 'minmax(60px, 0.8fr)').join(' ')} ${cols.length < 5 ? Array(5 - cols.length).fill('0fr').join(' ') : ''} 72px`
 
   return (
-    <div className="px-4 py-3 space-y-1">
-      {subGroups.map(sg => (
-        <div key={sg.kind}>
-          {needsSubHeaders && (
-            <div className="px-1 pt-3 pb-1.5 first:pt-0">
-              <span className="text-[9px] tracking-[1.5px] uppercase text-[var(--color-muted)] font-medium">
-                {sg.label}
-              </span>
-              <span className="text-[9px] text-[var(--color-muted)] ml-1.5 font-light">{sg.nodes.length}</span>
-            </div>
-          )}
-          <div className="space-y-2">
-            {sg.nodes.map(node => (
-              <div key={node.item.id}>
-                <ItemRow item={node.item} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
-                {node.children.length > 0 && (
-                  <div className="ml-6 pl-4 border-l-2 border-white/20 space-y-1 mt-1 mb-2">
-                    {node.children.map(child => (
-                      <CompactChildRow key={child.id} item={child} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
-                    ))}
-                  </div>
+    <div className="px-2 py-2">
+      {/* Column headers */}
+      <div className="grid gap-2 px-3 py-2 text-[8px] tracking-[0.8px] uppercase text-[var(--color-muted)] font-medium border-b border-white/30"
+        style={{ gridTemplateColumns: colTemplate }}>
+        <span className="text-right">#</span>
+        <span>Item</span>
+        <span>Product</span>
+        <span>Brand</span>
+        {cols.map(f => <span key={f.key}>{f.label}</span>)}
+        {cols.length < 5 && Array.from({ length: 5 - cols.length }).map((_, i) => <span key={`e-${i}`} />)}
+        <span className="text-right">Status</span>
+      </div>
+
+      {/* Table rows */}
+      {tree.map(node => {
+        const sel = node.item.project_selections || {}
+        const attrs = sel.attributes || {}
+        const st = STATUS_STYLES[node.item.approval_status] || STATUS_STYLES.not_applicable
+        const { code, name } = parseCode(sel.title || node.item.selection_title, attrs)
+        const natspecCodes = (natspecMap && natspecMap[node.item.project_selection_id]) || []
+        const isPending = node.item.approval_status === 'pending'
+        const isChangeReq = node.item.approval_status === 'change_requested'
+        // Use item's own element_type for spec field values
+        const itemET = sel.element_type || elementType
+        const itemSpecFields = (subCriteriaMap && subCriteriaMap[itemET]) || []
+        // Map group-level column keys to this item's values
+        const colValues = cols.map(col => {
+          // Try exact match from item's attributes first
+          return attrs[col.key] || null
+        })
+
+        return (
+          <div key={node.item.id}>
+            {/* Parent row */}
+            <div className={`grid gap-2 px-3 py-2.5 items-center text-[11px] border-b border-white/15 hover:bg-white/30 transition-colors ${node.children.length > 0 ? 'font-medium' : ''}`}
+              style={{ gridTemplateColumns: colTemplate }}>
+              <span className="text-[9px] font-mono text-[var(--color-muted)] text-right tabular-nums">{node.item.display_order || ''}</span>
+              <div className="min-w-0">
+                <div className="truncate text-[var(--color-text)]">{name}</div>
+                {code && <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] uppercase">{code}</span>}
+                {natspecCodes.length > 0 && (
+                  <span className="text-[7px] font-mono tracking-wider text-[var(--color-muted)] opacity-70 block">
+                    {natspecCodes.map(n => n.ref).join(' · ')}
+                  </span>
                 )}
               </div>
-            ))}
+              <span className="text-[var(--color-text)] truncate">{sel.model || '\u2014'}</span>
+              <span className="text-[var(--color-muted)] truncate">{sel.manufacturer_name || '\u2014'}</span>
+              {colValues.map((val, i) => (
+                <span key={i} className="truncate" style={{ color: val ? 'var(--color-text)' : 'var(--color-muted)' }}>
+                  {cols[i].type === 'colour' && val ? (
+                    <span className="flex items-center gap-1"><ColourDot colour={val} />{val}</span>
+                  ) : (val || '\u2014')}
+                </span>
+              ))}
+              {cols.length < 5 && Array.from({ length: 5 - cols.length }).map((_, i) => <span key={`ep-${i}`} />)}
+              <div className="text-right">
+                {(isPending || isChangeReq) && onApproveItem ? (
+                  <div className="flex items-center justify-end gap-1">
+                    <button onClick={() => onApproveItem(node.item.id)} className="w-5 h-5 rounded flex items-center justify-center hover:bg-[rgba(45,74,38,0.1)]" style={{ border: '1px solid rgba(45,74,38,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={9} /></button>
+                    <button onClick={() => onRequestChange(node.item.id)} className="w-5 h-5 rounded flex items-center justify-center hover:bg-[rgba(90,32,16,0.08)]" style={{ border: '1px solid rgba(232,232,229,0.8)', color: 'var(--color-muted)' }} title="Request change"><MessageSquare size={9} /></button>
+                  </div>
+                ) : (
+                  <span className="text-[8px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap" style={{ background: st.bg, color: st.text, border: `1px solid ${st.border}` }}>{st.label}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Children rows — indented, lighter */}
+            {node.children.map(child => {
+              const cSel = child.project_selections || {}
+              const cAttrs = cSel.attributes || {}
+              const cSt = STATUS_STYLES[child.approval_status] || STATUS_STYLES.not_applicable
+              const cRole = ROLE_LABELS[cSel.component_role] || cSel.component_role?.replace(/_/g, ' ') || ''
+              const cIsPending = child.approval_status === 'pending'
+              const cIsChange = child.approval_status === 'change_requested'
+              const cColValues = cols.map(col => cAttrs[col.key] || null)
+
+              return (
+                <div key={child.id} className="grid gap-2 px-3 py-1.5 items-center text-[10px] border-b border-white/10 hover:bg-white/20 transition-colors bg-white/5"
+                  style={{ gridTemplateColumns: colTemplate }}>
+                  <span />
+                  <div className="min-w-0 pl-4 border-l-2 border-white/25">
+                    <span className="text-[7px] tracking-[0.8px] uppercase text-[var(--color-muted)] font-medium block">{cRole}</span>
+                    <div className="truncate text-[var(--color-text)]">{cSel.title || child.selection_title}</div>
+                  </div>
+                  <span className="text-[var(--color-text)] truncate">{cSel.model || '\u2014'}</span>
+                  <span className="text-[var(--color-muted)] truncate">{cSel.manufacturer_name || '\u2014'}</span>
+                  {cColValues.map((val, i) => (
+                    <span key={i} className="truncate" style={{ color: val ? 'var(--color-text)' : 'var(--color-muted)' }}>
+                      {cols[i].type === 'colour' && val ? (
+                        <span className="flex items-center gap-1"><ColourDot colour={val} />{val}</span>
+                      ) : (val || '\u2014')}
+                    </span>
+                  ))}
+                  {cols.length < 5 && Array.from({ length: 5 - cols.length }).map((_, i) => <span key={`ec-${i}`} />)}
+                  <div className="text-right">
+                    {(cIsPending || cIsChange) && onApproveItem ? (
+                      <button onClick={() => onApproveItem(child.id)} className="w-5 h-5 rounded flex items-center justify-center hover:bg-[rgba(45,74,38,0.1)]" style={{ border: '1px solid rgba(45,74,38,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={9} /></button>
+                    ) : (
+                      <span className="text-[7px] font-medium px-1 py-0.5 rounded whitespace-nowrap" style={{ background: cSt.bg, color: cSt.text, border: `1px solid ${cSt.border}` }}>{cSt.label}</span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

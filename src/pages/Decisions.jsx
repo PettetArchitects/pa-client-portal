@@ -370,7 +370,7 @@ export default function Decisions({ projectId }) {
                   <div className="flex items-center gap-3">
                     {(() => {
                       const GroupIcon = GROUP_ICONS[group.group_key]
-                      return GroupIcon ? <GroupIcon size={22} className="text-[var(--color-muted)] shrink-0" /> : null
+                      return GroupIcon ? <GroupIcon size={32} className="text-[var(--color-muted)] shrink-0" /> : null
                     })()}
                     <div>
                       <div className="flex items-center gap-2">

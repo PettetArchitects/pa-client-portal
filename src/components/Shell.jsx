@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useProject } from '../hooks/useProject'
@@ -65,40 +66,65 @@ export default function Shell({ projectName }) {
             <>
               <button
                 ref={switcherBtnRef}
-                onClick={() => setShowSwitcher(!showSwitcher)}
+                onClick={() => setShowSwitcher(s => !s)}
                 className="flex items-center gap-1.5 text-[11px] font-light tracking-[2px] uppercase text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
               >
                 {projectName}
                 <ChevronDown size={12} />
               </button>
 
-              {showSwitcher && (
+              {showSwitcher && createPortal(
                 <>
-                  <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setShowSwitcher(false)} />
                   <div
-                    className="fixed backdrop-blur-2xl bg-white/80 border border-white/50 rounded-xl shadow-lg min-w-[260px] py-1.5"
-                    style={{ zIndex: 9999, top: dropdownPos.top, left: dropdownPos.left }}
+                    style={{ position: 'fixed', inset: 0, zIndex: 99998 }}
+                    onClick={() => setShowSwitcher(false)}
+                  />
+                  <div
+                    style={{
+                      position: 'fixed',
+                      zIndex: 99999,
+                      top: dropdownPos.top,
+                      left: dropdownPos.left,
+                      minWidth: 260,
+                      background: 'rgba(255,255,255,0.97)',
+                      backdropFilter: 'blur(24px)',
+                      WebkitBackdropFilter: 'blur(24px)',
+                      border: '1px solid rgba(255,255,255,0.6)',
+                      borderRadius: 12,
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                      padding: '6px 0',
+                    }}
                   >
                     {projects.map(p => (
                       <button
                         key={p.project_id}
                         onClick={() => { switchProject(p.project_id); setShowSwitcher(false) }}
-                        className={`w-full text-left px-4 py-2.5 hover:bg-white/60 transition-colors ${
-                          p.project_id === project?.project_id ? 'bg-white/50' : ''
-                        }`}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '10px 16px',
+                          background: p.project_id === project?.project_id ? 'rgba(255,255,255,0.6)' : 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          transition: 'background 0.15s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.7)'}
+                        onMouseLeave={e => e.currentTarget.style.background = p.project_id === project?.project_id ? 'rgba(255,255,255,0.6)' : 'transparent'}
                       >
-                        <span className="text-[12px] font-normal text-[var(--color-text)] block">
+                        <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: 'var(--color-text)' }}>
                           {p.display_name || p.name}
                         </span>
                         {p.client_display && (
-                          <span className="text-[10px] text-[var(--color-muted)] block mt-0.5">
+                          <span style={{ display: 'block', fontSize: 10, color: 'var(--color-muted)', marginTop: 2 }}>
                             {p.client_display}
                           </span>
                         )}
                       </button>
                     ))}
                   </div>
-                </>
+                </>,
+                document.body
               )}
             </>
           ) : (

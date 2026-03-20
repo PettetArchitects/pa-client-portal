@@ -589,29 +589,56 @@ function ReviewView({ items, groupKey, hasPending, pendingCount, onApproveItem, 
   )
 }
 
-/* ── Schedule view: clean tabular list ── */
+/* ── Schedule view: clean tabular list with mini thumbnails ── */
 function ScheduleView({ items }) {
   return (
     <div className="divide-y divide-white/20">
       {/* Table header */}
-      <div className="grid grid-cols-12 gap-2 px-5 py-2 text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium">
-        <div className="col-span-4">Item</div>
-        <div className="col-span-3">Product / Finish</div>
-        <div className="col-span-2">Colour</div>
-        <div className="col-span-1">Kind</div>
-        <div className="col-span-2 text-right">Status</div>
+      <div className="grid gap-2 px-5 py-2 text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium"
+        style={{ gridTemplateColumns: '28px 3fr 2.5fr 1.5fr 1fr 1.2fr' }}>
+        <div></div>
+        <div>Item</div>
+        <div>Product / Finish</div>
+        <div>Colour</div>
+        <div>Kind</div>
+        <div className="text-right">Status</div>
       </div>
       {items.map(item => {
         const sel = item.project_selections || {}
         const attrs = sel.attributes || {}
         const st = STATUS_STYLES[item.approval_status] || STATUS_STYLES.not_applicable
+        const colourBg = getColourBackground(attrs.colour)
+        const Icon = KIND_ICONS[sel.selection_kind] || Package
         return (
-          <div key={item.id} className="grid grid-cols-12 gap-2 px-5 py-2.5 text-[11px] hover:bg-white/20 transition-colors items-center">
-            <div className="col-span-4 font-medium truncate">{sel.title || item.selection_title}</div>
-            <div className="col-span-3 text-[var(--color-muted)] truncate">
+          <div key={item.id} className="grid gap-2 px-5 py-2 text-[11px] hover:bg-white/20 transition-colors items-center"
+            style={{ gridTemplateColumns: '28px 3fr 2.5fr 1.5fr 1fr 1.2fr' }}>
+            {/* Mini thumbnail */}
+            <div>
+              {item.portal_image_url ? (
+                <img src={item.portal_image_url} alt="" style={{
+                  width: 24, height: 24, borderRadius: 5, objectFit: 'cover',
+                  border: '1px solid rgba(0,0,0,0.06)',
+                }} loading="lazy" />
+              ) : colourBg ? (
+                <div style={{
+                  width: 24, height: 24, borderRadius: 5,
+                  background: colourBg, border: '1px solid rgba(0,0,0,0.06)',
+                }} />
+              ) : (
+                <div style={{
+                  width: 24, height: 24, borderRadius: 5,
+                  background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Icon size={10} style={{ color: 'var(--color-border)' }} />
+                </div>
+              )}
+            </div>
+            <div className="font-medium truncate">{sel.title || item.selection_title}</div>
+            <div className="text-[var(--color-muted)] truncate">
               {[sel.manufacturer_name, sel.model].filter(Boolean).join(' \u2014 ') || '\u2014'}
             </div>
-            <div className="col-span-2 text-[var(--color-muted)] truncate flex items-center gap-1.5">
+            <div className="text-[var(--color-muted)] truncate flex items-center gap-1.5">
               {attrs.colour && (
                 <>
                   <ColourDot colour={attrs.colour} />
@@ -620,12 +647,12 @@ function ScheduleView({ items }) {
               )}
               {!attrs.colour && '\u2014'}
             </div>
-            <div className="col-span-1">
+            <div>
               <span className="text-[9px] text-[var(--color-muted)] bg-white/40 px-1.5 py-0.5 rounded">
                 {sel.selection_kind || '\u2014'}
               </span>
             </div>
-            <div className="col-span-2 text-right">
+            <div className="text-right">
               <span className="text-[9px] font-medium px-1.5 py-0.5 rounded" style={{
                 background: st.bg, color: st.text, border: `1px solid ${st.border}`
               }}>
@@ -639,7 +666,7 @@ function ScheduleView({ items }) {
   )
 }
 
-/* ── Selection card: visual item with actions ── */
+/* ── Selection card: Programa-style visual item with product image ── */
 function SelectionCard({ item, onApprove, onRequestChange }) {
   const sel = item.project_selections || {}
   const attrs = sel.attributes || {}
@@ -651,24 +678,64 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
   const productUrl = attrs.product_url || attrs.image_url
   const Icon = KIND_ICONS[sel.selection_kind] || Package
 
+  // Image pipeline: portal_image_url > colour swatch > kind icon
+  const imageUrl = item.portal_image_url
+  const colourBg = getColourBackground(attrs.colour)
+  const hasVisual = imageUrl || colourBg
+
   return (
-    <div className="flex items-start gap-3 p-3.5 rounded-xl transition-all" style={{
+    <div className="flex items-start gap-3 p-3 rounded-xl transition-all" style={{
       background: st.bg, border: `1px solid ${st.border}`,
     }}>
-      {/* Kind icon */}
-      <div className="w-8 h-8 rounded-lg bg-white/60 flex items-center justify-center shrink-0 mt-0.5">
-        <Icon size={14} className="text-[var(--color-muted)]" />
+      {/* Visual thumbnail — Programa style */}
+      <div className="shrink-0" style={{ width: 56, height: 56 }}>
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={sel.title || ''}
+            style={{
+              width: 56, height: 56, borderRadius: 10,
+              objectFit: 'cover',
+              border: '1px solid rgba(0,0,0,0.06)',
+            }}
+            loading="lazy"
+          />
+        ) : colourBg ? (
+          <div style={{
+            width: 56, height: 56, borderRadius: 10,
+            background: colourBg,
+            border: '1px solid rgba(0,0,0,0.06)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end',
+            padding: 4,
+          }}>
+            <span style={{
+              fontSize: 7, color: 'rgba(0,0,0,0.25)', fontWeight: 500,
+              letterSpacing: '0.5px', textTransform: 'uppercase',
+            }}>
+              {attrs.colour?.split(' ').slice(0, 2).join(' ')}
+            </span>
+          </div>
+        ) : (
+          <div style={{
+            width: 56, height: 56, borderRadius: 10,
+            background: 'rgba(255,255,255,0.6)',
+            border: '1px solid rgba(0,0,0,0.04)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Icon size={18} style={{ color: 'var(--color-border)' }} />
+          </div>
+        )}
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 py-0.5">
         <div className="flex items-center gap-2">
           <h3 className="text-xs font-medium truncate">{sel.title || item.selection_title}</h3>
           {isApproved && <Check size={12} className="text-[var(--color-approved)] shrink-0" />}
         </div>
 
         {/* Product details */}
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
           {sel.manufacturer_name && (
             <span className="text-[11px] text-[var(--color-muted)]">{sel.manufacturer_name}</span>
           )}
@@ -677,8 +744,8 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
           )}
         </div>
 
-        {/* Colour chip */}
-        {attrs.colour && (
+        {/* Colour chip — only if no colour swatch thumbnail */}
+        {attrs.colour && !colourBg && (
           <div className="flex items-center gap-1.5 mt-1">
             <ColourDot colour={attrs.colour} />
             <span className="text-[10px] text-[var(--color-muted)]">{attrs.colour}</span>
@@ -687,34 +754,34 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
 
         {/* Notes */}
         {sel.notes && (
-          <p className="text-[10px] text-[var(--color-muted)] font-light mt-1.5 italic leading-relaxed">{sel.notes}</p>
+          <p className="text-[10px] text-[var(--color-muted)] font-light mt-1 italic leading-relaxed line-clamp-2">{sel.notes}</p>
         )}
 
         {/* Change request note */}
         {isChangeReq && item.approval_note && (
-          <div className="flex items-start gap-1.5 mt-2 text-[11px]" style={{ color: 'var(--color-change)' }}>
+          <div className="flex items-start gap-1.5 mt-1.5 text-[11px]" style={{ color: 'var(--color-change)' }}>
             <AlertCircle size={11} className="mt-0.5 shrink-0" />
             <span>{item.approval_note}</span>
           </div>
         )}
 
-        {/* Product link */}
-        {productUrl && (
-          <a href={productUrl} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[10px] text-[var(--color-accent)] mt-1.5 hover:underline">
-            View product <ArrowUpRight size={9} />
-          </a>
-        )}
-
-        {/* Confirmed label */}
-        {isConfirmed && (
-          <span className="text-[10px] text-[var(--color-muted)] mt-1 block">Confirmed by architect</span>
-        )}
+        {/* Product link + confirmed label inline */}
+        <div className="flex items-center gap-3 mt-1">
+          {productUrl && (
+            <a href={productUrl} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[10px] text-[var(--color-accent)] hover:underline">
+              View product <ArrowUpRight size={9} />
+            </a>
+          )}
+          {isConfirmed && (
+            <span className="text-[10px] text-[var(--color-muted)]">Confirmed by architect</span>
+          )}
+        </div>
       </div>
 
       {/* Actions */}
       {isPending && (
-        <div className="flex gap-1 shrink-0">
+        <div className="flex flex-col gap-1 shrink-0">
           <button
             onClick={onApprove}
             className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
@@ -751,6 +818,27 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
       )}
     </div>
   )
+}
+
+/* ── Get a background colour/gradient for colour swatch thumbnail ── */
+function getColourBackground(colour) {
+  if (!colour) return null
+  const c = colour.toLowerCase()
+  // Return a CSS background for known colours — acts as visual swatch
+  if (c.includes('natural white') || c === 'white') return 'linear-gradient(135deg, #F5F2EE 0%, #EDE9E3 100%)'
+  if (c.includes('woodland grey')) return 'linear-gradient(135deg, #4A4B45 0%, #5A5B55 100%)'
+  if (c.includes('southerly')) return 'linear-gradient(135deg, #8B9181 0%, #9AA18F 100%)'
+  if (c.includes('satin chrome')) return 'linear-gradient(135deg, #C0C0C0 0%, #D5D5D0 100%)'
+  if (c.includes('brushed nickel')) return 'linear-gradient(135deg, #B8B8B0 0%, #CDCDC5 100%)'
+  if (c.includes('aged brass')) return 'linear-gradient(135deg, #B08D57 0%, #C9A76C 100%)'
+  if (c.includes('warm grey') || c.includes('concrete') || c.includes('salt')) return 'linear-gradient(135deg, #A09E98 0%, #B5B3AD 100%)'
+  if (c.includes('grey') || c.includes('gray')) return 'linear-gradient(135deg, #8A8A86 0%, #9E9E9A 100%)'
+  if (c.includes('black')) return 'linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 100%)'
+  if (c.includes('clear') || c.includes('anodised')) return 'linear-gradient(135deg, #D4D4D0 0%, #E2E2DE 100%)'
+  if (c.includes('neutral')) return 'linear-gradient(135deg, #E8E4DE 0%, #F0EDE7 100%)'
+  if (c.includes('calacatta') || c.includes('white veined')) return 'linear-gradient(135deg, #F0EDE8 0%, #E8E4DD 50%, #F2EFEA 100%)'
+  if (c.includes('polar white') || c.includes('laminex')) return 'linear-gradient(135deg, #FAFAFA 0%, #F0F0EE 100%)'
+  return null
 }
 
 /* ── Colour dot: tries to guess a CSS colour from the name ── */

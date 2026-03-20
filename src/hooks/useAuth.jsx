@@ -20,21 +20,14 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const signIn = async (email) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin }
-    })
-    return { error }
-  }
-
   const signOut = async () => {
+    localStorage.removeItem('pa_selected_project')
     await supabase.auth.signOut()
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   )

@@ -70,6 +70,7 @@ export default function Decisions({ projectId }) {
   const [items, setItems] = useState([])
   const [roomMappings, setRoomMappings] = useState([])
   const [natspecMap, setNatspecMap] = useState({})
+  const [subCriteriaMap, setSubCriteriaMap] = useState({}) // element_type → [{field_key, field_label, field_type, field_unit, display_order}]
   const [loading, setLoading] = useState(true)
   const [expandedGroups, setExpandedGroups] = useState(new Set())
   const [viewMode, setViewMode] = useState('schedule') // 'schedule', 'plan'
@@ -85,21 +86,36 @@ export default function Decisions({ projectId }) {
   }, [projectId])
 
   async function loadData() {
-    const [grpRes, selRes, roomRes] = await Promise.all([
+    const [grpRes, selRes, roomRes, scRes] = await Promise.all([
       supabase.from('schedule_groups').select('*').eq('project_id', projectId).eq('visible_to_homeowner', true).order('display_order'),
       supabase.from('homeowner_selections_portal').select(`
         *,
         project_selections:project_selection_id (
           id, title, selection_kind, manufacturer_name, supplier_name, model, spec_reference, notes, attributes,
-          is_component, parent_selection_id, component_role, component_order
+          is_component, parent_selection_id, component_role, component_order, element_type
         )
       `).eq('project_id', projectId).eq('active', true),
       supabase.from('portal_selection_rooms').select('*').eq('project_id', projectId),
+      supabase.from('sub_criteria_definitions').select('*').order('display_order'),
     ])
 
     setGroups(grpRes.data || [])
     setItems(selRes.data || [])
     setRoomMappings(roomRes.data || [])
+
+    // Build sub-criteria lookup: element_type → sorted fields array
+    const scMap = {}
+    ;(scRes.data || []).forEach(def => {
+      if (!scMap[def.element_type]) scMap[def.element_type] = []
+      scMap[def.element_type].push({
+        key: def.field_key,
+        label: def.field_label,
+        type: def.field_type,
+        unit: def.field_unit,
+        required: def.is_required,
+      })
+    })
+    setSubCriteriaMap(scMap)
 
     // Fetch NATSPEC links
     const selIds = (selRes.data || []).map(i => i.project_selection_id).filter(Boolean)
@@ -391,6 +407,7 @@ export default function Decisions({ projectId }) {
           onApproveItem={handleApproveItem}
           onRequestChange={handleRequestChange}
           natspecMap={natspecMap}
+          subCriteriaMap={subCriteriaMap}
         />
       ) : sortBy === 'room' ? (
         <RoomGroupedView
@@ -465,7 +482,7 @@ export default function Decisions({ projectId }) {
                 {/* Expanded items */}
                 {isExpanded && (
                   <div className="border-t border-white/30">
-                    <ScheduleView items={group.items} natspecMap={natspecMap} onApproveItem={handleApproveItem} onRequestChange={handleRequestChange} />
+                    <ScheduleView items={group.items} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} onApproveItem={handleApproveItem} onRequestChange={handleRequestChange} />
                   </div>
                 )}
               </div>
@@ -782,7 +799,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
 }
 
 /* ── Component-grouped view: by parent assembly ── */
-function ComponentGroupedView({ components, expandedGroups, toggleGroup, onApproveItem, onRequestChange, natspecMap }) {
+function ComponentGroupedView({ components, expandedGroups, toggleGroup, onApproveItem, onRequestChange, natspecMap, subCriteriaMap }) {
   return (
     <div className="space-y-3">
       {components.map(comp => {
@@ -834,7 +851,7 @@ function ComponentGroupedView({ components, expandedGroups, toggleGroup, onAppro
             {/* Expanded: all items in this IFC family */}
             {isExpanded && (
               <div className="border-t border-white/30">
-                <ScheduleView items={comp.children} natspecMap={natspecMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+                <ScheduleView items={comp.children} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
               </div>
             )}
           </div>
@@ -965,7 +982,7 @@ const ROLE_LABELS = {
 }
 
 /* ── Schedule view: parent-child nesting with codes ── */
-function ScheduleView({ items, natspecMap, onApproveItem, onRequestChange }) {
+function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequestChange }) {
   const tree = buildItemTree(items)
   const subGroups = groupTreeByKind(tree)
   const needsSubHeaders = subGroups.length > 1
@@ -985,11 +1002,11 @@ function ScheduleView({ items, natspecMap, onApproveItem, onRequestChange }) {
           <div className="space-y-2">
             {sg.nodes.map(node => (
               <div key={node.item.id}>
-                <ItemRow item={node.item} natspecMap={natspecMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+                <ItemRow item={node.item} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
                 {node.children.length > 0 && (
                   <div className="ml-6 pl-4 border-l-2 border-white/20 space-y-1 mt-1 mb-2">
                     {node.children.map(child => (
-                      <CompactChildRow key={child.id} item={child} natspecMap={natspecMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+                      <CompactChildRow key={child.id} item={child} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
                     ))}
                   </div>
                 )}
@@ -1003,7 +1020,23 @@ function ScheduleView({ items, natspecMap, onApproveItem, onRequestChange }) {
 }
 
 /* ── Parent item row (full-size) ── */
-function ItemRow({ item, natspecMap, onApproveItem, onRequestChange }) {
+/* ── Spec cell: always shows label + value or dash ── */
+function SpecCell({ label, value, unit, children }) {
+  return (
+    <div className="min-w-0">
+      {children || (
+        <span className="text-[11px] text-[var(--color-text)] leading-snug block truncate">
+          {value || '\u2014'}
+        </span>
+      )}
+      <span className="text-[8px] tracking-[0.5px] uppercase text-[var(--color-muted)] font-medium leading-none">
+        {label}{unit ? ` (${unit})` : ''}
+      </span>
+    </div>
+  )
+}
+
+function ItemRow({ item, natspecMap, subCriteriaMap, onApproveItem, onRequestChange }) {
   const sel = item.project_selections || {}
   const attrs = sel.attributes || {}
   const st = STATUS_STYLES[item.approval_status] || STATUS_STYLES.not_applicable
@@ -1013,62 +1046,95 @@ function ItemRow({ item, natspecMap, onApproveItem, onRequestChange }) {
   const isChangeReq = item.approval_status === 'change_requested'
   const { code, name } = parseCode(sel.title || item.selection_title, attrs)
   const natspecCodes = (natspecMap && natspecMap[item.project_selection_id]) || []
+  const elementType = sel.element_type || 'other'
+  const specFields = (subCriteriaMap && subCriteriaMap[elementType]) || []
+
   return (
-    <div className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/40 transition-colors items-start"
-      style={{ gridTemplateColumns: '20px 48px 2.5fr 3fr 1.5fr 100px' }}>
-      <span className="text-[9px] font-mono text-[var(--color-muted)] pt-4 text-right tabular-nums">{item.display_order || ''}</span>
-      <div>
-        {item.portal_image_url ? (
-          <img src={item.portal_image_url} alt="" style={{
-            width: 48, height: 48, borderRadius: 8, objectFit: 'cover',
-            border: '1px solid rgba(0,0,0,0.06)',
-          }} loading="lazy"
-          onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
-          />
-        ) : colourBg ? (
-          <div style={{ width: 48, height: 48, borderRadius: 8, background: colourBg, border: '1px solid rgba(0,0,0,0.06)' }} />
-        ) : (
-          <div style={{ width: 48, height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon size={16} style={{ color: 'var(--color-border)' }} />
-          </div>
-        )}
+    <div className="rounded-lg border border-white/30 bg-white/10 hover:bg-white/40 transition-colors overflow-hidden">
+      <div className="grid gap-3 px-4 py-3 items-start"
+        style={{ gridTemplateColumns: '20px 48px minmax(120px, 1.5fr) minmax(80px, 1fr) 1fr 1fr 1fr 1fr auto' }}>
+        {/* # */}
+        <span className="text-[9px] font-mono text-[var(--color-muted)] pt-3 text-right tabular-nums">{item.display_order || ''}</span>
+        {/* Thumbnail */}
+        <div>
+          {item.portal_image_url ? (
+            <img src={item.portal_image_url} alt="" style={{
+              width: 48, height: 48, borderRadius: 8, objectFit: 'cover',
+              border: '1px solid rgba(0,0,0,0.06)',
+            }} loading="lazy"
+            onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
+            />
+          ) : colourBg ? (
+            <div style={{ width: 48, height: 48, borderRadius: 8, background: colourBg, border: '1px solid rgba(0,0,0,0.06)' }} />
+          ) : (
+            <div style={{ width: 48, height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon size={16} style={{ color: 'var(--color-border)' }} />
+            </div>
+          )}
+        </div>
+        {/* Identity: name + code + natspec */}
+        <div className="min-w-0">
+          <div className="font-medium leading-snug text-[var(--color-text)] text-[12px]">{name}</div>
+          {natspecCodes.length > 0 && (
+            <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] opacity-70 block">
+              {natspecCodes.map(n => n.ref).join(' · ')}
+            </span>
+          )}
+          {code && <span className="text-[9px] font-mono tracking-wider text-[var(--color-muted)] uppercase block mt-0.5">{code}</span>}
+        </div>
+        {/* Product name */}
+        <SpecCell label="Product" value={sel.model} />
+        {/* Element-specific spec fields — show first 4 from definitions */}
+        {specFields.slice(0, 4).map(f => (
+          <SpecCell key={f.key} label={f.label} unit={f.unit} value={attrs[f.key]}>
+            {f.type === 'colour' && attrs[f.key] ? (
+              <span className="text-[11px] text-[var(--color-text)] leading-snug flex items-center gap-1 truncate">
+                <ColourDot colour={attrs[f.key]} />{attrs[f.key]}
+              </span>
+            ) : undefined}
+          </SpecCell>
+        ))}
+        {/* Pad remaining columns if fewer than 4 spec fields */}
+        {specFields.length < 4 && Array.from({ length: 4 - specFields.length }).map((_, i) => (
+          <div key={`pad-${i}`} />
+        ))}
+        {/* Status / actions */}
+        <div className="flex items-start justify-end gap-1 pt-1">
+          {(isPending || isChangeReq) && onApproveItem && (<>
+            <button onClick={() => onApproveItem(item.id)} className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(45,74,38,0.1)]" style={{ border: '1px solid rgba(45,74,38,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={11} /></button>
+            <button onClick={() => onRequestChange(item.id)} className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(90,32,16,0.08)]" style={{ border: '1px solid rgba(232,232,229,0.8)', color: 'var(--color-muted)' }} title="Request change"><MessageSquare size={10} /></button>
+          </>)}
+          {!isPending && !isChangeReq && (
+            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap" style={{ background: st.bg, color: st.text, border: `1px solid ${st.border}` }}>{st.label}</span>
+          )}
+        </div>
       </div>
-      <div>
-        {code && <span className="text-[9px] font-mono tracking-wider text-[var(--color-muted)] uppercase block mb-0.5">{code}</span>}
-        {natspecCodes.length > 0 && (
-          <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] opacity-70 block mb-0.5">
-            {natspecCodes.map(n => n.ref).join(' · ')}
-          </span>
-        )}
-        <div className="font-medium leading-snug text-[var(--color-text)]">{name}</div>
-        {!code && sel.selection_kind && <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{sel.selection_kind.replace(/_/g, ' ')}</span>}
-      </div>
-      <div className="text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
-        {sel.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{sel.manufacturer_name}</span>}
-        {sel.manufacturer_name && sel.model && <br />}
-        <span className="text-[var(--color-muted)]">{sel.model || (!sel.manufacturer_name && '\u2014')}</span>
-        {attrs.size && (
-          <span className="text-[10px] text-[var(--color-muted)] block mt-0.5">{attrs.size}</span>
-        )}
-      </div>
-      <div className="text-[11px] text-[var(--color-text)] flex items-start gap-1.5" style={{ wordBreak: 'break-word' }}>
-        {attrs.colour ? (<><ColourDot colour={attrs.colour} /><span className="leading-snug">{attrs.colour}</span></>) : <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
-      </div>
-      <div className="text-right flex items-start justify-end gap-1">
-        {(isPending || isChangeReq) && onApproveItem && (<>
-          <button onClick={() => onApproveItem(item.id)} className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(45,74,38,0.1)]" style={{ border: '1px solid rgba(45,74,38,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={11} /></button>
-          <button onClick={() => onRequestChange(item.id)} className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(90,32,16,0.08)]" style={{ border: '1px solid rgba(232,232,229,0.8)', color: 'var(--color-muted)' }} title="Request change"><MessageSquare size={10} /></button>
-        </>)}
-        {!isPending && !isChangeReq && (
-          <span className="text-[9px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap" style={{ background: st.bg, color: st.text, border: `1px solid ${st.border}` }}>{st.label}</span>
-        )}
+      {/* Second row: Brand + remaining spec fields */}
+      <div className="grid gap-3 px-4 pb-2.5 items-start"
+        style={{ gridTemplateColumns: '20px 48px minmax(120px, 1.5fr) minmax(80px, 1fr) 1fr 1fr 1fr 1fr auto' }}>
+        <div /><div />
+        <div />
+        <SpecCell label="Brand" value={sel.manufacturer_name} />
+        {specFields.slice(4, 8).map(f => (
+          <SpecCell key={f.key} label={f.label} unit={f.unit} value={attrs[f.key]}>
+            {f.type === 'colour' && attrs[f.key] ? (
+              <span className="text-[11px] text-[var(--color-text)] leading-snug flex items-center gap-1 truncate">
+                <ColourDot colour={attrs[f.key]} />{attrs[f.key]}
+              </span>
+            ) : undefined}
+          </SpecCell>
+        ))}
+        {specFields.slice(4).length < 4 && Array.from({ length: 4 - Math.min(specFields.slice(4).length, 4) }).map((_, i) => (
+          <div key={`pad2-${i}`} />
+        ))}
+        <div />
       </div>
     </div>
   )
 }
 
-/* ── Compact child/component row (indented, smaller) ── */
-function CompactChildRow({ item, natspecMap, onApproveItem, onRequestChange }) {
+/* ── Compact child/component row — same grid logic, indented ── */
+function CompactChildRow({ item, natspecMap, subCriteriaMap, onApproveItem, onRequestChange }) {
   const sel = item.project_selections || {}
   const attrs = sel.attributes || {}
   const st = STATUS_STYLES[item.approval_status] || STATUS_STYLES.not_applicable
@@ -1076,47 +1142,52 @@ function CompactChildRow({ item, natspecMap, onApproveItem, onRequestChange }) {
   const isPending = item.approval_status === 'pending'
   const isChangeReq = item.approval_status === 'change_requested'
   const roleLabel = ROLE_LABELS[sel.component_role] || sel.component_role?.replace(/_/g, ' ') || ''
-  const natspecCodes = (natspecMap && natspecMap[item.project_selection_id]) || []
+  const { code } = parseCode(sel.title || item.selection_title, attrs)
+  const elementType = sel.element_type || 'other'
+  const specFields = (subCriteriaMap && subCriteriaMap[elementType]) || []
 
   return (
-    <div className="grid gap-2 px-3 py-2 text-[11px] rounded-md border border-white/20 bg-white/5 hover:bg-white/30 transition-colors items-center"
-      style={{ gridTemplateColumns: '32px 2fr 2.5fr 1.5fr 80px' }}>
-      {/* Small thumbnail or colour dot */}
-      <div>
-        {colourBg ? (
-          <div style={{ width: 28, height: 28, borderRadius: 6, background: colourBg, border: '1px solid rgba(0,0,0,0.06)' }} />
-        ) : (
-          <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(255,255,255,0.3)', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Wrench size={11} style={{ color: 'var(--color-border)' }} />
-          </div>
-        )}
-      </div>
-      <div>
-        <span className="text-[8px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium block">{roleLabel}</span>
-        {natspecCodes.length > 0 && (
-          <span className="text-[7px] font-mono tracking-wider text-[var(--color-muted)] opacity-70 block">
-            {natspecCodes.map(n => n.ref).join(' · ')}
-          </span>
-        )}
-        <div className="font-medium leading-snug text-[var(--color-text)] text-[11px]">{sel.title || item.selection_title}</div>
-      </div>
-      <div className="text-[10px] leading-relaxed text-[var(--color-muted)]" style={{ wordBreak: 'break-word' }}>
-        {sel.manufacturer_name && <span className="text-[var(--color-text)]">{sel.manufacturer_name} </span>}
-        {sel.model || ''}
-        {attrs.size && (
-          <span className="text-[9px] text-[var(--color-muted)] block mt-0.5">{attrs.size}</span>
-        )}
-      </div>
-      <div className="text-[10px] text-[var(--color-text)] flex items-center gap-1" style={{ wordBreak: 'break-word' }}>
-        {attrs.colour ? (<><ColourDot colour={attrs.colour} /><span>{attrs.colour}</span></>) : <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
-      </div>
-      <div className="text-right flex items-center justify-end gap-1">
-        {(isPending || isChangeReq) && onApproveItem && (
-          <button onClick={() => onApproveItem(item.id)} className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[rgba(45,74,38,0.1)]" style={{ border: '1px solid rgba(45,74,38,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={9} /></button>
-        )}
-        {!isPending && !isChangeReq && (
-          <span className="text-[8px] font-medium px-1 py-0.5 rounded whitespace-nowrap" style={{ background: st.bg, color: st.text, border: `1px solid ${st.border}` }}>{st.label}</span>
-        )}
+    <div className="rounded-md border border-white/20 bg-white/5 hover:bg-white/30 transition-colors overflow-hidden">
+      <div className="grid gap-2 px-3 py-2 items-start text-[11px]"
+        style={{ gridTemplateColumns: '28px minmax(100px, 1.2fr) minmax(60px, 0.8fr) 1fr 1fr 1fr 1fr auto' }}>
+        {/* Thumbnail */}
+        <div>
+          {colourBg ? (
+            <div style={{ width: 28, height: 28, borderRadius: 6, background: colourBg, border: '1px solid rgba(0,0,0,0.06)' }} />
+          ) : (
+            <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(255,255,255,0.3)', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Wrench size={11} style={{ color: 'var(--color-border)' }} />
+            </div>
+          )}
+        </div>
+        {/* Identity */}
+        <div className="min-w-0">
+          <span className="text-[8px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium block">{roleLabel}</span>
+          <div className="font-medium leading-snug text-[var(--color-text)] text-[11px] truncate">{sel.title || item.selection_title}</div>
+          {code && <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] block">{code}</span>}
+        </div>
+        {/* Product */}
+        <SpecCell label="Product" value={sel.model} />
+        {/* First 4 spec fields from element type */}
+        {specFields.slice(0, 4).map(f => (
+          <SpecCell key={f.key} label={f.label} unit={f.unit} value={attrs[f.key]}>
+            {f.type === 'colour' && attrs[f.key] ? (
+              <span className="text-[10px] text-[var(--color-text)] leading-snug flex items-center gap-1 truncate">
+                <ColourDot colour={attrs[f.key]} />{attrs[f.key]}
+              </span>
+            ) : undefined}
+          </SpecCell>
+        ))}
+        {specFields.length < 4 && Array.from({ length: 4 - specFields.length }).map((_, i) => <div key={`cp-${i}`} />)}
+        {/* Status */}
+        <div className="flex items-center justify-end gap-1">
+          {(isPending || isChangeReq) && onApproveItem && (
+            <button onClick={() => onApproveItem(item.id)} className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[rgba(45,74,38,0.1)]" style={{ border: '1px solid rgba(45,74,38,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={9} /></button>
+          )}
+          {!isPending && !isChangeReq && (
+            <span className="text-[8px] font-medium px-1 py-0.5 rounded whitespace-nowrap" style={{ background: st.bg, color: st.text, border: `1px solid ${st.border}` }}>{st.label}</span>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -1207,26 +1278,24 @@ function SelectionCard({ item, natspecMap, onApprove, onRequestChange }) {
           </div>
         </>)})()}
 
-        {/* Product details */}
-        <div className="mt-1" style={{ wordBreak: 'break-word' }}>
-          {sel.manufacturer_name && (
-            <span className="text-[11px] text-[var(--color-muted)]">{sel.manufacturer_name}</span>
-          )}
-          {sel.model && (
-            <p className="text-[11px] text-[var(--color-text)] leading-relaxed mt-0.5">{sel.model}</p>
-          )}
-          {attrs.size && (
-            <span className="text-[10px] text-[var(--color-muted)] block mt-0.5">{attrs.size}</span>
-          )}
-        </div>
-
-        {/* Colour chip — only if no colour swatch thumbnail */}
-        {attrs.colour && !colourBg && (
-          <div className="flex items-start gap-1.5 mt-1.5">
-            <ColourDot colour={attrs.colour} />
-            <span className="text-[10px] text-[var(--color-muted)] leading-snug">{attrs.colour}</span>
+        {/* Sub-criteria fields */}
+        {(() => { const dims = formatDimensions(attrs); return (
+          <div className="grid gap-x-3 gap-y-1 mt-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(85px, 1fr))' }}>
+            <SubField label="Product" value={sel.model || null} />
+            <SubField label="Brand" value={sel.manufacturer_name || null} />
+            {attrs.colour && (
+              <SubField label="Colour">
+                <span className="text-[11px] text-[var(--color-text)] leading-snug flex items-center gap-1">
+                  <ColourDot colour={attrs.colour} />{attrs.colour}
+                </span>
+              </SubField>
+            )}
+            {(attrs.finish || attrs.sheen) && <SubField label="Finish" value={attrs.finish || attrs.sheen} />}
+            {attrs.material && <SubField label="Material" value={attrs.material} />}
+            {dims && <SubField label="Size" value={dims} />}
+            {(attrs.qty || attrs.qty_est) && <SubField label="Qty" value={attrs.qty || attrs.qty_est} />}
           </div>
-        )}
+        )})()}
 
         {/* Notes */}
         {sel.notes && (
@@ -1465,7 +1534,7 @@ function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveIt
       {/* Room selection list */}
       {selectedRoom && roomItems.length > 0 && (
         <div className="mt-4">
-          <ScheduleView items={roomItems} natspecMap={{}} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+          <ScheduleView items={roomItems} natspecMap={{}} subCriteriaMap={{}} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
         </div>
       )}
 

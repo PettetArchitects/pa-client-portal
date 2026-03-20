@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { usePractice } from '../hooks/usePractice'
 import { ArrowRight, Mail } from 'lucide-react'
+import LogoAnimation from './LogoAnimation'
 
 export default function LoginPage() {
   const { practice } = usePractice()
@@ -83,9 +84,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg)] px-4">
       <div className="w-full max-w-sm">
-        {/* Logo + brand */}
-        <div className="text-center mb-16">
-          {logoUrl && <img src={logoUrl} alt={practiceName} className="h-12 w-12 mx-auto mb-4 object-contain" />}
+        {/* Animated logo + brand */}
+        <div className="text-center mb-12">
+          <div className="mb-4">
+            <LogoAnimation loop size={160} />
+          </div>
           <h1 className="text-[11px] font-medium tracking-[4px] uppercase text-[var(--color-text)]">
             {practiceName}
           </h1>

@@ -374,12 +374,10 @@ export default function Decisions({ projectId }) {
                       return GroupIcon ? <GroupIcon size={32} className="text-[var(--color-muted)] shrink-0" /> : null
                     })()}
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-medium">{group.group_name}</h2>
-                        <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded">
-                          {group.items.length}
-                        </span>
-                      </div>
+                      <h2 className="text-sm font-medium inline">{group.group_name}</h2>
+                      <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded ml-2 inline-flex items-center align-middle">
+                        {group.items.length}
+                      </span>
                       <p className="text-[11px] text-[var(--color-muted)] font-light mt-0.5">{group.description}</p>
                     </div>
                   </div>

@@ -12,6 +12,9 @@ const SPLASH_GRAVITY = 420
 const LOGO_SPRING = 18
 const LOGO_DAMPING = 3.2
 const WIND_MAX = 30
+const STORM_SPIN_TORQUE = 600   // degrees/s² — full rotations
+const STORM_LIFT = 35           // upward push during peak gust
+const STORM_DRIFT_X = 40       // sideways displacement
 const SCENE_W = 200
 const SCENE_H = 200
 const LOGO_SIZE = 72
@@ -82,7 +85,7 @@ export default function LogoAnimation({ loop = false, size = 200 }) {
     const S = {
       drops: [], splashes: [],
       puddle: { opacity: 0, scaleX: 0.2 },
-      logo: { y: 0, vy: 0, rot: 0, vr: 0, scale: 1 },
+      logo: { x: 0, vx: 0, y: 0, vy: 0, rot: 0, vr: 0, scale: 1 },
       sun: { opacity: 0, scale: 0.3 },
       rays: { opacity: 0 },
       refl: { opacity: 0, shimmer: 0 },
@@ -95,7 +98,7 @@ export default function LogoAnimation({ loop = false, size = 200 }) {
     function resetState() {
       S.drops = []; S.splashes = []
       S.puddle.opacity = 0; S.puddle.scaleX = 0.2
-      S.logo.y = 0; S.logo.vy = 0; S.logo.rot = 0; S.logo.vr = 0; S.logo.scale = 1
+      S.logo.x = 0; S.logo.vx = 0; S.logo.y = 0; S.logo.vy = 0; S.logo.rot = 0; S.logo.vr = 0; S.logo.scale = 1
       S.sun.opacity = 0; S.sun.scale = 0.3
       S.rays.opacity = 0
       S.refl.opacity = 0; S.refl.shimmer = 0
@@ -142,15 +145,26 @@ export default function LogoAnimation({ loop = false, size = 200 }) {
         }
         S.wind += (S.windTarget - S.wind) * dt * 3
 
-        // ── Storm wind override ──
+        // ── Storm wind override — blow & spin ──
         if (S.phase === 'storm') {
           const st = S.t - 2.2
-          const build = Math.min(st / 1.0, 1)
-          const ease = st > 1.3 ? Math.max(0, 1 - (st - 1.3) / 0.3) : 1
-          const gust = build * ease * 45 + Math.sin(st * 5) * 12 * build
-          S.logo.vr += gust * dt
-          S.logo.vy -= build * ease * 8 * dt
-          S.windTarget = 80 * build * ease
+          const build = Math.min(st / 0.6, 1)               // ramp up fast
+          const ease = st > 1.2 ? Math.max(0, 1 - (st - 1.2) / 0.4) : 1
+          const intensity = build * ease
+
+          // Continuous spin torque — full rotations
+          S.logo.vr += STORM_SPIN_TORQUE * intensity * dt
+          // Chaotic gusts layered on top
+          S.logo.vr += Math.sin(st * 7) * 80 * build * dt
+
+          // Lift the logo up
+          S.logo.vy -= STORM_LIFT * intensity * dt
+
+          // Blow sideways
+          S.logo.vx += STORM_DRIFT_X * intensity * dt * (1 + Math.sin(st * 4) * 0.4)
+
+          // Heavy sideways wind on rain
+          S.windTarget = 120 * intensity
         }
 
         // ── Calm gentle bob ──
@@ -169,7 +183,7 @@ export default function LogoAnimation({ loop = false, size = 200 }) {
 
         // ── Logo hitbox ──
         const ly = LOGO_REST_Y + S.logo.y
-        const lx = LOGO_REST_X
+        const lx = LOGO_REST_X + S.logo.x
         const cx = lx + LOGO_SIZE / 2
         const peakY = ly + LOGO_SIZE * 0.18
         const baseY = ly + LOGO_SIZE * 0.55
@@ -233,16 +247,22 @@ export default function LogoAnimation({ loop = false, size = 200 }) {
         S.drops = S.drops.filter(d => d.alive)
         S.splashes = S.splashes.filter(s => s.alive)
 
-        // ── Logo spring ──
+        // ── Logo spring (Y + X) ──
         const yTarget = (S.phase === 'sun' || S.phase === 'calm') ? -8 : 0
         const sTarget = (S.phase === 'sun' || S.phase === 'calm') ? 1.06 : 1
         S.logo.vy += (-LOGO_SPRING * (S.logo.y - yTarget) - LOGO_DAMPING * S.logo.vy) * dt
         S.logo.y += S.logo.vy * dt
         S.logo.scale += (sTarget - S.logo.scale) * dt * 3
 
-        // Rotation spring — soft in storm, snappy in clearing
-        const rk = S.phase === 'storm' ? 3.5 : S.phase === 'clearing' ? 24 : 12
-        const rd = S.phase === 'storm' ? 1.2 : S.phase === 'clearing' ? 5.5 : 2.5
+        // Horizontal spring — return to centre
+        const xk = S.phase === 'storm' ? 2 : S.phase === 'clearing' ? 20 : 12
+        const xd = S.phase === 'storm' ? 0.5 : S.phase === 'clearing' ? 6 : 3
+        S.logo.vx += (-xk * S.logo.x - xd * S.logo.vx) * dt
+        S.logo.x += S.logo.vx * dt
+
+        // Rotation spring — nearly free in storm (allows full spins), snappy in clearing
+        const rk = S.phase === 'storm' ? 0.5 : S.phase === 'clearing' ? 30 : 12
+        const rd = S.phase === 'storm' ? 0.3 : S.phase === 'clearing' ? 6 : 2.5
         S.logo.vr += (-rk * S.logo.rot - rd * S.logo.vr) * dt
         S.logo.rot += S.logo.vr * dt
 
@@ -328,7 +348,7 @@ export default function LogoAnimation({ loop = false, size = 200 }) {
         // Logo
         if (logoImg.complete && logoImg.naturalWidth > 0) {
           const sz = LOGO_SIZE * S.logo.scale
-          const dx = (SCENE_W - sz) / 2
+          const dx = (SCENE_W - sz) / 2 + S.logo.x
           const dy = LOGO_REST_Y + S.logo.y
           ctx.save()
           ctx.translate(dx + sz / 2, dy + sz / 2)

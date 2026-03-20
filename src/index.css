@@ -8,10 +8,10 @@
   --color-muted: #555550;
   --color-border: #E8E8E5;
   --color-accent: #1A1A1A;
-  --color-pending: #8B6914;
-  --color-approved: #4A6741;
-  --color-urgent: #8B4513;
-  --color-change: #6B3A2A;
+  --color-pending: #6B4F00;
+  --color-approved: #2D4A26;
+  --color-urgent: #6B2D0A;
+  --color-change: #5A2010;
 }
 
 body {
@@ -78,7 +78,7 @@ body {
 .glass-t-hover:hover { background: rgba(255, 255, 255, 0.35); }
 
 /* Pending accent border override */
-.glass-pending { border-color: rgba(212, 160, 23, 0.35); }
+.glass-pending { border-color: rgba(107, 79, 0, 0.35); }
 
 /* ── Text contrast — guaranteed readable on any glass tier ── */
 .text-primary { color: #1A1A1A; }

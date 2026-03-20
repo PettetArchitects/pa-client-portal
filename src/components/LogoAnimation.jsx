@@ -17,9 +17,9 @@ const STORM_LIFT = 35           // upward push during peak gust
 const STORM_DRIFT_X = 40       // sideways displacement
 const SCENE_W = 200
 const SCENE_H = 200
-const LOGO_SIZE = 72
+const LOGO_SIZE = 108                                // 1.5× bigger
 const LOGO_REST_X = (SCENE_W - LOGO_SIZE) / 2
-const LOGO_REST_Y = 45
+const LOGO_REST_Y = 30                               // shift up to keep centred
 
 function createDrop(time) {
   return {
@@ -289,27 +289,66 @@ export default function LogoAnimation({ loop = false, size = 200 }) {
           ctx.fillRect(0, 0, SCENE_W, SCENE_H)
         }
 
-        // Sun glow
+        // Directional sunlight — focused on chevron peak, spreading down the roof slopes
         if (S.sun.opacity > 0.01) {
-          const g = ctx.createRadialGradient(SCENE_W / 2, 20, 0, SCENE_W / 2, 20, 110 * S.sun.scale)
-          g.addColorStop(0, `rgba(255,215,110,${S.sun.opacity * 0.45})`)
-          g.addColorStop(0.35, `rgba(255,195,70,${S.sun.opacity * 0.18})`)
-          g.addColorStop(1, 'transparent')
-          ctx.fillStyle = g
-          ctx.fillRect(0, 0, SCENE_W, SCENE_H)
-        }
+          const sz = LOGO_SIZE * S.logo.scale
+          const logoCx = (SCENE_W - sz) / 2 + S.logo.x + sz / 2
+          const logoPeakY = LOGO_REST_Y + S.logo.y + sz * 0.15  // top of chevron
+          const sunSourceY = -20  // above canvas — directional from sky
 
-        // Sun rays
-        if (S.rays.opacity > 0.01) {
+          // Light cone from sky to chevron peak — triangle spreading to roof slopes
           ctx.save()
-          ctx.translate(SCENE_W / 2, 60)
-          for (let i = 0; i < 12; i++) {
-            ctx.save()
-            ctx.rotate((i * 30 * Math.PI) / 180)
-            ctx.fillStyle = `rgba(255,205,90,${S.rays.opacity})`
-            ctx.fillRect(-0.5, -30, 1, 30)
-            ctx.restore()
-          }
+          const coneAlpha = S.sun.opacity * 0.25
+          const lg = ctx.createLinearGradient(logoCx, sunSourceY, logoCx, logoPeakY + sz * 0.3)
+          lg.addColorStop(0, `rgba(255,225,140,${coneAlpha * 0.6})`)
+          lg.addColorStop(0.5, `rgba(255,215,110,${coneAlpha})`)
+          lg.addColorStop(1, 'transparent')
+          ctx.fillStyle = lg
+
+          // Draw cone: narrow at top, wide at chevron base
+          ctx.beginPath()
+          ctx.moveTo(logoCx - 8, sunSourceY)          // narrow top
+          ctx.moveTo(logoCx + 8, sunSourceY)
+          ctx.lineTo(logoCx - 8, sunSourceY)
+          ctx.lineTo(logoCx - sz * 0.5, logoPeakY + sz * 0.4)  // left slope
+          ctx.lineTo(logoCx + sz * 0.5, logoPeakY + sz * 0.4)  // right slope
+          ctx.lineTo(logoCx + 8, sunSourceY)
+          ctx.closePath()
+          ctx.fill()
+
+          // Bright highlight at the peak — where sun hits the ridge
+          const peakGlow = ctx.createRadialGradient(logoCx, logoPeakY, 0, logoCx, logoPeakY, sz * 0.2)
+          peakGlow.addColorStop(0, `rgba(255,240,180,${S.sun.opacity * 0.5})`)
+          peakGlow.addColorStop(0.5, `rgba(255,220,120,${S.sun.opacity * 0.2})`)
+          peakGlow.addColorStop(1, 'transparent')
+          ctx.fillStyle = peakGlow
+          ctx.fillRect(logoCx - sz * 0.3, logoPeakY - sz * 0.15, sz * 0.6, sz * 0.4)
+
+          // Subtle warm wash on the two roof slopes
+          const slopeAlpha = S.sun.opacity * 0.12
+          // Left slope
+          const lgL = ctx.createLinearGradient(logoCx, logoPeakY, logoCx - sz * 0.45, logoPeakY + sz * 0.4)
+          lgL.addColorStop(0, `rgba(255,215,110,${slopeAlpha})`)
+          lgL.addColorStop(1, 'transparent')
+          ctx.fillStyle = lgL
+          ctx.beginPath()
+          ctx.moveTo(logoCx, logoPeakY)
+          ctx.lineTo(logoCx - sz * 0.5, logoPeakY + sz * 0.45)
+          ctx.lineTo(logoCx, logoPeakY + sz * 0.45)
+          ctx.closePath()
+          ctx.fill()
+          // Right slope
+          const lgR = ctx.createLinearGradient(logoCx, logoPeakY, logoCx + sz * 0.45, logoPeakY + sz * 0.4)
+          lgR.addColorStop(0, `rgba(255,215,110,${slopeAlpha})`)
+          lgR.addColorStop(1, 'transparent')
+          ctx.fillStyle = lgR
+          ctx.beginPath()
+          ctx.moveTo(logoCx, logoPeakY)
+          ctx.lineTo(logoCx + sz * 0.5, logoPeakY + sz * 0.45)
+          ctx.lineTo(logoCx, logoPeakY + sz * 0.45)
+          ctx.closePath()
+          ctx.fill()
+
           ctx.restore()
         }
 
@@ -360,26 +399,30 @@ export default function LogoAnimation({ loop = false, size = 200 }) {
           ctx.drawImage(logoImg, -sz / 2, -sz / 2, sz, sz)
           ctx.restore()
 
-          // Sun reflection on chevron
+          // Sun highlight on chevron ridge — directional catch light
           if (S.refl.opacity > 0.02) {
             ctx.save()
-            ctx.translate(dx + sz / 2, dy + sz * 0.3)
+            ctx.translate(dx + sz / 2, dy + sz * 0.15)
             ctx.rotate(S.logo.rot * Math.PI / 180)
-            const ra = S.refl.opacity * (S.refl.shimmer || 1) * 0.5
-            const hg = ctx.createRadialGradient(0, -8, 0, 0, -8, sz * 0.35)
-            hg.addColorStop(0, `rgba(255,225,140,${ra})`)
-            hg.addColorStop(0.4, `rgba(255,210,100,${ra * 0.5})`)
-            hg.addColorStop(1, 'transparent')
-            ctx.fillStyle = hg
+            const ra = S.refl.opacity * (S.refl.shimmer || 1) * 0.4
+
+            // Ridge highlight — horizontal ellipse at peak
+            const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, sz * 0.18)
+            rg.addColorStop(0, `rgba(255,245,200,${ra * 1.2})`)
+            rg.addColorStop(0.4, `rgba(255,225,140,${ra * 0.6})`)
+            rg.addColorStop(1, 'transparent')
+            ctx.fillStyle = rg
             ctx.beginPath()
-            ctx.ellipse(0, -8, sz * 0.3, sz * 0.15, 0, 0, Math.PI * 2)
+            ctx.ellipse(0, 0, sz * 0.15, sz * 0.08, 0, 0, Math.PI * 2)
             ctx.fill()
-            const sg = ctx.createRadialGradient(2, -12, 0, 2, -12, 6)
-            sg.addColorStop(0, `rgba(255,255,220,${ra * 1.4})`)
-            sg.addColorStop(1, 'transparent')
-            ctx.fillStyle = sg
+
+            // Specular pinpoint at ridge
+            const sp = ctx.createRadialGradient(0, -2, 0, 0, -2, 4)
+            sp.addColorStop(0, `rgba(255,255,240,${ra * 1.6})`)
+            sp.addColorStop(1, 'transparent')
+            ctx.fillStyle = sp
             ctx.beginPath()
-            ctx.arc(2, -12, 6, 0, Math.PI * 2)
+            ctx.arc(0, -2, 4, 0, Math.PI * 2)
             ctx.fill()
             ctx.restore()
           }

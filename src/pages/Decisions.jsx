@@ -218,7 +218,7 @@ export default function Decisions({ projectId }) {
   return (
     <div className="max-w-4xl">
       {/* Progress bar */}
-      <div className="backdrop-blur-xl bg-white/60 rounded-xl border border-white/40 p-4 mb-6">
+      <div className="backdrop-blur-xl bg-white/70 rounded-xl border border-white/50 p-4 mb-6">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[11px] tracking-[1.5px] uppercase text-[var(--color-muted)] font-medium">
             Your selections
@@ -249,7 +249,7 @@ export default function Decisions({ projectId }) {
       </div>
 
       {/* Toolbar — Programa style */}
-      <div className="flex items-center justify-between mb-4 backdrop-blur-xl bg-white/40 rounded-xl border border-white/30 px-2 py-1.5 relative z-30">
+      <div className="flex items-center justify-between mb-4 backdrop-blur-xl bg-white/50 rounded-xl border border-white/40 px-2 py-1.5 relative z-30">
         {/* Left: actions */}
         <div className="flex items-center gap-0.5">
           <button
@@ -381,7 +381,7 @@ export default function Decisions({ projectId }) {
             const hasPending = group.pending > 0 || group.changeReq > 0
 
             return (
-              <div key={group.group_key} className={`backdrop-blur-xl bg-white/40 rounded-xl border overflow-hidden transition-all ${
+              <div key={group.group_key} className={`backdrop-blur-xl bg-white/50 rounded-xl border overflow-hidden transition-all ${
                 hasPending ? 'border-[var(--color-pending)]/30' : 'border-white/40'
               }`}>
                 {/* Group header */}
@@ -395,11 +395,13 @@ export default function Decisions({ projectId }) {
                       return GroupIcon ? <GroupIcon size={32} className="text-[var(--color-muted)] shrink-0" /> : null
                     })()}
                     <div>
-                      <h2 className="text-sm font-medium inline">{group.group_name}</h2>
-                      <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded ml-2 inline-flex items-center align-middle">
-                        {group.items.length}
-                      </span>
-                      <p className="text-[11px] text-[var(--color-text)] font-light mt-0.5">{group.description}</p>
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-[13px] font-semibold text-[var(--color-text)] bg-white/50 w-8 h-8 rounded-lg inline-flex items-center justify-center shrink-0">
+                          {group.items.length}
+                        </span>
+                        <h2 className="text-sm font-medium">{group.group_name}</h2>
+                      </div>
+                      <p className="text-[11px] text-[var(--color-text)] font-light mt-0.5 ml-[42px]">{group.description}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -532,7 +534,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
         const hasPending = room.pending > 0 || room.changeReq > 0
 
         return (
-          <div key={room.roomKey} className={`backdrop-blur-xl bg-white/40 rounded-xl border overflow-hidden transition-all ${
+          <div key={room.roomKey} className={`backdrop-blur-xl bg-white/50 rounded-xl border overflow-hidden transition-all ${
             hasPending ? 'border-[var(--color-pending)]/30' : 'border-white/40'
           }`}>
             {/* Room header */}

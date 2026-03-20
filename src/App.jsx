@@ -131,12 +131,15 @@ function LoadingScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F5F5F3]">
       <div className="text-center max-w-md px-6">
-        {/* Bouncing + spinning PA logo */}
+        {/* Bouncing PA logo — actual practice mark from Supabase storage */}
         <div className="mb-8" style={{ animation: 'logoBounce 2s ease-in-out infinite' }}>
-          <svg width="48" height="48" viewBox="0 0 32 32" className="mx-auto" style={{ animation: 'logoSpin 3s ease-in-out infinite' }}>
-            <rect width="32" height="32" rx="6" fill="#1A1A1A"/>
-            <path d="M16 7L6 25h3.5L16 13.5 22.5 25H26L16 7z" fill="#FFFFFF"/>
-          </svg>
+          <img
+            src="https://mmfhjlpsumhyxjqhyirw.supabase.co/storage/v1/object/public/image-library/practice/pa-logo.png"
+            alt="Pettet Architects"
+            width={48}
+            height={48}
+            className="mx-auto"
+          />
         </div>
 
         {/* Quote */}
@@ -154,11 +157,6 @@ function LoadingScreen() {
         @keyframes logoBounce {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-12px); }
-        }
-        @keyframes logoSpin {
-          0% { transform: rotateY(0deg); }
-          50% { transform: rotateY(180deg); }
-          100% { transform: rotateY(360deg); }
         }
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(8px); }

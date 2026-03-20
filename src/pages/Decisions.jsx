@@ -389,19 +389,19 @@ export default function Decisions({ projectId }) {
                   onClick={() => toggleGroup(group.group_key)}
                   className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    {(() => {
-                      const GroupIcon = GROUP_ICONS[group.group_key]
-                      return GroupIcon ? <GroupIcon size={32} className="text-[var(--color-muted)] shrink-0" /> : null
-                    })()}
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center gap-2.5 shrink-0 mt-0.5">
+                      {(() => {
+                        const GroupIcon = GROUP_ICONS[group.group_key]
+                        return GroupIcon ? <GroupIcon size={32} className="text-[var(--color-muted)]" /> : null
+                      })()}
+                      <span className="text-[13px] font-semibold text-[var(--color-text)] bg-white/50 w-8 h-8 rounded-lg inline-flex items-center justify-center">
+                        {group.items.length}
+                      </span>
+                    </div>
                     <div>
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-[13px] font-semibold text-[var(--color-text)] bg-white/50 w-8 h-8 rounded-lg inline-flex items-center justify-center shrink-0">
-                          {group.items.length}
-                        </span>
-                        <h2 className="text-sm font-medium">{group.group_name}</h2>
-                      </div>
-                      <p className="text-[11px] text-[var(--color-text)] font-light mt-0.5 ml-[42px]">{group.description}</p>
+                      <h2 className="text-sm font-medium mt-1">{group.group_name}</h2>
+                      <p className="text-[11px] text-[var(--color-text)] font-light mt-0.5">{group.description}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

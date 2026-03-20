@@ -1006,7 +1006,7 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
   const cols = specFields.slice(0, 5)
 
   // Column widths: # | Item | Product | Brand | spec cols... | Status
-  const colTemplate = `28px minmax(140px, 2fr) minmax(80px, 1fr) minmax(70px, 0.8fr) ${cols.map(() => 'minmax(60px, 0.8fr)').join(' ')} ${cols.length < 5 ? Array(5 - cols.length).fill('0fr').join(' ') : ''} 72px`
+  const colTemplate = `28px minmax(140px, 2fr) minmax(90px, 1.2fr) minmax(80px, 1fr) ${cols.map(() => 'minmax(80px, 1fr)').join(' ')} ${cols.length < 5 ? Array(5 - cols.length).fill('0fr').join(' ') : ''} 72px`
 
   return (
     <div className="px-2 py-2">
@@ -1047,7 +1047,16 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
               style={{ gridTemplateColumns: colTemplate }}>
               <span className="text-[9px] font-mono text-[var(--color-muted)] text-right tabular-nums">{node.item.display_order || ''}</span>
               <div className="min-w-0">
-                <div className="truncate text-[var(--color-text)]">{name}</div>
+                <div className="break-words text-[var(--color-text)]">
+                  {name}
+                  {(attrs.product_url || attrs.image_url) && (
+                    <a href={attrs.product_url || attrs.image_url} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex ml-1 text-[var(--color-accent)] hover:text-[var(--color-text)] align-middle"
+                      title="View product" onClick={e => e.stopPropagation()}>
+                      <ArrowUpRight size={10} />
+                    </a>
+                  )}
+                </div>
                 {code && <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] uppercase">{code}</span>}
                 {natspecCodes.length > 0 && (
                   <span className="text-[7px] font-mono tracking-wider text-[var(--color-muted)] opacity-70 block">
@@ -1055,10 +1064,10 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
                   </span>
                 )}
               </div>
-              <span className="text-[var(--color-text)] truncate">{sel.model || '\u2014'}</span>
-              <span className="text-[var(--color-muted)] truncate">{sel.manufacturer_name || '\u2014'}</span>
+              <span className="text-[var(--color-text)] break-words">{sel.model || '\u2014'}</span>
+              <span className="text-[var(--color-muted)] break-words">{sel.manufacturer_name || '\u2014'}</span>
               {colValues.map((val, i) => (
-                <span key={i} className="truncate" style={{ color: val ? 'var(--color-text)' : 'var(--color-muted)' }}>
+                <span key={i} className="break-words" style={{ color: val ? 'var(--color-text)' : 'var(--color-muted)' }}>
                   {cols[i].type === 'colour' && val ? (
                     <span className="flex items-center gap-1"><ColourDot colour={val} />{val}</span>
                   ) : (val || '\u2014')}
@@ -1093,12 +1102,12 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
                   <span />
                   <div className="min-w-0 pl-4 border-l-2 border-white/25">
                     <span className="text-[7px] tracking-[0.8px] uppercase text-[var(--color-muted)] font-medium block">{cRole}</span>
-                    <div className="truncate text-[var(--color-text)]">{cSel.title || child.selection_title}</div>
+                    <div className="break-words text-[var(--color-text)]">{cSel.title || child.selection_title}</div>
                   </div>
-                  <span className="text-[var(--color-text)] truncate">{cSel.model || '\u2014'}</span>
-                  <span className="text-[var(--color-muted)] truncate">{cSel.manufacturer_name || '\u2014'}</span>
+                  <span className="text-[var(--color-text)] break-words">{cSel.model || '\u2014'}</span>
+                  <span className="text-[var(--color-muted)] break-words">{cSel.manufacturer_name || '\u2014'}</span>
                   {cColValues.map((val, i) => (
-                    <span key={i} className="truncate" style={{ color: val ? 'var(--color-text)' : 'var(--color-muted)' }}>
+                    <span key={i} className="break-words" style={{ color: val ? 'var(--color-text)' : 'var(--color-muted)' }}>
                       {cols[i].type === 'colour' && val ? (
                         <span className="flex items-center gap-1"><ColourDot colour={val} />{val}</span>
                       ) : (val || '\u2014')}
@@ -1128,7 +1137,7 @@ function SpecCell({ label, value, unit, children }) {
   return (
     <div className="min-w-0">
       {children || (
-        <span className="text-[11px] text-[var(--color-text)] leading-snug block truncate">
+        <span className="text-[11px] text-[var(--color-text)] leading-snug block break-words">
           {value || '\u2014'}
         </span>
       )}
@@ -1177,7 +1186,16 @@ function ItemRow({ item, natspecMap, subCriteriaMap, onApproveItem, onRequestCha
         </div>
         {/* Identity: name + code + natspec */}
         <div className="min-w-0">
-          <div className="font-medium leading-snug text-[var(--color-text)] text-[12px]">{name}</div>
+          <div className="font-medium leading-snug text-[var(--color-text)] text-[12px]">
+            {name}
+            {(attrs.product_url || attrs.image_url) && (
+              <a href={attrs.product_url || attrs.image_url} target="_blank" rel="noopener noreferrer"
+                className="inline-flex ml-1 text-[var(--color-accent)] hover:text-[var(--color-text)] align-middle"
+                title="View product" onClick={e => e.stopPropagation()}>
+                <ArrowUpRight size={11} />
+              </a>
+            )}
+          </div>
           {natspecCodes.length > 0 && (
             <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] opacity-70 block">
               {natspecCodes.map(n => n.ref).join(' · ')}
@@ -1191,7 +1209,7 @@ function ItemRow({ item, natspecMap, subCriteriaMap, onApproveItem, onRequestCha
         {specFields.slice(0, 4).map(f => (
           <SpecCell key={f.key} label={f.label} unit={f.unit} value={attrs[f.key]}>
             {f.type === 'colour' && attrs[f.key] ? (
-              <span className="text-[11px] text-[var(--color-text)] leading-snug flex items-center gap-1 truncate">
+              <span className="text-[11px] text-[var(--color-text)] leading-snug flex items-center gap-1 break-words">
                 <ColourDot colour={attrs[f.key]} />{attrs[f.key]}
               </span>
             ) : undefined}
@@ -1221,7 +1239,7 @@ function ItemRow({ item, natspecMap, subCriteriaMap, onApproveItem, onRequestCha
         {specFields.slice(4, 8).map(f => (
           <SpecCell key={f.key} label={f.label} unit={f.unit} value={attrs[f.key]}>
             {f.type === 'colour' && attrs[f.key] ? (
-              <span className="text-[11px] text-[var(--color-text)] leading-snug flex items-center gap-1 truncate">
+              <span className="text-[11px] text-[var(--color-text)] leading-snug flex items-center gap-1 break-words">
                 <ColourDot colour={attrs[f.key]} />{attrs[f.key]}
               </span>
             ) : undefined}
@@ -1266,7 +1284,7 @@ function CompactChildRow({ item, natspecMap, subCriteriaMap, onApproveItem, onRe
         {/* Identity */}
         <div className="min-w-0">
           <span className="text-[8px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium block">{roleLabel}</span>
-          <div className="font-medium leading-snug text-[var(--color-text)] text-[11px] truncate">{sel.title || item.selection_title}</div>
+          <div className="font-medium leading-snug text-[var(--color-text)] text-[11px] break-words">{sel.title || item.selection_title}</div>
           {code && <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] block">{code}</span>}
         </div>
         {/* Product */}
@@ -1275,7 +1293,7 @@ function CompactChildRow({ item, natspecMap, subCriteriaMap, onApproveItem, onRe
         {specFields.slice(0, 4).map(f => (
           <SpecCell key={f.key} label={f.label} unit={f.unit} value={attrs[f.key]}>
             {f.type === 'colour' && attrs[f.key] ? (
-              <span className="text-[10px] text-[var(--color-text)] leading-snug flex items-center gap-1 truncate">
+              <span className="text-[10px] text-[var(--color-text)] leading-snug flex items-center gap-1 break-words">
                 <ColourDot colour={attrs[f.key]} />{attrs[f.key]}
               </span>
             ) : undefined}

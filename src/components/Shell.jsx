@@ -15,12 +15,12 @@ const baseNavItems = [
   { to: '/', icon: LayoutGrid, label: 'Dashboard' },
   { to: '/selections', icon: ClipboardList, label: 'Schedules' },
   { to: '/documents', icon: FileText, label: 'Documents' },
+  { to: '/admin', icon: Users, label: 'Team' },
   { to: '/messages', icon: MessageCircle, label: 'Messages' },
 ]
 
 const architectNavItems = [
   { to: '/data', icon: Database, label: 'Project Data' },
-  { to: '/admin', icon: Users, label: 'Team' },
 ]
 
 /* ── Hand-drawn north point SVG ── */

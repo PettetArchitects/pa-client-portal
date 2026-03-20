@@ -214,7 +214,7 @@ export default function Shell({ projectName }) {
         </nav>
 
         {/* Main content — transparent so satellite shows through */}
-        <main className="flex-1 p-6 md:p-10 pb-24 md:pb-10 overflow-y-auto bg-transparent">
+        <main className="flex-1 p-6 md:pl-14 md:pr-10 md:pt-10 md:pb-10 pb-24 overflow-y-auto bg-transparent">
           <Outlet />
         </main>
       </div>

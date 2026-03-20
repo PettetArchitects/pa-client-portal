@@ -27,7 +27,7 @@ export default function ProjectHero({ project }) {
         {/* Dark overlay */}
         <div
           className="absolute inset-0"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.35)' }}
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.10)' }}
         />
       </div>
 

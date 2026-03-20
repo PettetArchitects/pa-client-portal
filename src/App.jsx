@@ -188,7 +188,7 @@ const LOGO_REST_Y = 45  // top of logo at rest
 function LoadingScreen() {
   const [quote] = useState(() => LOADING_QUOTES[Math.floor(Math.random() * LOADING_QUOTES.length)])
   const canvasRef = useRef(null)
-  const stateRef = useRef(null)
+  const textShownRef = useRef(false)
   const [textVisible, setTextVisible] = useState(false)
 
   useEffect(() => {
@@ -200,320 +200,291 @@ function LoadingScreen() {
     canvas.height = SCENE_H * dpr
     ctx.scale(dpr, dpr)
 
-    // Logo image
     const logoImg = new Image()
     logoImg.crossOrigin = 'anonymous'
     logoImg.src = 'https://mmfhjlpsumhyxjqhyirw.supabase.co/storage/v1/object/public/image-library/practice/pa-logo.png'
 
-    // State
-    const state = {
-      drops: [],
-      splashes: [],
+    const S = {
+      drops: [], splashes: [],
       puddle: { opacity: 0, scaleX: 0.2 },
-      logo: { y: 0, vy: 0, rotation: 0, vr: 0, scale: 1 },
+      logo: { y: 0, vy: 0, rot: 0, vr: 0, scale: 1 },
       sun: { opacity: 0, scale: 0.3 },
       rays: { opacity: 0 },
-      reflection: { opacity: 0, shimmer: 0 }, // sun reflection off chevron
+      refl: { opacity: 0, shimmer: 0 },
       bg: { warmth: 0 },
-      phase: 'rain',         // 'rain' → 'clearing' → 'sun' → 'breeze'
-      elapsed: 0,
-      nextDrop: 0,
-      wind: 0,
-      windTarget: 0,
-      windTimer: 0,
+      phase: 'rain', // rain → storm → clearing → sun → calm
+      t: 0, nextDrop: 0,
+      wind: 0, windTarget: 0, windTimer: 0,
     }
-    stateRef.current = state
 
-    let lastTime = null
-    let rafId
+    let prev = null, rafId
+
+    /* ── PHASES (7s total) ──
+       0.0–2.2  rain      Heavy rain, drops hit logo, logo shakes
+       2.2–3.8  storm     Wind builds, rain sideways, logo nearly tips over
+       3.8–4.6  clearing  Wind dies, spring snaps logo upright, rain thins
+       4.6–6.0  sun       Warm glow, golden reflection, puddle evaporates, logo lifts
+       6.0–7.0  calm      Gentle bob, everything settled
+    */
 
     function tick(now) {
-      if (!lastTime) lastTime = now
-      const dt = Math.min((now - lastTime) / 1000, 0.05) // cap at 50ms
-      lastTime = now
-      state.elapsed += dt
+      try {
+        if (!prev) prev = now
+        const dt = Math.min((now - prev) / 1000, 0.05)
+        prev = now
+        S.t += dt
 
-      // ── Phase transitions (6s total): rain → wind → sun ──
-      if (state.elapsed > 2.0 && state.phase === 'rain') state.phase = 'wind'
-      if (state.elapsed > 4.0 && state.phase === 'wind') state.phase = 'clearing'
-      if (state.elapsed > 4.5 && state.phase === 'clearing') state.phase = 'sun'
+        // Phase transitions
+        if (S.t > 2.2 && S.phase === 'rain') S.phase = 'storm'
+        if (S.t > 3.8 && S.phase === 'storm') S.phase = 'clearing'
+        if (S.t > 4.6 && S.phase === 'clearing') S.phase = 'sun'
+        if (S.t > 6.0 && S.phase === 'sun') S.phase = 'calm'
 
-      // Show text after 0.3s
-      if (state.elapsed > 0.3 && !textVisible) setTextVisible(true)
+        // Show text once (ref avoids re-render spam)
+        if (S.t > 0.3 && !textShownRef.current) {
+          textShownRef.current = true
+          setTextVisible(true)
+        }
 
-      // ── Wind gusts ──
-      state.windTimer -= dt
-      if (state.windTimer <= 0) {
-        state.windTarget = (Math.random() - 0.5) * WIND_MAX * 2
-        state.windTimer = 0.5 + Math.random() * 1.5
-      }
-      state.wind += (state.windTarget - state.wind) * dt * 3
+        // ── Wind gusts (ambient) ──
+        S.windTimer -= dt
+        if (S.windTimer <= 0) {
+          S.windTarget = (Math.random() - 0.5) * WIND_MAX * 2
+          S.windTimer = 0.5 + Math.random() * 1.5
+        }
+        S.wind += (S.windTarget - S.wind) * dt * 3
 
-      // ── Spawn rain (continues through wind, thins during clearing) ──
-      const rainRate = state.phase === 'rain' ? 0.025 : state.phase === 'wind' ? 0.04 : state.phase === 'clearing' ? 0.15 : 9999
-      if (state.elapsed >= state.nextDrop) {
-        state.drops.push(createDrop(state.elapsed))
-        state.nextDrop = state.elapsed + rainRate + Math.random() * rainRate * 0.5
-      }
+        // ── Storm wind override ──
+        if (S.phase === 'storm') {
+          const st = S.t - 2.2
+          const build = Math.min(st / 1.0, 1)
+          const ease = st > 1.3 ? Math.max(0, 1 - (st - 1.3) / 0.3) : 1
+          const gust = build * ease * 45 + Math.sin(st * 5) * 12 * build
+          S.logo.vr += gust * dt
+          S.logo.vy -= build * ease * 8 * dt
+          S.windTarget = 80 * build * ease // push rain sideways
+        }
 
-      // ── Logo hitbox (chevron shape approximated as box + triangle top) ──
-      const logoY = LOGO_REST_Y + state.logo.y
-      const logoX = LOGO_REST_X
-      const logoCx = logoX + LOGO_SIZE / 2
-      const logoCy = logoY + LOGO_SIZE / 2
-      // Chevron peak is ~30% from top of logo
-      const chevronPeakY = logoY + LOGO_SIZE * 0.18
-      const chevronBaseY = logoY + LOGO_SIZE * 0.55
-      const chevronHalfW = LOGO_SIZE * 0.42
+        // ── Calm gentle bob ──
+        if (S.phase === 'calm') {
+          const ct = S.t - 6.0
+          S.logo.vr += Math.sin(ct * 2.5) * dt * 3
+          S.logo.vy += Math.sin(ct * 1.8) * dt * 2
+        }
 
-      // ── Update drops (Verlet-ish with drag) ──
-      for (const d of state.drops) {
-        if (!d.alive) continue
-        d.vy += GRAVITY * dt
-        d.vy *= (1 - DRAG * d.vy * dt)  // simple quadratic drag
-        d.vx += (state.wind - d.vx) * dt * 2
-        d.y += d.vy * dt
-        d.x += d.vx * dt
+        // ── Spawn rain ──
+        const rate = S.phase === 'rain' ? 0.022 : S.phase === 'storm' ? 0.035 : S.phase === 'clearing' ? 0.12 : 9999
+        if (S.t >= S.nextDrop) {
+          S.drops.push(createDrop(S.t))
+          S.nextDrop = S.t + rate + Math.random() * rate * 0.5
+        }
 
-        // ── Logo collision: chevron roof (triangle) ──
-        // The PA logo chevron runs from peak (centre, chevronPeakY) down to (±chevronHalfW, chevronBaseY)
-        const inLogoX = d.x >= logoX && d.x <= logoX + LOGO_SIZE
-        const inLogoY = d.y >= chevronPeakY && d.y <= logoY + LOGO_SIZE
+        // ── Logo hitbox ──
+        const ly = LOGO_REST_Y + S.logo.y
+        const lx = LOGO_REST_X
+        const cx = lx + LOGO_SIZE / 2
+        const peakY = ly + LOGO_SIZE * 0.18
+        const baseY = ly + LOGO_SIZE * 0.55
+        const halfW = LOGO_SIZE * 0.42
+        const chevH = baseY - peakY
 
-        if (inLogoX && inLogoY) {
-          // Check if drop is inside the chevron triangle (above the base)
-          const relX = d.x - logoCx    // -36 to +36
-          const relY = d.y - chevronPeakY
-          const chevronH = chevronBaseY - chevronPeakY
-          // Triangle: at relY depth, the half-width is (relY / chevronH) * chevronHalfW
-          const halfWAtY = (relY / chevronH) * chevronHalfW
-          const insideChevron = d.y <= chevronBaseY && Math.abs(relX) <= halfWAtY
-          // Or inside the box body below the chevron
-          const insideBody = d.y > chevronBaseY && d.y <= logoY + LOGO_SIZE * 0.85
+        // ── Update drops ──
+        for (const d of S.drops) {
+          if (!d.alive) continue
+          d.vy += GRAVITY * dt
+          d.vy *= Math.max(0, 1 - DRAG * Math.abs(d.vy) * dt)
+          d.vx += (S.wind - d.vx) * dt * 2
+          d.y += d.vy * dt
+          d.x += d.vx * dt
 
-          if (insideChevron || insideBody) {
+          // Logo collision
+          if (d.x >= lx && d.x <= lx + LOGO_SIZE && d.y >= peakY && d.y <= ly + LOGO_SIZE) {
+            const rx = d.x - cx
+            const ry = d.y - peakY
+            const hwAtY = chevH > 0 ? (ry / chevH) * halfW : 0
+            const inChev = d.y <= baseY && Math.abs(rx) <= hwAtY
+            const inBody = d.y > baseY && d.y <= ly + LOGO_SIZE * 0.85
+            if (inChev || inBody) {
+              d.alive = false
+              if (inChev) {
+                S.splashes.push(...createSplash(d.x, d.y, d.vy, rx < 0 ? 'left' : 'right'))
+                S.logo.vy += 2.5 + Math.random() * 2
+                S.logo.vr += rx * 0.08
+              } else {
+                S.splashes.push(...createSplash(d.x, d.y, d.vy, 'down'))
+                S.logo.vy += 1.5
+              }
+              if (Math.random() > 0.6) {
+                S.splashes.push({ x: d.x + (Math.random() - 0.5) * 6, y: ly + LOGO_SIZE,
+                  vx: (Math.random() - 0.5) * 15, vy: 40 + Math.random() * 60,
+                  radius: 1.2 + Math.random(), opacity: 0.25, alive: true })
+              }
+              continue
+            }
+          }
+
+          // Ground collision
+          if (d.y >= GROUND_Y) {
             d.alive = false
+            S.splashes.push(...createSplash(d.x, GROUND_Y, d.vy, 'down'))
+            S.puddle.opacity = Math.min(0.6, S.puddle.opacity + 0.015)
+            S.puddle.scaleX = Math.min(1.6, S.puddle.scaleX + 0.012)
+          }
+          if (d.x < -20 || d.x > SCENE_W + 20) d.alive = false
+        }
 
-            if (insideChevron) {
-              // Splash off the chevron slope — direction depends on which side
-              const slopeDir = relX < 0 ? 'left' : 'right'
-              state.splashes.push(...createSplash(d.x, d.y, d.vy, slopeDir))
-              // Transfer momentum to logo — the chevron channels force downward
-              state.logo.vy += 2.5 + Math.random() * 2
-              // Torque from off-centre hits
-              state.logo.vr += relX * 0.08
-            } else {
-              // Hit the body — straight splash up
-              state.splashes.push(...createSplash(d.x, d.y, d.vy, 'down'))
-              state.logo.vy += 1.5
-            }
+        // ── Splashes ──
+        for (const s of S.splashes) {
+          if (!s.alive) continue
+          s.vy += SPLASH_GRAVITY * dt
+          s.x += s.vx * dt
+          s.y += s.vy * dt
+          s.opacity -= dt * 0.8
+          if (s.opacity <= 0 || s.y > GROUND_Y + 10) s.alive = false
+        }
+        S.drops = S.drops.filter(d => d.alive)
+        S.splashes = S.splashes.filter(s => s.alive)
 
-            // Water runs down logo — spawn a drip below
-            if (Math.random() > 0.6) {
-              state.splashes.push({
-                x: d.x + (Math.random() - 0.5) * 6,
-                y: logoY + LOGO_SIZE,
-                vx: (Math.random() - 0.5) * 15,
-                vy: 40 + Math.random() * 60,
-                radius: 1.2 + Math.random() * 1,
-                opacity: 0.25,
-                alive: true,
-              })
-            }
-            continue
+        // ── Logo spring ──
+        const yTarget = (S.phase === 'sun' || S.phase === 'calm') ? -8 : 0
+        const sTarget = (S.phase === 'sun' || S.phase === 'calm') ? 1.06 : 1
+        S.logo.vy += (-LOGO_SPRING * (S.logo.y - yTarget) - LOGO_DAMPING * S.logo.vy) * dt
+        S.logo.y += S.logo.vy * dt
+        S.logo.scale += (sTarget - S.logo.scale) * dt * 3
+
+        // Rotation spring — soft in storm, snappy in clearing
+        const rk = S.phase === 'storm' ? 3.5 : S.phase === 'clearing' ? 24 : 12
+        const rd = S.phase === 'storm' ? 1.2 : S.phase === 'clearing' ? 5.5 : 2.5
+        S.logo.vr += (-rk * S.logo.rot - rd * S.logo.vr) * dt
+        S.logo.rot += S.logo.vr * dt
+
+        // ── Sun / clearing atmosphere ──
+        if (S.phase === 'sun' || S.phase === 'calm') {
+          S.sun.opacity += (0.85 - S.sun.opacity) * dt * 1.8
+          S.sun.scale += (1.15 - S.sun.scale) * dt * 1.5
+          S.rays.opacity += (0.22 - S.rays.opacity) * dt * 1.5
+          S.bg.warmth += (1 - S.bg.warmth) * dt * 1.2
+          S.refl.opacity += (0.6 - S.refl.opacity) * dt * 2
+          S.refl.shimmer = Math.sin(S.t * 3) * 0.15 + 0.85
+          S.puddle.opacity *= (1 - dt * 0.6)
+        } else if (S.phase === 'clearing') {
+          S.sun.opacity += (0.3 - S.sun.opacity) * dt * 2
+          S.sun.scale += (0.6 - S.sun.scale) * dt * 2
+        }
+
+        // ══════════════ DRAW ══════════════
+        ctx.clearRect(0, 0, SCENE_W, SCENE_H)
+
+        // BG warmth
+        if (S.bg.warmth > 0.01) {
+          ctx.fillStyle = `rgba(255,240,210,${S.bg.warmth * 0.1})`
+          ctx.fillRect(0, 0, SCENE_W, SCENE_H)
+        }
+
+        // Sun glow
+        if (S.sun.opacity > 0.01) {
+          const g = ctx.createRadialGradient(SCENE_W / 2, 20, 0, SCENE_W / 2, 20, 110 * S.sun.scale)
+          g.addColorStop(0, `rgba(255,215,110,${S.sun.opacity * 0.45})`)
+          g.addColorStop(0.35, `rgba(255,195,70,${S.sun.opacity * 0.18})`)
+          g.addColorStop(1, 'transparent')
+          ctx.fillStyle = g
+          ctx.fillRect(0, 0, SCENE_W, SCENE_H)
+        }
+
+        // Sun rays
+        if (S.rays.opacity > 0.01) {
+          ctx.save()
+          ctx.translate(SCENE_W / 2, 60)
+          for (let i = 0; i < 12; i++) {
+            ctx.save()
+            ctx.rotate((i * 30 * Math.PI) / 180)
+            ctx.fillStyle = `rgba(255,205,90,${S.rays.opacity})`
+            ctx.fillRect(-0.5, -30, 1, 30)
+            ctx.restore()
+          }
+          ctx.restore()
+        }
+
+        // Rain
+        ctx.lineCap = 'round'
+        for (const d of S.drops) {
+          ctx.strokeStyle = `rgba(100,130,155,${d.opacity})`
+          ctx.lineWidth = 1.5
+          ctx.beginPath()
+          const a = Math.atan2(d.vy, d.vx)
+          ctx.moveTo(d.x, d.y)
+          ctx.lineTo(d.x - Math.cos(a) * d.length * 0.3, d.y - Math.sin(a) * d.length * 0.3)
+          ctx.stroke()
+        }
+
+        // Splashes
+        for (const s of S.splashes) {
+          ctx.fillStyle = `rgba(100,130,155,${Math.max(0, s.opacity)})`
+          ctx.beginPath()
+          ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2)
+          ctx.fill()
+        }
+
+        // Puddle
+        if (S.puddle.opacity > 0.005) {
+          ctx.fillStyle = `rgba(110,140,170,${S.puddle.opacity * 0.15})`
+          ctx.save()
+          ctx.translate(SCENE_W / 2, GROUND_Y + 5)
+          ctx.scale(S.puddle.scaleX, 1)
+          ctx.beginPath()
+          ctx.ellipse(0, 0, 45, 4, 0, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.restore()
+        }
+
+        // Logo
+        if (logoImg.complete && logoImg.naturalWidth > 0) {
+          const sz = LOGO_SIZE * S.logo.scale
+          const dx = (SCENE_W - sz) / 2
+          const dy = LOGO_REST_Y + S.logo.y
+          ctx.save()
+          ctx.translate(dx + sz / 2, dy + sz / 2)
+          ctx.rotate(S.logo.rot * Math.PI / 180)
+          ctx.shadowColor = 'rgba(0,0,0,0.08)'
+          ctx.shadowBlur = 8
+          ctx.shadowOffsetX = S.logo.rot * 0.3
+          ctx.shadowOffsetY = 2
+          ctx.drawImage(logoImg, -sz / 2, -sz / 2, sz, sz)
+          ctx.restore()
+
+          // Sun reflection on chevron
+          if (S.refl.opacity > 0.02) {
+            ctx.save()
+            ctx.translate(dx + sz / 2, dy + sz * 0.3)
+            ctx.rotate(S.logo.rot * Math.PI / 180)
+            const ra = S.refl.opacity * (S.refl.shimmer || 1) * 0.5
+            const hg = ctx.createRadialGradient(0, -8, 0, 0, -8, sz * 0.35)
+            hg.addColorStop(0, `rgba(255,225,140,${ra})`)
+            hg.addColorStop(0.4, `rgba(255,210,100,${ra * 0.5})`)
+            hg.addColorStop(1, 'transparent')
+            ctx.fillStyle = hg
+            ctx.beginPath()
+            ctx.ellipse(0, -8, sz * 0.3, sz * 0.15, 0, 0, Math.PI * 2)
+            ctx.fill()
+            const sg = ctx.createRadialGradient(2, -12, 0, 2, -12, 6)
+            sg.addColorStop(0, `rgba(255,255,220,${ra * 1.4})`)
+            sg.addColorStop(1, 'transparent')
+            ctx.fillStyle = sg
+            ctx.beginPath()
+            ctx.arc(2, -12, 6, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.restore()
           }
         }
-
-        // Ground collision → splash
-        if (d.y >= GROUND_Y) {
-          d.alive = false
-          state.splashes.push(...createSplash(d.x, GROUND_Y, d.vy, 'down'))
-          // Puddle grows
-          state.puddle.opacity = Math.min(0.6, state.puddle.opacity + 0.015)
-          state.puddle.scaleX = Math.min(1.6, state.puddle.scaleX + 0.012)
-        }
-        // Off-screen
-        if (d.x < -20 || d.x > SCENE_W + 20) d.alive = false
-      }
-
-      // ── Update splashes (ballistic) ──
-      for (const s of state.splashes) {
-        if (!s.alive) continue
-        s.vy += SPLASH_GRAVITY * dt
-        s.x += s.vx * dt
-        s.y += s.vy * dt
-        s.opacity -= dt * 0.8
-        if (s.opacity <= 0 || s.y > GROUND_Y + 10) s.alive = false
-      }
-
-      // Prune dead particles
-      state.drops = state.drops.filter(d => d.alive)
-      state.splashes = state.splashes.filter(s => s.alive)
-
-      // ── Logo spring physics ──
-      const logoTarget = state.phase === 'sun' ? -8 : 0
-      const scaleTarget = state.phase === 'sun' ? 1.06 : 1
-      const springForce = -LOGO_SPRING * (state.logo.y - logoTarget)
-      const dampForce = -LOGO_DAMPING * state.logo.vy
-      state.logo.vy += (springForce + dampForce) * dt
-      state.logo.y += state.logo.vy * dt
-      state.logo.scale += (scaleTarget - state.logo.scale) * dt * 3
-
-      // Rotation spring — soft during wind to allow lean, snaps back during clearing/sun
-      const rotStiffness = state.phase === 'wind' ? 3.5 : state.phase === 'clearing' ? 22 : 12
-      const rotDamping = state.phase === 'wind' ? 1.2 : state.phase === 'clearing' ? 5 : 2.5
-      const rotSpring = -rotStiffness * state.logo.rotation - rotDamping * state.logo.vr
-      state.logo.vr += rotSpring * dt
-      state.logo.rotation += state.logo.vr * dt
-
-      // ── Sun phase ──
-      if (state.phase === 'sun') {
-        state.sun.opacity += (0.85 - state.sun.opacity) * dt * 1.8
-        state.sun.scale += (1.15 - state.sun.scale) * dt * 1.5
-        state.rays.opacity += (0.22 - state.rays.opacity) * dt * 1.5
-        state.bg.warmth += (1 - state.bg.warmth) * dt * 1.2
-        // Sun reflection off chevron — golden highlight
-        state.reflection.opacity += (0.6 - state.reflection.opacity) * dt * 2
-        state.reflection.shimmer = Math.sin(state.elapsed * 3) * 0.15 + 0.85
-        // Puddle evaporates
-        state.puddle.opacity *= (1 - dt * 0.6)
-      } else if (state.phase === 'clearing') {
-        state.sun.opacity += (0.3 - state.sun.opacity) * dt * 2
-        state.sun.scale += (0.6 - state.sun.scale) * dt * 2
-      }
-
-      // ── Wind phase: builds up, almost tips logo over ──
-      if (state.phase === 'wind') {
-        const windTime = state.elapsed - 2.0
-        // Wind builds over 1.5s, peaks, then eases
-        const buildUp = Math.min(windTime / 1.2, 1)
-        const easeOff = windTime > 1.6 ? Math.max(0, 1 - (windTime - 1.6) / 0.4) : 1
-        const gustForce = buildUp * easeOff * 40 + Math.sin(windTime * 5) * 10 * buildUp
-        state.logo.vr += gustForce * dt
-        // Horizontal wind on raindrops
-        state.windTarget = 60 * buildUp * easeOff
-        // Light upward push (wind lift on logo)
-        state.logo.vy -= buildUp * easeOff * 8 * dt
-      }
-
-      // ── Draw ──
-      ctx.clearRect(0, 0, SCENE_W, SCENE_H)
-
-      // Background warmth tint
-      if (state.bg.warmth > 0.01) {
-        ctx.fillStyle = `rgba(255,240,210,${state.bg.warmth * 0.1})`
-        ctx.fillRect(0, 0, SCENE_W, SCENE_H)
-      }
-
-      // Sun glow
-      if (state.sun.opacity > 0.01) {
-        const grd = ctx.createRadialGradient(SCENE_W / 2, 20, 0, SCENE_W / 2, 20, 110 * state.sun.scale)
-        grd.addColorStop(0, `rgba(255,215,110,${state.sun.opacity * 0.45})`)
-        grd.addColorStop(0.35, `rgba(255,195,70,${state.sun.opacity * 0.18})`)
-        grd.addColorStop(1, 'transparent')
-        ctx.fillStyle = grd
-        ctx.fillRect(0, 0, SCENE_W, SCENE_H)
-      }
-
-      // Sun rays
-      if (state.rays.opacity > 0.01) {
-        ctx.save()
-        ctx.translate(SCENE_W / 2, 60)
-        for (let i = 0; i < 12; i++) {
-          ctx.save()
-          ctx.rotate((i * 30 * Math.PI) / 180)
-          ctx.fillStyle = `rgba(255,205,90,${state.rays.opacity})`
-          ctx.fillRect(-0.5, -30, 1, 30)
-          ctx.restore()
-        }
-        ctx.restore()
-      }
-
-      // Rain drops
-      ctx.lineCap = 'round'
-      for (const d of state.drops) {
-        ctx.strokeStyle = `rgba(100,130,155,${d.opacity})`
-        ctx.lineWidth = 1.5
-        ctx.beginPath()
-        const angle = Math.atan2(d.vy, d.vx)
-        const dx = Math.cos(angle) * d.length
-        const dy = Math.sin(angle) * d.length
-        ctx.moveTo(d.x, d.y)
-        ctx.lineTo(d.x - dx * 0.3, d.y - dy * 0.3)
-        ctx.stroke()
-      }
-
-      // Splash particles
-      for (const s of state.splashes) {
-        ctx.fillStyle = `rgba(100,130,155,${Math.max(0, s.opacity)})`
-        ctx.beginPath()
-        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2)
-        ctx.fill()
-      }
-
-      // Puddle
-      if (state.puddle.opacity > 0.005) {
-        ctx.fillStyle = `rgba(110,140,170,${state.puddle.opacity * 0.15})`
-        ctx.save()
-        ctx.translate(SCENE_W / 2, GROUND_Y + 5)
-        ctx.scale(state.puddle.scaleX, 1)
-        ctx.beginPath()
-        ctx.ellipse(0, 0, 45, 4, 0, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.restore()
-      }
-
-      // Logo
-      if (logoImg.complete && logoImg.naturalWidth > 0) {
-        ctx.save()
-        const logoSize = 72 * state.logo.scale
-        const lDrawX = (SCENE_W - logoSize) / 2
-        const lDrawY = LOGO_REST_Y + state.logo.y
-        ctx.translate(lDrawX + logoSize / 2, lDrawY + logoSize / 2)
-        ctx.rotate(state.logo.rotation * Math.PI / 180)
-        // Shadow — shifts with rotation
-        ctx.shadowColor = 'rgba(0,0,0,0.08)'
-        ctx.shadowBlur = 8
-        ctx.shadowOffsetX = state.logo.rotation * 0.3
-        ctx.shadowOffsetY = 2
-        ctx.drawImage(logoImg, -logoSize / 2, -logoSize / 2, logoSize, logoSize)
-        ctx.restore()
-
-        // Sun reflection off chevron — golden specular highlight
-        if (state.reflection.opacity > 0.02) {
-          ctx.save()
-          const rLx = lDrawX + logoSize / 2
-          const rLy = lDrawY + logoSize * 0.3
-          ctx.translate(rLx, rLy)
-          ctx.rotate(state.logo.rotation * Math.PI / 180)
-          const shimmer = state.reflection.shimmer || 1
-          const rAlpha = state.reflection.opacity * shimmer * 0.5
-          // Chevron highlight — elongated ellipse matching the V shape
-          const hlGrad = ctx.createRadialGradient(0, -8, 0, 0, -8, logoSize * 0.35)
-          hlGrad.addColorStop(0, `rgba(255,225,140,${rAlpha})`)
-          hlGrad.addColorStop(0.4, `rgba(255,210,100,${rAlpha * 0.5})`)
-          hlGrad.addColorStop(1, 'transparent')
-          ctx.fillStyle = hlGrad
-          ctx.beginPath()
-          ctx.ellipse(0, -8, logoSize * 0.3, logoSize * 0.15, 0, 0, Math.PI * 2)
-          ctx.fill()
-          // Small specular dot — the bright point
-          const specGrad = ctx.createRadialGradient(2, -12, 0, 2, -12, 6)
-          specGrad.addColorStop(0, `rgba(255,255,220,${rAlpha * 1.4})`)
-          specGrad.addColorStop(1, 'transparent')
-          ctx.fillStyle = specGrad
-          ctx.beginPath()
-          ctx.arc(2, -12, 6, 0, Math.PI * 2)
-          ctx.fill()
-          ctx.restore()
-        }
+      } catch (e) {
+        // Swallow errors so animation doesn't die
+        console.warn('LoadingScreen tick error:', e)
       }
 
       rafId = requestAnimationFrame(tick)
     }
 
     rafId = requestAnimationFrame(tick)
-
     return () => cancelAnimationFrame(rafId)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -521,45 +492,23 @@ function LoadingScreen() {
     <div className="min-h-screen flex items-center justify-center bg-[#E8E8E5]" style={{ overflow: 'hidden' }}>
       <div className="text-center max-w-lg px-6" style={{ position: 'relative', zIndex: 2 }}>
 
-        {/* Physics canvas */}
         <div style={{ width: SCENE_W, height: SCENE_H, margin: '0 auto 40px' }}>
-          <canvas
-            ref={canvasRef}
-            style={{ width: SCENE_W, height: SCENE_H, display: 'block' }}
-          />
+          <canvas ref={canvasRef} style={{ width: SCENE_W, height: SCENE_H, display: 'block' }} />
         </div>
 
-        {/* Practice name */}
-        <p
-          className="text-[11px] tracking-[5px] uppercase text-[var(--color-muted)] font-medium mb-8"
-          style={{
-            opacity: textVisible ? 1 : 0,
-            transform: textVisible ? 'translateY(0)' : 'translateY(10px)',
-            transition: 'opacity 0.8s ease-out, transform 0.8s ease-out',
-          }}
-        >
+        <p className="text-[11px] tracking-[5px] uppercase text-[var(--color-muted)] font-medium mb-8"
+          style={{ opacity: textVisible ? 1 : 0, transform: textVisible ? 'translateY(0)' : 'translateY(10px)',
+            transition: 'opacity 0.8s ease-out, transform 0.8s ease-out' }}>
           Pettet Architects
         </p>
-
-        {/* Quote */}
-        <p
-          className="text-base text-[var(--color-text)] font-light leading-relaxed italic mb-3"
-          style={{
-            opacity: textVisible ? 1 : 0,
-            transform: textVisible ? 'translateY(0)' : 'translateY(10px)',
-            transition: 'opacity 0.8s ease-out 0.3s, transform 0.8s ease-out 0.3s',
-          }}
-        >
+        <p className="text-base text-[var(--color-text)] font-light leading-relaxed italic mb-3"
+          style={{ opacity: textVisible ? 1 : 0, transform: textVisible ? 'translateY(0)' : 'translateY(10px)',
+            transition: 'opacity 0.8s ease-out 0.3s, transform 0.8s ease-out 0.3s' }}>
           "{quote.text}"
         </p>
-        <p
-          className="text-[11px] text-[var(--color-muted)] tracking-[2px] uppercase font-medium"
-          style={{
-            opacity: textVisible ? 1 : 0,
-            transform: textVisible ? 'translateY(0)' : 'translateY(10px)',
-            transition: 'opacity 0.8s ease-out 0.7s, transform 0.8s ease-out 0.7s',
-          }}
-        >
+        <p className="text-[11px] text-[var(--color-muted)] tracking-[2px] uppercase font-medium"
+          style={{ opacity: textVisible ? 1 : 0, transform: textVisible ? 'translateY(0)' : 'translateY(10px)',
+            transition: 'opacity 0.8s ease-out 0.7s, transform 0.8s ease-out 0.7s' }}>
           — {quote.author}
         </p>
       </div>

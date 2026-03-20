@@ -1,8 +1,43 @@
+import { Z } from '../layers'
+
 /**
- * Background layer — clean, no satellite imagery.
- * Body background (#E8E8E5) handles the base colour.
- * This component is kept as a no-op placeholder for future use.
+ * Satellite aerial background with dark overlay.
  */
 export default function ProjectHero({ project }) {
-  return null
+  const satelliteUrl = project?.satellite_image_url
+
+  if (!satelliteUrl) return null
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{ zIndex: Z.SATELLITE, overflow: 'hidden' }}
+      >
+        {/* Satellite image */}
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url(${satelliteUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            animation: 'kenburns 40s ease-in-out infinite alternate',
+          }}
+        />
+        {/* Dark overlay */}
+        <div
+          className="absolute inset-0"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.55)' }}
+        />
+      </div>
+
+      <style>{`
+        @keyframes kenburns {
+          0% { transform: scale(1.0) translate(0%, 0%); }
+          50% { transform: scale(1.12) translate(-1.5%, -1%); }
+          100% { transform: scale(1.06) translate(1%, -1.5%); }
+        }
+      `}</style>
+    </>
+  )
 }

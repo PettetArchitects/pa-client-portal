@@ -1,16 +1,8 @@
-import { Z } from '../layers'
-
 /**
- * Subtle dark tint background layer.
+ * Background layer — clean, no satellite imagery.
+ * Body background (#E8E8E5) handles the base colour.
+ * This component is kept as a no-op placeholder for future use.
  */
 export default function ProjectHero({ project }) {
-  return (
-    <div
-      className="fixed inset-0 pointer-events-none"
-      style={{
-        zIndex: Z.SATELLITE,
-        backgroundColor: 'rgba(0, 0, 0, 0.06)',
-      }}
-    />
-  )
+  return null
 }

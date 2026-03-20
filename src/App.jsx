@@ -139,7 +139,7 @@ function LoadingScreen() {
   }))
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F5F5F3]" style={{ overflow: 'hidden' }}>
+    <div className="min-h-screen flex items-center justify-center bg-[#E8E8E5]" style={{ overflow: 'hidden' }}>
       <div className="text-center max-w-md px-6" style={{ position: 'relative', zIndex: 2 }}>
 
         {/* Logo scene container */}

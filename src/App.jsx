@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { ProjectProvider, useProject } from './hooks/useProject'
@@ -15,13 +15,42 @@ import Profile from './pages/Profile'
 import Admin from './pages/Admin'
 import ProjectData from './pages/ProjectData'
 
+const MIN_LOADING_MS = 3000
+
 function ProtectedApp() {
   const { user, loading: authLoading } = useAuth()
   const { project, loading: projLoading } = useProject()
+  const [minTimePassed, setMinTimePassed] = useState(false)
+  const [satelliteReady, setSatelliteReady] = useState(false)
+  const timerStarted = useRef(false)
 
-  if (authLoading) return <LoadingScreen />
-  if (!user) return <LoginPage />
-  if (projLoading) return <LoadingScreen />
+  // Start the 3-second minimum timer on first mount
+  useEffect(() => {
+    if (!timerStarted.current) {
+      timerStarted.current = true
+      setTimeout(() => setMinTimePassed(true), MIN_LOADING_MS)
+    }
+  }, [])
+
+  // Preload satellite image as soon as project data is available
+  useEffect(() => {
+    const url = project?.satellite_image_url
+    if (!url) {
+      // No satellite image — don't block on it
+      if (project) setSatelliteReady(true)
+      return
+    }
+    const img = new Image()
+    img.onload = () => setSatelliteReady(true)
+    img.onerror = () => setSatelliteReady(true) // Don't block on failure
+    img.src = url
+  }, [project])
+
+  const dataReady = !authLoading && user && !projLoading
+  const showApp = dataReady && minTimePassed && satelliteReady
+
+  if (!user && !authLoading) return <LoginPage />
+  if (!showApp) return <LoadingScreen />
 
   if (!project) {
     return (

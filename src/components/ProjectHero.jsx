@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import { Z } from '../layers'
 
 /**
@@ -7,27 +6,17 @@ import { Z } from '../layers'
  */
 export default function ProjectHero({ project }) {
   const satelliteUrl = project?.satellite_image_url
-  const [loaded, setLoaded] = useState(false)
-
-  useEffect(() => {
-    if (!satelliteUrl) return
-    const img = new Image()
-    img.onload = () => setLoaded(true)
-    img.src = satelliteUrl
-  }, [satelliteUrl])
 
   if (!satelliteUrl) return null
 
   return (
     <>
-      {/* Satellite background */}
+      {/* Satellite background — image already preloaded during loading screen */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
           zIndex: Z.SATELLITE,
           overflow: 'hidden',
-          opacity: loaded ? 1 : 0,
-          transition: 'opacity 1.8s ease-in',
         }}
       >
         <div
@@ -37,7 +26,7 @@ export default function ProjectHero({ project }) {
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             opacity: 0.35,
-            animation: loaded ? 'kenburns 40s ease-in-out infinite alternate' : 'none',
+            animation: 'kenburns 40s ease-in-out infinite alternate',
           }}
         />
         {/* No white overlay — matches PocketArchitect: raw 0.11 opacity */}
@@ -48,8 +37,7 @@ export default function ProjectHero({ project }) {
         className="fixed bottom-3 right-3 pointer-events-none"
         style={{
           zIndex: Z.ATTRIBUTION,
-          opacity: loaded ? 0.4 : 0,
-          transition: 'opacity 2s ease-in',
+          opacity: 0.4,
         }}
       >
         <p className="text-[9px] tracking-[0.5px] text-[var(--color-muted)] font-light">

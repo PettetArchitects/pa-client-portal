@@ -50,7 +50,7 @@ export default function Shell({ projectName }) {
       <ProjectHero project={project} />
 
       {/* Top bar — glass */}
-      <header className="h-14 border-b border-white/20 backdrop-blur-xl bg-white/20 flex items-center px-6 shrink-0" style={{ position: 'relative', zIndex: Z.CHROME }}>
+      <header className="h-14 border-b border-white/20 backdrop-blur-xl bg-white/40 flex items-center px-6 shrink-0" style={{ position: 'relative', zIndex: Z.CHROME }}>
         <div className="flex items-center gap-3 flex-1">
           {/* Logo + practice name */}
           {logoUrl && (
@@ -155,7 +155,7 @@ export default function Shell({ projectName }) {
 
       <div className="flex flex-1" style={{ position: 'relative', zIndex: Z.CHROME }}>
         {/* Sidebar — glass */}
-        <nav className="w-52 border-r border-white/20 backdrop-blur-xl bg-white/20 py-6 px-3 shrink-0 hidden md:flex md:flex-col md:justify-between">
+        <nav className="w-52 border-r border-white/20 backdrop-blur-xl bg-white/40 py-6 px-3 shrink-0 hidden md:flex md:flex-col md:justify-between">
           <div className="space-y-0.5">
             {navItems.map(({ to, icon: Icon, label }) => (
               <NavLink
@@ -195,7 +195,7 @@ export default function Shell({ projectName }) {
         </nav>
 
         {/* Mobile nav — glass */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 backdrop-blur-xl bg-white/20 border-t border-white/20 z-50 flex justify-around py-2 px-4">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 backdrop-blur-xl bg-white/40 border-t border-white/20 z-50 flex justify-around py-2 px-4">
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}

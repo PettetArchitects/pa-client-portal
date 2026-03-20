@@ -134,7 +134,7 @@ export default function Messages({ projectId }) {
                 <div className={`max-w-[75%] ${
                   isOwn
                     ? 'bg-[var(--color-accent)] text-white rounded-2xl rounded-br-md'
-                    : 'backdrop-blur-xl bg-white/20 border border-white/40 rounded-2xl rounded-bl-md'
+                    : 'backdrop-blur-xl bg-white/40 border border-white/40 rounded-2xl rounded-bl-md'
                 } px-4 py-2.5`}>
                   {isFromPractice && (
                     <p className="text-[10px] tracking-[1px] uppercase font-medium mb-1 opacity-60">
@@ -155,7 +155,7 @@ export default function Messages({ projectId }) {
 
       {/* Compose */}
       <form onSubmit={handleSend} className="shrink-0 flex gap-2 items-end">
-        <div className="flex-1 backdrop-blur-xl bg-white/20 rounded-xl border border-white/40 flex items-end">
+        <div className="flex-1 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 flex items-end">
           <textarea
             value={newMsg}
             onChange={e => setNewMsg(e.target.value)}

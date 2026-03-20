@@ -203,9 +203,9 @@ export default function Decisions({ projectId }) {
   if (loading) {
     return (
       <div className="max-w-4xl animate-pulse">
-        <div className="h-8 w-64 bg-white/20 rounded mb-4" />
-        <div className="h-3 w-48 bg-white/20 rounded mb-8" />
-        {[1, 2, 3].map(i => <div key={i} className="h-16 bg-white/20 rounded-xl mb-3" />)}
+        <div className="h-8 w-64 bg-white/40 rounded mb-4" />
+        <div className="h-3 w-48 bg-white/40 rounded mb-8" />
+        {[1, 2, 3].map(i => <div key={i} className="h-16 bg-white/40 rounded-xl mb-3" />)}
       </div>
     )
   }
@@ -227,7 +227,7 @@ export default function Decisions({ projectId }) {
       </div>
 
       {/* Progress bar */}
-      <div className="backdrop-blur-xl bg-white/20 rounded-xl border border-white/40 p-4 mb-6">
+      <div className="backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 p-4 mb-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] tracking-[1.5px] uppercase text-[var(--color-muted)] font-medium">
             Selection progress
@@ -251,18 +251,18 @@ export default function Decisions({ projectId }) {
       </div>
 
       {/* Toolbar — Programa style */}
-      <div className="flex items-center justify-between mb-4 backdrop-blur-xl bg-white/20 rounded-xl border border-white/30 px-2 py-1.5">
+      <div className="flex items-center justify-between mb-4 backdrop-blur-xl bg-white/40 rounded-xl border border-white/30 px-2 py-1.5">
         {/* Left: actions */}
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/20 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/40 transition-colors"
           >
             <FileDown size={13} /> Export to PDF
           </button>
           <button
             onClick={() => setSortBy(s => s === 'title' ? 'status' : s === 'status' ? 'group' : 'title')}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/20 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/40 transition-colors"
             title={`Sort by: ${sortBy}`}
           >
             <ArrowUpDown size={13} />
@@ -271,7 +271,7 @@ export default function Decisions({ projectId }) {
             <button
               onClick={() => setShowFilter(f => !f)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] transition-colors ${
-                filter !== 'all' ? 'text-[var(--color-text)] bg-white/20' : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/20'
+                filter !== 'all' ? 'text-[var(--color-text)] bg-white/40' : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/40'
               }`}
             >
               <SlidersHorizontal size={13} />
@@ -304,7 +304,7 @@ export default function Decisions({ projectId }) {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search"
-              className="pl-7 pr-3 py-1.5 rounded-lg bg-transparent text-[11px] font-light focus:outline-none focus:bg-white/20 transition-colors w-32 placeholder:text-[var(--color-muted)]"
+              className="pl-7 pr-3 py-1.5 rounded-lg bg-transparent text-[11px] font-light focus:outline-none focus:bg-white/40 transition-colors w-32 placeholder:text-[var(--color-muted)]"
             />
           </div>
         </div>
@@ -314,7 +314,7 @@ export default function Decisions({ projectId }) {
           <button
             onClick={() => { setViewMode('schedule'); setFilter(filter) }}
             className={`p-1.5 rounded-lg transition-colors ${
-              viewMode === 'schedule' ? 'bg-white/30 text-[var(--color-text)]' : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/20'
+              viewMode === 'schedule' ? 'bg-white/30 text-[var(--color-text)]' : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/40'
             }`}
             title="List view"
           >
@@ -323,7 +323,7 @@ export default function Decisions({ projectId }) {
           <button
             onClick={() => { setViewMode('review'); setFilter(filter) }}
             className={`p-1.5 rounded-lg transition-colors ${
-              viewMode === 'review' ? 'bg-white/30 text-[var(--color-text)]' : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/20'
+              viewMode === 'review' ? 'bg-white/30 text-[var(--color-text)]' : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/40'
             }`}
             title="Card view"
           >
@@ -349,13 +349,13 @@ export default function Decisions({ projectId }) {
             const hasPending = group.pending > 0 || group.changeReq > 0
 
             return (
-              <div key={group.group_key} className={`backdrop-blur-xl bg-white/20 rounded-xl border overflow-hidden transition-all ${
+              <div key={group.group_key} className={`backdrop-blur-xl bg-white/40 rounded-xl border overflow-hidden transition-all ${
                 hasPending ? 'border-[var(--color-pending)]/30' : 'border-white/40'
               }`}>
                 {/* Group header */}
                 <button
                   onClick={() => toggleGroup(group.group_key)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/20 transition-colors"
+                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     {(() => {
@@ -391,7 +391,7 @@ export default function Decisions({ projectId }) {
                       <Check size={14} className="text-[var(--color-approved)]" />
                     )}
                     {/* Mini progress */}
-                    <div className="w-12 h-1 bg-white/20 rounded-full overflow-hidden">
+                    <div className="w-12 h-1 bg-white/40 rounded-full overflow-hidden">
                       <div className="h-full rounded-full bg-[var(--color-approved)]/60" style={{
                         width: `${((group.approved + group.confirmed) / group.total) * 100}%`
                       }} />
@@ -427,7 +427,7 @@ export default function Decisions({ projectId }) {
       )}
 
       {((viewMode !== 'rooms' && groupedData.length === 0) || (viewMode === 'rooms' && roomGroupedData.length === 0)) && (
-        <div className="text-center py-20 backdrop-blur-xl bg-white/20 rounded-xl border border-white/40">
+        <div className="text-center py-20 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
           <Package size={24} className="mx-auto text-[var(--color-border)] mb-3" />
           <p className="text-sm text-[var(--color-muted)] font-light">
             {filter !== 'all' ? 'No items match this filter.' : 'No selections yet.'}
@@ -514,13 +514,13 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
         const hasPending = room.pending > 0 || room.changeReq > 0
 
         return (
-          <div key={room.roomKey} className={`backdrop-blur-xl bg-white/20 rounded-xl border overflow-hidden transition-all ${
+          <div key={room.roomKey} className={`backdrop-blur-xl bg-white/40 rounded-xl border overflow-hidden transition-all ${
             hasPending ? 'border-[var(--color-pending)]/30' : 'border-white/40'
           }`}>
             {/* Room header */}
             <button
               onClick={() => toggleGroup(room.roomKey)}
-              className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/20 transition-colors"
+              className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-white/50 flex items-center justify-center">
@@ -556,7 +556,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
                 {room.pending === 0 && room.changeReq === 0 && (
                   <Check size={14} className="text-[var(--color-approved)]" />
                 )}
-                <div className="w-12 h-1 bg-white/20 rounded-full overflow-hidden">
+                <div className="w-12 h-1 bg-white/40 rounded-full overflow-hidden">
                   <div className="h-full rounded-full bg-[var(--color-approved)]/60" style={{
                     width: `${room.total > 0 ? ((room.approved + room.confirmed) / room.total) * 100 : 0}%`
                   }} />
@@ -597,7 +597,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
 
                 {/* Approve all for room */}
                 {hasPending && room.pending > 0 && (
-                  <div className="px-5 py-3 border-t border-white/30 bg-white/20">
+                  <div className="px-5 py-3 border-t border-white/30 bg-white/40">
                     <button
                       onClick={() => onApproveRoom(room.roomKey)}
                       className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-accent)] text-white text-xs rounded-lg hover:opacity-90 transition-opacity font-medium"
@@ -630,7 +630,7 @@ function ReviewView({ items, groupKey, hasPending, pendingCount, onApproveItem, 
         ))}
       </div>
       {hasPending && pendingCount > 0 && (
-        <div className="px-5 py-3 border-t border-white/30 bg-white/20">
+        <div className="px-5 py-3 border-t border-white/30 bg-white/40">
           <button
             onClick={() => onApproveGroup(groupKey)}
             className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-accent)] text-white text-xs rounded-lg hover:opacity-90 transition-opacity font-medium"
@@ -656,7 +656,7 @@ function ScheduleView({ items, onApproveItem, onRequestChange }) {
         const isPending = item.approval_status === 'pending'
         const isChangeReq = item.approval_status === 'change_requested'
         return (
-          <div key={item.id} className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/20 transition-colors items-start"
+          <div key={item.id} className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/40 transition-colors items-start"
             style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 100px' }}>
             {/* Thumbnail */}
             <div>

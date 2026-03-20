@@ -190,7 +190,10 @@ export default function Shell({ projectName }) {
                 <><br />ABN {accreditations.abn}</>
               )}
             </p>
-            <p className="text-[9px] text-[var(--color-border)] mt-3 font-light tracking-[0.5px]">Client Portal v0.3.0</p>
+            <p className="text-[9px] text-[var(--color-border)] mt-3 font-light tracking-[0.5px]">
+              Build {typeof __BUILD_HASH__ !== 'undefined' ? __BUILD_HASH__ : 'dev'}{' · '}
+              {typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : ''}
+            </p>
           </div>
         </nav>
 

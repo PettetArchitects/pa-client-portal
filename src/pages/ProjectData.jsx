@@ -128,7 +128,7 @@ export default function ProjectData({ projectId }) {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 mb-6 backdrop-blur-xl bg-white/30 rounded-xl p-1 border border-white/40 overflow-x-auto">
+      <div className="flex gap-1 mb-6 backdrop-blur-xl bg-white/20 rounded-xl p-1 border border-white/40 overflow-x-auto">
         {TABS.map(tab => {
           const Icon = tab.icon
           return (
@@ -158,7 +158,7 @@ export default function ProjectData({ projectId }) {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search selections…"
-              className="w-full pl-9 pr-4 py-2.5 text-xs backdrop-blur-xl bg-white/30 border border-white/40 rounded-xl focus:outline-none focus:border-[var(--color-accent)]/30"
+              className="w-full pl-9 pr-4 py-2.5 text-xs backdrop-blur-xl bg-white/20 border border-white/40 rounded-xl focus:outline-none focus:border-[var(--color-accent)]/30"
             />
           </div>
           {Object.entries(selectionsByKind).map(([kind, items]) => {
@@ -167,7 +167,7 @@ export default function ProjectData({ projectId }) {
               <div key={kind} className="mb-2">
                 <button
                   onClick={() => setExpandedKind(isExpanded ? null : kind)}
-                  className="w-full flex items-center justify-between px-4 py-3 backdrop-blur-xl bg-white/30 rounded-xl border border-white/40 hover:bg-white/50 transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 backdrop-blur-xl bg-white/20 rounded-xl border border-white/40 hover:bg-white/50 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium">{kind}</span>
@@ -178,7 +178,7 @@ export default function ProjectData({ projectId }) {
                 {isExpanded && (
                   <div className="mt-1 space-y-1 pl-2">
                     {items.map(sel => (
-                      <div key={sel.id} className="flex items-start gap-3 px-4 py-2.5 bg-white/30 rounded-lg border border-white/30 text-[11px]">
+                      <div key={sel.id} className="flex items-start gap-3 px-4 py-2.5 bg-white/20 rounded-lg border border-white/30 text-[11px]">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-[var(--color-text)] truncate">{sel.title}</span>
@@ -204,7 +204,7 @@ export default function ProjectData({ projectId }) {
       {activeTab === 'decisions' && (
         <div className="space-y-2">
           {(data.decisions || []).map(d => (
-            <div key={d.id} className="flex items-start gap-3 px-5 py-3 backdrop-blur-xl bg-white/30 rounded-xl border border-white/40">
+            <div key={d.id} className="flex items-start gap-3 px-5 py-3 backdrop-blur-xl bg-white/20 rounded-xl border border-white/40">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium">{d.node_key || d.decision_key || d.id}</span>
@@ -224,7 +224,7 @@ export default function ProjectData({ projectId }) {
       {activeTab === 'risks' && (
         <div className="space-y-2">
           {(data.risks || []).map(r => (
-            <div key={r.id} className={`flex items-start gap-3 px-5 py-3 backdrop-blur-xl bg-white/30 rounded-xl border ${
+            <div key={r.id} className={`flex items-start gap-3 px-5 py-3 backdrop-blur-xl bg-white/20 rounded-xl border ${
               r.severity === 'high' ? 'border-[var(--color-urgent)]/30' :
               r.severity === 'medium' ? 'border-[var(--color-pending)]/30' :
               'border-white/40'
@@ -256,7 +256,7 @@ export default function ProjectData({ projectId }) {
       {activeTab === 'documents' && (
         <div className="space-y-2">
           {(data.documents || []).map(d => (
-            <div key={d.id} className="flex items-start gap-3 px-5 py-3 backdrop-blur-xl bg-white/30 rounded-xl border border-white/40">
+            <div key={d.id} className="flex items-start gap-3 px-5 py-3 backdrop-blur-xl bg-white/20 rounded-xl border border-white/40">
               <FileText size={14} className="text-[var(--color-muted)] shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <span className="text-xs font-medium">{d.document_type || d.title || d.id}</span>
@@ -281,7 +281,7 @@ export default function ProjectData({ projectId }) {
               const changeReq = gItems.filter(p => p.approval_status === 'change_requested').length
 
               return (
-                <div key={g.group_key} className="px-5 py-3 backdrop-blur-xl bg-white/30 rounded-xl border border-white/40">
+                <div key={g.group_key} className="px-5 py-3 backdrop-blur-xl bg-white/20 rounded-xl border border-white/40">
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-xs font-medium">{g.group_name}</span>
@@ -307,7 +307,7 @@ export default function ProjectData({ projectId }) {
 
 function SummaryCard({ label, value, sub, accent }) {
   return (
-    <div className={`backdrop-blur-xl bg-white/30 rounded-xl border px-4 py-3 ${accent ? 'border-[var(--color-urgent)]/30' : 'border-white/40'}`}>
+    <div className={`backdrop-blur-xl bg-white/20 rounded-xl border px-4 py-3 ${accent ? 'border-[var(--color-urgent)]/30' : 'border-white/40'}`}>
       <p className="text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium">{label}</p>
       <p className="text-xl font-light mt-0.5">{value}</p>
       {sub && <p className="text-[10px] text-[var(--color-muted)] mt-0.5">{sub}</p>}

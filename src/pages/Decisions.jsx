@@ -192,9 +192,9 @@ export default function Decisions({ projectId }) {
   if (loading) {
     return (
       <div className="max-w-4xl animate-pulse">
-        <div className="h-8 w-64 bg-white/30 rounded mb-4" />
-        <div className="h-3 w-48 bg-white/30 rounded mb-8" />
-        {[1, 2, 3].map(i => <div key={i} className="h-16 bg-white/30 rounded-xl mb-3" />)}
+        <div className="h-8 w-64 bg-white/20 rounded mb-4" />
+        <div className="h-3 w-48 bg-white/20 rounded mb-8" />
+        {[1, 2, 3].map(i => <div key={i} className="h-16 bg-white/20 rounded-xl mb-3" />)}
       </div>
     )
   }
@@ -216,7 +216,7 @@ export default function Decisions({ projectId }) {
       </div>
 
       {/* Progress bar */}
-      <div className="backdrop-blur-xl bg-white/30 rounded-xl border border-white/40 p-4 mb-6">
+      <div className="backdrop-blur-xl bg-white/20 rounded-xl border border-white/40 p-4 mb-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] tracking-[1.5px] uppercase text-[var(--color-muted)] font-medium">
             Selection progress
@@ -241,7 +241,7 @@ export default function Decisions({ projectId }) {
 
       {/* View mode + filter controls */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <div className="flex gap-1 backdrop-blur-xl bg-white/30 rounded-lg p-0.5 border border-white/40">
+        <div className="flex gap-1 backdrop-blur-xl bg-white/20 rounded-lg p-0.5 border border-white/40">
           {[
             { key: 'schedule', label: 'Schedule', icon: Grid3X3 },
             { key: 'review', label: 'Review' },
@@ -301,13 +301,13 @@ export default function Decisions({ projectId }) {
             const hasPending = group.pending > 0 || group.changeReq > 0
 
             return (
-              <div key={group.group_key} className={`backdrop-blur-xl bg-white/30 rounded-xl border overflow-hidden transition-all ${
+              <div key={group.group_key} className={`backdrop-blur-xl bg-white/20 rounded-xl border overflow-hidden transition-all ${
                 hasPending ? 'border-[var(--color-pending)]/30' : 'border-white/40'
               }`}>
                 {/* Group header */}
                 <button
                   onClick={() => toggleGroup(group.group_key)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/30 transition-colors"
+                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/20 transition-colors"
                 >
                   <div>
                     <div className="flex items-center gap-2">
@@ -337,7 +337,7 @@ export default function Decisions({ projectId }) {
                       <Check size={14} className="text-[var(--color-approved)]" />
                     )}
                     {/* Mini progress */}
-                    <div className="w-12 h-1 bg-white/30 rounded-full overflow-hidden">
+                    <div className="w-12 h-1 bg-white/20 rounded-full overflow-hidden">
                       <div className="h-full rounded-full bg-[var(--color-approved)]/60" style={{
                         width: `${((group.approved + group.confirmed) / group.total) * 100}%`
                       }} />
@@ -373,7 +373,7 @@ export default function Decisions({ projectId }) {
       )}
 
       {((viewMode !== 'rooms' && groupedData.length === 0) || (viewMode === 'rooms' && roomGroupedData.length === 0)) && (
-        <div className="text-center py-20 backdrop-blur-xl bg-white/30 rounded-xl border border-white/40">
+        <div className="text-center py-20 backdrop-blur-xl bg-white/20 rounded-xl border border-white/40">
           <Package size={24} className="mx-auto text-[var(--color-border)] mb-3" />
           <p className="text-sm text-[var(--color-muted)] font-light">
             {filter !== 'all' ? 'No items match this filter.' : 'No selections yet.'}
@@ -460,13 +460,13 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
         const hasPending = room.pending > 0 || room.changeReq > 0
 
         return (
-          <div key={room.roomKey} className={`backdrop-blur-xl bg-white/30 rounded-xl border overflow-hidden transition-all ${
+          <div key={room.roomKey} className={`backdrop-blur-xl bg-white/20 rounded-xl border overflow-hidden transition-all ${
             hasPending ? 'border-[var(--color-pending)]/30' : 'border-white/40'
           }`}>
             {/* Room header */}
             <button
               onClick={() => toggleGroup(room.roomKey)}
-              className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/30 transition-colors"
+              className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/20 transition-colors"
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-white/50 flex items-center justify-center">
@@ -502,7 +502,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
                 {room.pending === 0 && room.changeReq === 0 && (
                   <Check size={14} className="text-[var(--color-approved)]" />
                 )}
-                <div className="w-12 h-1 bg-white/30 rounded-full overflow-hidden">
+                <div className="w-12 h-1 bg-white/20 rounded-full overflow-hidden">
                   <div className="h-full rounded-full bg-[var(--color-approved)]/60" style={{
                     width: `${room.total > 0 ? ((room.approved + room.confirmed) / room.total) * 100 : 0}%`
                   }} />

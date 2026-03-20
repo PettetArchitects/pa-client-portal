@@ -103,9 +103,9 @@ export default function Documents({ projectId }) {
   if (loading) {
     return (
       <div className="max-w-4xl animate-pulse">
-        <div className="h-8 w-48 bg-white/30 rounded mb-4" />
-        <div className="h-3 w-64 bg-white/30 rounded mb-8" />
-        {[1, 2, 3].map(i => <div key={i} className="h-16 bg-white/30 rounded-xl mb-3" />)}
+        <div className="h-8 w-48 bg-white/20 rounded mb-4" />
+        <div className="h-3 w-64 bg-white/20 rounded mb-8" />
+        {[1, 2, 3].map(i => <div key={i} className="h-16 bg-white/20 rounded-xl mb-3" />)}
       </div>
     )
   }
@@ -121,7 +121,7 @@ export default function Documents({ projectId }) {
 
       {/* Tab bar */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <div className="flex gap-1 backdrop-blur-xl bg-white/30 rounded-lg p-0.5 border border-white/40">
+        <div className="flex gap-1 backdrop-blur-xl bg-white/20 rounded-lg p-0.5 border border-white/40">
           {[
             { key: 'schedules', label: 'Schedules', icon: Grid3X3, count: totalScheduleItems },
             { key: 'documents', label: 'Documents', icon: FileText, count: docs.length },
@@ -138,7 +138,7 @@ export default function Documents({ projectId }) {
               <t.icon size={11} />
               {t.label}
               <span className={`text-[9px] px-1 py-0.5 rounded ${
-                activeTab === t.key ? 'bg-white/20' : 'bg-white/30'
+                activeTab === t.key ? 'bg-white/20' : 'bg-white/20'
               }`}>
                 {t.count}
               </span>
@@ -154,7 +154,7 @@ export default function Documents({ projectId }) {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={activeTab === 'schedules' ? 'Search selections…' : 'Search documents…'}
-            className="pl-7 pr-3 py-1.5 rounded-lg border border-white/40 backdrop-blur-xl bg-white/30 text-[11px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors w-48"
+            className="pl-7 pr-3 py-1.5 rounded-lg border border-white/40 backdrop-blur-xl bg-white/20 text-[11px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors w-48"
           />
         </div>
       </div>
@@ -165,10 +165,10 @@ export default function Documents({ projectId }) {
           {groupedSchedule.map(group => {
             const isExpanded = expandedGroups.has(group.group_key)
             return (
-              <div key={group.group_key} className="backdrop-blur-xl bg-white/30 rounded-xl border border-white/40 overflow-hidden">
+              <div key={group.group_key} className="backdrop-blur-xl bg-white/20 rounded-xl border border-white/40 overflow-hidden">
                 <button
                   onClick={() => toggleGroup(group.group_key)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/30 transition-colors"
+                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/20 transition-colors"
                 >
                   <div>
                     <div className="flex items-center gap-2">
@@ -243,7 +243,7 @@ export default function Documents({ projectId }) {
                               <span className={`text-[9px] px-1.5 py-0.5 rounded ${
                                 item.approval_status === 'locked' ? 'bg-[var(--color-confirmed)]/10 text-[var(--color-confirmed)]' :
                                 item.approval_status === 'proposed' ? 'bg-[var(--color-pending)]/10 text-[var(--color-pending)]' :
-                                'bg-white/30 text-[var(--color-muted)]'
+                                'bg-white/20 text-[var(--color-muted)]'
                               }`}>
                                 {STATUS_LABELS[item.approval_status] || item.approval_status || '—'}
                               </span>
@@ -259,7 +259,7 @@ export default function Documents({ projectId }) {
           })}
 
           {groupedSchedule.length === 0 && (
-            <div className="text-center py-20 backdrop-blur-xl bg-white/30 rounded-xl border border-white/40">
+            <div className="text-center py-20 backdrop-blur-xl bg-white/20 rounded-xl border border-white/40">
               <ListChecks size={24} className="mx-auto text-[var(--color-border)] mb-3" />
               <p className="text-sm text-[var(--color-muted)] font-light">
                 {search ? 'No items match your search.' : 'No schedule data yet.'}
@@ -279,7 +279,7 @@ export default function Documents({ projectId }) {
           ))}
 
           {filteredDocs.length === 0 && (
-            <div className="text-center py-20 backdrop-blur-xl bg-white/30 rounded-xl border border-white/40">
+            <div className="text-center py-20 backdrop-blur-xl bg-white/20 rounded-xl border border-white/40">
               <FileText size={24} className="mx-auto text-[var(--color-border)] mb-3" />
               <p className="text-sm text-[var(--color-muted)] font-light">
                 {search ? 'No documents match your search.' : 'No documents shared yet.'}
@@ -314,7 +314,7 @@ function DocumentRow({ doc, onView }) {
   const typeLabel = (pd.doc_type || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
   return (
-    <div className={`flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-white/30 border transition-all hover:shadow-sm ${
+    <div className={`flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-white/20 border transition-all hover:shadow-sm ${
       isNew ? 'border-[var(--color-pending)]/40 border-l-[3px]' : 'border-white/40'
     }`}>
       <div className="w-9 h-9 rounded-lg bg-white/50 flex items-center justify-center shrink-0">
@@ -331,7 +331,7 @@ function DocumentRow({ doc, onView }) {
           )}
         </div>
         <div className="flex items-center gap-3 mt-0.5">
-          {typeLabel && <span className="text-[10px] text-[var(--color-muted)] bg-white/30 px-1.5 py-0.5 rounded">{typeLabel}</span>}
+          {typeLabel && <span className="text-[10px] text-[var(--color-muted)] bg-white/20 px-1.5 py-0.5 rounded">{typeLabel}</span>}
           {pd.version && <span className="text-xs text-[var(--color-muted)] font-light">{pd.version}</span>}
           {pd.file_size_bytes && <span className="text-xs text-[var(--color-muted)] font-light">{formatSize(pd.file_size_bytes)}</span>}
           <span className="text-xs text-[var(--color-muted)] font-light flex items-center gap-1">

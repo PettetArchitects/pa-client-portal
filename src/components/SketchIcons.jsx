@@ -257,7 +257,192 @@ export function IconGeneral({ size = 16, className = '' }) {
   )
 }
 
+// ── Room Icons ──
+
+export function IconRoomKitchen({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      <path d="M4 20h16" {...s} />
+      <path d="M4 14h16v6H4z" {...s} />
+      <circle cx="8" cy="17" r="1.2" {...s} />
+      <circle cx="12" cy="17" r="1.2" {...s} />
+      <path d="M9 8c0-1.5 1-2.5 1-3.5" {...s} />
+      <path d="M12 7c0-1.5 1-2 1-3" {...s} />
+    </svg>
+  )
+}
+
+export function IconRoomLiving({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      {/* Sofa side profile */}
+      <path d="M4 16h16" {...s} />
+      <path d="M5 16v-4c0-1 .8-2 2-2h10c1.2 0 2 1 2 2v4" {...s} />
+      <path d="M3 12v4c0 .5.5 1 1 1h1" {...s} />
+      <path d="M21 12v4c0 .5-.5 1-1 1h-1" {...s} />
+      <path d="M5 10V8" {...s} />
+      <path d="M19 10V8" {...s} />
+      {/* Cushion lines */}
+      <path d="M9 12v2" {...s} />
+      <path d="M15 12v2" {...s} />
+    </svg>
+  )
+}
+
+export function IconRoomDining({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      {/* Table + chairs */}
+      <path d="M6 12h12" {...s} />
+      <path d="M7 12v7" {...s} />
+      <path d="M17 12v7" {...s} />
+      {/* Pendant above */}
+      <path d="M12 3v4" {...s} />
+      <path d="M9.5 7h5l-.5 2h-4l-.5-2z" {...s} />
+    </svg>
+  )
+}
+
+export function IconRoomBedroom({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      {/* Bed side view */}
+      <path d="M3 17h18" {...s} />
+      <path d="M4 17v-4h16v4" {...s} />
+      <path d="M4 13v-2c0-.5.5-1 1-1h3c.5 0 1 .5 1 1v2" {...s} />
+      <path d="M4 13h16" {...s} />
+      {/* Headboard */}
+      <path d="M4 11V8c0-.5.3-1 .8-1h2.4c.5 0 .8.5.8 1v3" {...s} />
+      {/* Legs */}
+      <path d="M4 17v2" {...s} />
+      <path d="M20 17v2" {...s} />
+    </svg>
+  )
+}
+
+export function IconRoomStudy({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      {/* Desk + lamp */}
+      <path d="M4 16h16" {...s} />
+      <path d="M6 16v4" {...s} />
+      <path d="M18 16v4" {...s} />
+      {/* Desk lamp */}
+      <path d="M15 16v-3l3-4" {...s} />
+      <path d="M16.5 9h3" {...s} />
+      {/* Book */}
+      <rect x="7" y="12" width="4" height="3" rx="0.3" {...s} />
+    </svg>
+  )
+}
+
+export function IconRoomBathroom({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      <path d="M4 12h16" {...s} />
+      <path d="M5 12v4c0 2 2 4 7 4s7-2 7-4v-4" {...s} />
+      <path d="M4 12V7c0-1.5 1.5-3 3-3s3 1.5 3 3" {...s} />
+      <path d="M9 7h2" {...s} />
+    </svg>
+  )
+}
+
+export function IconRoomLaundry({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      {/* Washing machine front */}
+      <rect x="5" y="4" width="14" height="16" rx="1.5" {...s} />
+      <circle cx="12" cy="13" r="4.5" {...s} />
+      <circle cx="12" cy="13" r="1.5" {...s} />
+      <path d="M8 6.5h2" {...s} />
+      <circle cx="16" cy="6.5" r="0.6" {...s} />
+    </svg>
+  )
+}
+
+export function IconRoomEntry({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      {/* Archway / doorframe */}
+      <path d="M5 20V6c0-1.5 3-3 7-3s7 1.5 7 3v14" {...s} />
+      <path d="M3 20h18" {...s} />
+      {/* Welcome mat */}
+      <path d="M8 20v1h8v-1" {...s} />
+    </svg>
+  )
+}
+
+export function IconRoomPantry({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      {/* Shelf unit with jars */}
+      <rect x="4" y="3" width="16" height="18" rx="0.5" {...s} />
+      <path d="M4 9h16" {...s} />
+      <path d="M4 15h16" {...s} />
+      {/* Jars on shelves */}
+      <rect x="6" y="5" width="3" height="3" rx="0.5" {...s} />
+      <rect x="11" y="5" width="3" height="3" rx="0.5" {...s} />
+      <rect x="7" y="11" width="3" height="3" rx="0.5" {...s} />
+      <rect x="13" y="11" width="3" height="3" rx="0.5" {...s} />
+    </svg>
+  )
+}
+
+export function IconRoomGarage({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      {/* Garage door */}
+      <path d="M3 20V8l9-5 9 5v12" {...s} />
+      <path d="M5 20V10h14v10" {...s} />
+      <path d="M5 13h14" {...s} />
+      <path d="M5 16h14" {...s} />
+    </svg>
+  )
+}
+
+export function IconRoomAlfresco({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      {/* Pergola beams + outdoor */}
+      <path d="M3 8h18" {...s} />
+      <path d="M5 8V20" {...s} />
+      <path d="M19 8V20" {...s} />
+      <path d="M3 11h18" {...s} />
+      {/* Sun */}
+      <circle cx="16" cy="4.5" r="1.5" {...s} />
+    </svg>
+  )
+}
+
+export function IconRoomGeneric({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      <path d="M3.5 11.5L12 4l8.5 7.5" {...s} />
+      <path d="M5 10.5v9.5h14v-9.5" {...s} />
+    </svg>
+  )
+}
+
 // ── Lookup maps ──
+
+export const ROOM_ICONS = {
+  kitchen: IconRoomKitchen,
+  living: IconRoomLiving,
+  dining: IconRoomDining,
+  bedroom_01: IconRoomBedroom,
+  bedroom_02: IconRoomBedroom,
+  study: IconRoomStudy,
+  bathroom: IconRoomBathroom,
+  ensuite: IconRoomBathroom,
+  laundry: IconRoomLaundry,
+  entry: IconRoomEntry,
+  pantry: IconRoomPantry,
+  linen: IconRoomGeneric,
+  alfresco: IconRoomAlfresco,
+  garage: IconRoomGarage,
+  exterior: IconExterior,
+  whole_house: IconRoomGeneric,
+}
 
 export const GROUP_ICONS = {
   exterior: IconExterior,

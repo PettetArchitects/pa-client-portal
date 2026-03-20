@@ -4,10 +4,10 @@ import { useProject } from '../hooks/useProject'
 import {
   Check, ChevronDown, ChevronRight, MessageSquare, ArrowUpRight,
   ThumbsUp, Eye, EyeOff, Package, Palette, Wrench, AlertCircle,
-  Home, Grid3X3, FileDown, ArrowUpDown, SlidersHorizontal, Search,
-  List, LayoutGrid, Map,
+  Home, Grid3X3, FileDown, SlidersHorizontal, Search,
+  List, Map,
 } from 'lucide-react'
-import { GROUP_ICONS } from '../components/SketchIcons'
+import { GROUP_ICONS, ROOM_ICONS } from '../components/SketchIcons'
 import InteractivePlan from '../components/InteractivePlan'
 
 const KIND_ICONS = {
@@ -76,7 +76,7 @@ export default function Decisions({ projectId }) {
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState('group') // 'group', 'title', 'status'
   const [showFilter, setShowFilter] = useState(false)
-  const [showSort, setShowSort] = useState(false)
+  // showSort removed — inline segmented buttons now
 
   useEffect(() => {
     if (!projectId) return
@@ -261,34 +261,24 @@ export default function Decisions({ projectId }) {
           >
             <FileDown size={13} /> Export to PDF
           </button>
-          <div className="relative">
-            <button
-              onClick={() => setShowSort(s => !s)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/40 transition-colors"
-              title={`Sort by: ${sortBy}`}
-            >
-              <ArrowUpDown size={13} />
-              <span className="hidden sm:inline">{sortBy === 'group' ? 'Schedule' : sortBy === 'room' ? 'Room' : sortBy === 'component' ? 'Component' : sortBy}</span>
-            </button>
-            {showSort && (
-              <div className="absolute top-full left-0 mt-1 backdrop-blur-2xl bg-white/95 rounded-lg border border-white/60 shadow-xl py-1 z-50 min-w-[150px]">
-                {[
-                  { key: 'group', label: 'Schedule type' },
-                  { key: 'room', label: 'Room' },
-                  { key: 'component', label: 'Component' },
-                ].map(s => (
-                  <button
-                    key={s.key}
-                    onClick={() => { setSortBy(s.key); setShowSort(false) }}
-                    className={`w-full text-left px-3 py-1.5 text-[11px] transition-colors ${
-                      sortBy === s.key ? 'text-[var(--color-text)] font-medium bg-white/50' : 'text-[var(--color-muted)] hover:bg-white/30'
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="flex items-center bg-white/30 rounded-lg p-0.5">
+            {[
+              { key: 'group', label: 'Schedule', icon: Grid3X3 },
+              { key: 'room', label: 'Room', icon: Home },
+            ].map(s => (
+              <button
+                key={s.key}
+                onClick={() => setSortBy(s.key)}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] transition-all ${
+                  sortBy === s.key
+                    ? 'bg-white/70 text-[var(--color-text)] font-medium shadow-sm'
+                    : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
+                }`}
+              >
+                <s.icon size={12} />
+                <span className="hidden sm:inline">{s.label}</span>
+              </button>
+            ))}
           </div>
           <div className="relative">
             <button
@@ -542,19 +532,20 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
               onClick={() => toggleGroup(room.roomKey)}
               className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-white/50 flex items-center justify-center">
-                  <Home size={14} className="text-[var(--color-muted)]" />
+              <div className="flex items-start gap-3">
+                <div className="flex items-center gap-2.5 shrink-0 mt-0.5">
+                  {(() => {
+                    const RoomIcon = ROOM_ICONS[room.roomKey] || ROOM_ICONS.whole_house
+                    return <RoomIcon size={32} className="text-[var(--color-muted)]" />
+                  })()}
+                  <span className="text-[13px] font-semibold text-[var(--color-text)] bg-white/50 w-8 h-8 rounded-lg inline-flex items-center justify-center">
+                    {room.totalVisible}
+                  </span>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-medium">{room.label}</h2>
-                    <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded">
-                      {room.totalVisible}
-                    </span>
-                  </div>
+                  <h2 className="text-sm font-medium mt-1">{room.label}</h2>
                   <p className="text-[10px] text-[var(--color-text)] font-light mt-0.5">
-                    {room.elements.map(e => e.label).join(' \u00b7 ')}
+                    {room.elements.map(e => e.label).join(' · ')}
                   </p>
                 </div>
               </div>

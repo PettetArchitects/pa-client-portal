@@ -33,29 +33,43 @@ function ProtectedApp() {
     }
   }, [])
 
-  // Preload satellite image as soon as project data is available
+  // Preload satellite image — stored URL first (instant), ESRI fallback only if needed
   useEffect(() => {
     if (!project) return
-    // Build the same ESRI URL that ProjectHero uses
-    const lat = parseFloat(project.latitude)
-    const lng = parseFloat(project.longitude)
-    if (!lat || !lng) {
-      // Fall back to stored URL or skip
-      const url = project.satellite_image_url
-      if (!url) { setSatelliteReady(true); return }
-      const img = new Image()
-      img.onload = () => setSatelliteReady(true)
-      img.onerror = () => setSatelliteReady(true)
-      img.src = url
+    const storedUrl = project.satellite_image_url
+    const hasCoords = project.latitude && project.longitude
+
+    if (!storedUrl && !hasCoords) {
+      setSatelliteReady(true)
       return
     }
+
+    // Try stored image first (fast, already in Supabase storage)
+    const primaryUrl = storedUrl || null
+    const lat = parseFloat(project.latitude)
+    const lng = parseFloat(project.longitude)
     const dLng = 0.004
     const dLat = dLng * (1080 / 1920) * 1.2
-    const bbox = [lng - dLng, lat - dLat, lng + dLng, lat + dLat].join(',')
-    const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bbox}&bboxSR=4326&size=1920,1080&imageSR=4326&format=jpg&f=image`
+    const esriUrl = hasCoords
+      ? `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${[lng - dLng, lat - dLat, lng + dLng, lat + dLat].join(',')}&bboxSR=4326&size=1920,1080&imageSR=4326&format=jpg&f=image`
+      : null
+
+    const url = primaryUrl || esriUrl
+    if (!url) { setSatelliteReady(true); return }
+
     const img = new Image()
     img.onload = () => setSatelliteReady(true)
-    img.onerror = () => setSatelliteReady(true)
+    img.onerror = () => {
+      // Primary failed — try fallback
+      if (primaryUrl && esriUrl) {
+        const fb = new Image()
+        fb.onload = () => setSatelliteReady(true)
+        fb.onerror = () => setSatelliteReady(true)
+        fb.src = esriUrl
+      } else {
+        setSatelliteReady(true)
+      }
+    }
     img.src = url
   }, [project])
 

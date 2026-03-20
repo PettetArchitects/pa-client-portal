@@ -3,11 +3,11 @@ import { Z } from '../layers'
 
 /**
  * Satellite aerial background.
- * Prefers dynamic ESRI World Imagery tile from lat/long (sharp, correct position).
- * Falls back to stored satellite_image_url if no coordinates or ESRI fails.
- * Uses Image() preload so we detect failures and can swap URLs.
+ * Priority: stored satellite_image_url (instant, no external call)
+ *         → ESRI dynamic tile (only if no stored image)
+ * Image is preloaded with JS to detect failures before setting CSS.
  */
-function buildSatelliteUrl(lat, lng, width = 1920, height = 1080) {
+function buildEsriUrl(lat, lng, width = 1920, height = 1080) {
   const latF = parseFloat(lat)
   const lngF = parseFloat(lng)
   const dLng = 0.004
@@ -16,44 +16,51 @@ function buildSatelliteUrl(lat, lng, width = 1920, height = 1080) {
   return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bbox}&bboxSR=4326&size=${width},${height}&imageSR=4326&format=jpg&f=image`
 }
 
+function preloadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(url)
+    img.onerror = reject
+    img.src = url
+  })
+}
+
 export default function ProjectHero({ project }) {
   const [resolvedUrl, setResolvedUrl] = useState(null)
 
   useEffect(() => {
     if (!project) { setResolvedUrl(null); return }
 
+    let cancelled = false
+    const storedUrl = project.satellite_image_url || null
     const hasCoords = project.latitude && project.longitude
-    const esriUrl = hasCoords ? buildSatelliteUrl(project.latitude, project.longitude) : null
-    const fallbackUrl = project.satellite_image_url || null
+    const esriUrl = hasCoords ? buildEsriUrl(project.latitude, project.longitude) : null
 
-    if (!esriUrl && !fallbackUrl) {
-      setResolvedUrl(null)
-      return
-    }
-
-    // Try ESRI first, fall back to stored URL
-    if (esriUrl) {
-      const img = new Image()
-      img.onload = () => setResolvedUrl(esriUrl)
-      img.onerror = () => {
-        // ESRI failed — try fallback
-        if (fallbackUrl) {
-          const fb = new Image()
-          fb.onload = () => setResolvedUrl(fallbackUrl)
-          fb.onerror = () => setResolvedUrl(null)
-          fb.src = fallbackUrl
-        } else {
-          setResolvedUrl(null)
-        }
+    async function resolve() {
+      // 1. Try stored image first (fast, no external API call)
+      if (storedUrl) {
+        try {
+          const url = await preloadImage(storedUrl)
+          if (!cancelled) setResolvedUrl(url)
+          return
+        } catch { /* stored image failed, try ESRI */ }
       }
-      img.src = esriUrl
-    } else if (fallbackUrl) {
-      const img = new Image()
-      img.onload = () => setResolvedUrl(fallbackUrl)
-      img.onerror = () => setResolvedUrl(null)
-      img.src = fallbackUrl
+
+      // 2. Fall back to ESRI dynamic tile
+      if (esriUrl) {
+        try {
+          const url = await preloadImage(esriUrl)
+          if (!cancelled) setResolvedUrl(url)
+          return
+        } catch { /* ESRI also failed */ }
+      }
+
+      if (!cancelled) setResolvedUrl(null)
     }
-  }, [project?.id, project?.latitude, project?.longitude, project?.satellite_image_url])
+
+    resolve()
+    return () => { cancelled = true }
+  }, [project?.id, project?.satellite_image_url, project?.latitude, project?.longitude])
 
   if (!resolvedUrl) return null
 
@@ -63,7 +70,6 @@ export default function ProjectHero({ project }) {
         className="fixed inset-0 pointer-events-none"
         style={{ zIndex: Z.SATELLITE, overflow: 'hidden' }}
       >
-        {/* Satellite image */}
         <div
           className="absolute inset-0"
           style={{
@@ -73,7 +79,6 @@ export default function ProjectHero({ project }) {
             animation: 'kenburns 40s ease-in-out infinite alternate',
           }}
         />
-        {/* Dark overlay */}
         <div
           className="absolute inset-0"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.10)' }}

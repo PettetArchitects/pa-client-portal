@@ -618,7 +618,9 @@ function ScheduleView({ items }) {
                 <img src={item.portal_image_url} alt="" style={{
                   width: 24, height: 24, borderRadius: 5, objectFit: 'cover',
                   border: '1px solid rgba(0,0,0,0.06)',
-                }} loading="lazy" />
+                }} loading="lazy"
+                onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
+                />
               ) : colourBg ? (
                 <div style={{
                   width: 24, height: 24, borderRadius: 5,
@@ -699,6 +701,12 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
               border: '1px solid rgba(0,0,0,0.06)',
             }}
             loading="lazy"
+            onError={e => {
+              e.target.style.display = 'none'
+              e.target.parentElement.innerHTML = colourBg
+                ? `<div style="width:56px;height:56px;border-radius:10px;background:${colourBg};border:1px solid rgba(0,0,0,0.06)"></div>`
+                : `<div style="width:56px;height:56px;border-radius:10px;background:rgba(255,255,255,0.6);border:1px solid rgba(0,0,0,0.04);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-border)" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg></div>`
+            }}
           />
         ) : colourBg ? (
           <div style={{

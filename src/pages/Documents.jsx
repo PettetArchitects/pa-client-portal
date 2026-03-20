@@ -1,37 +1,65 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { FileText, Download, Eye, Clock, Search, Folder } from 'lucide-react'
+import {
+  FileText, Eye, Clock, Search, Folder, ChevronDown, ChevronRight,
+  Package, Palette, Wrench, Grid3X3, ListChecks
+} from 'lucide-react'
+
+const KIND_ICONS = {
+  product: Package,
+  finish: Palette,
+  material: Palette,
+  hardware_set: Wrench,
+  joinery_item: Package,
+  door_type: Package,
+  facade_system: Palette,
+  window_type: Package,
+  other: Package,
+}
+
+const STATUS_LABELS = {
+  locked: 'Confirmed',
+  proposed: 'Proposed',
+  provisional_sum: 'PS',
+}
 
 export default function Documents({ projectId }) {
+  const [activeTab, setActiveTab] = useState('schedules')
   const [docs, setDocs] = useState([])
+  const [scheduleGroups, setScheduleGroups] = useState([])
+  const [selections, setSelections] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [expandedGroups, setExpandedGroups] = useState(new Set())
 
   useEffect(() => {
     if (!projectId) return
-    loadDocuments()
+    loadAll()
   }, [projectId])
 
-  async function loadDocuments() {
-    const { data } = await supabase
-      .from('homeowner_document_shares')
-      .select(`
-        *,
-        project_documents:project_document_id (
-          title,
-          document_type,
-          file_path,
-          file_size_bytes,
-          version,
-          uploaded_at,
-          metadata
-        )
-      `)
-      .eq('project_id', projectId)
-      .eq('active', true)
-      .order('shared_at', { ascending: false })
-
-    setDocs(data || [])
+  async function loadAll() {
+    const [docRes, grpRes, selRes] = await Promise.all([
+      supabase
+        .from('homeowner_document_shares')
+        .select(`*, project_documents:project_document_id (title, doc_type, storage_path, file_size_bytes, version, issued_at, notes)`)
+        .eq('project_id', projectId)
+        .eq('active', true)
+        .order('shared_at', { ascending: false }),
+      supabase
+        .from('schedule_groups')
+        .select('*')
+        .eq('project_id', projectId)
+        .eq('visible_to_homeowner', true)
+        .order('display_order'),
+      supabase
+        .from('homeowner_selections_portal')
+        .select(`*, project_selections:project_selection_id (title, selection_kind, manufacturer_name, supplier_name, model, spec_reference, notes, attributes)`)
+        .eq('project_id', projectId)
+        .eq('active', true),
+    ])
+    setDocs(docRes.data || [])
+    setScheduleGroups(grpRes.data || [])
+    setSelections(selRes.data || [])
     setLoading(false)
   }
 
@@ -41,69 +69,215 @@ export default function Documents({ projectId }) {
       .eq('id', id)
   }
 
-  const filtered = docs.filter(d => {
+  function toggleGroup(key) {
+    setExpandedGroups(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
+  // Filter selections by search
+  const filteredSelections = selections.filter(s => {
     if (!search) return true
-    const title = d.project_documents?.title || ''
-    const type = d.project_documents?.document_type || ''
-    return (title + type).toLowerCase().includes(search.toLowerCase())
+    const sel = s.project_selections || {}
+    const text = [sel.title, sel.manufacturer_name, sel.model, s.schedule_group].join(' ').toLowerCase()
+    return text.includes(search.toLowerCase())
   })
 
-  // Group by document type
-  const grouped = filtered.reduce((acc, doc) => {
-    const type = doc.project_documents?.document_type || 'Other'
-    if (!acc[type]) acc[type] = []
-    acc[type].push(doc)
-    return acc
-  }, {})
+  // Group selections by schedule_group
+  const groupedSchedule = scheduleGroups.map(g => {
+    const items = filteredSelections.filter(s => s.schedule_group === g.group_key)
+    return { ...g, items }
+  }).filter(g => g.items.length > 0)
 
-  if (loading) return <div className="animate-pulse"><div className="h-8 w-48 bg-[var(--color-border)] rounded mb-8" /></div>
+  // Filter docs by search
+  const filteredDocs = docs.filter(d => {
+    if (!search) return true
+    const pd = d.project_documents || {}
+    return [pd.title, pd.doc_type, d.share_note].join(' ').toLowerCase().includes(search.toLowerCase())
+  })
+
+  const totalScheduleItems = selections.length
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl animate-pulse">
+        <div className="h-8 w-48 bg-white/40 rounded mb-4" />
+        <div className="h-3 w-64 bg-white/30 rounded mb-8" />
+        {[1, 2, 3].map(i => <div key={i} className="h-16 bg-white/30 rounded-xl mb-3" />)}
+      </div>
+    )
+  }
 
   return (
-    <div className="max-w-3xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-light tracking-tight mb-1">Documents</h1>
+    <div className="max-w-4xl">
+      <div className="mb-6">
+        <h1 className="text-2xl font-light tracking-tight mb-1">Documents & Schedules</h1>
         <p className="text-sm text-[var(--color-muted)] font-light">
-          {docs.length} document{docs.length !== 1 ? 's' : ''} shared with you
+          {totalScheduleItems} schedule items across {scheduleGroups.length} categories{docs.length > 0 ? ` · ${docs.length} shared document${docs.length !== 1 ? 's' : ''}` : ''}
         </p>
       </div>
 
-      {/* Search */}
-      {docs.length > 5 && (
-        <div className="relative mb-8">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-muted)]" />
+      {/* Tab bar */}
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div className="flex gap-1 backdrop-blur-xl bg-white/30 rounded-lg p-0.5 border border-white/40">
+          {[
+            { key: 'schedules', label: 'Schedules', icon: Grid3X3, count: totalScheduleItems },
+            { key: 'documents', label: 'Documents', icon: FileText, count: docs.length },
+          ].map(t => (
+            <button
+              key={t.key}
+              onClick={() => { setActiveTab(t.key); setSearch('') }}
+              className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5 ${
+                activeTab === t.key
+                  ? 'bg-[var(--color-accent)] text-white'
+                  : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
+              }`}
+            >
+              <t.icon size={11} />
+              {t.label}
+              <span className={`text-[9px] px-1 py-0.5 rounded ${
+                activeTab === t.key ? 'bg-white/20' : 'bg-white/40'
+              }`}>
+                {t.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-muted)]" />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search documents…"
-            className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-white/40 backdrop-blur-xl bg-white/40 text-sm font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+            placeholder={activeTab === 'schedules' ? 'Search selections…' : 'Search documents…'}
+            className="pl-7 pr-3 py-1.5 rounded-lg border border-white/40 backdrop-blur-xl bg-white/40 text-[11px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors w-48"
           />
+        </div>
+      </div>
+
+      {/* Schedules tab */}
+      {activeTab === 'schedules' && (
+        <div className="space-y-3">
+          {groupedSchedule.map(group => {
+            const isExpanded = expandedGroups.has(group.group_key)
+            return (
+              <div key={group.group_key} className="backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 overflow-hidden">
+                <button
+                  onClick={() => toggleGroup(group.group_key)}
+                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/30 transition-colors"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-sm font-medium">{group.group_name}</h2>
+                      <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded">
+                        {group.items.length}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-muted)] font-light mt-0.5">{group.description}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isExpanded
+                      ? <ChevronDown size={14} className="text-[var(--color-muted)]" />
+                      : <ChevronRight size={14} className="text-[var(--color-muted)]" />}
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <div className="border-t border-white/30">
+                    {/* Table header */}
+                    <div className="grid gap-2 px-5 py-2 text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium"
+                      style={{ gridTemplateColumns: '32px 3fr 2.5fr 1.5fr 1fr' }}>
+                      <div></div>
+                      <div>Item</div>
+                      <div>Product / Finish</div>
+                      <div>Colour</div>
+                      <div>Kind</div>
+                    </div>
+
+                    {/* Rows */}
+                    <div className="divide-y divide-white/20">
+                      {group.items.map(item => {
+                        const sel = item.project_selections || {}
+                        const attrs = sel.attributes || {}
+                        const Icon = KIND_ICONS[sel.selection_kind] || Package
+                        return (
+                          <div key={item.id} className="grid gap-2 px-5 py-2.5 text-[11px] hover:bg-white/20 transition-colors items-center"
+                            style={{ gridTemplateColumns: '32px 3fr 2.5fr 1.5fr 1fr' }}>
+                            <div>
+                              {item.portal_image_url ? (
+                                <img src={item.portal_image_url} alt="" style={{
+                                  width: 28, height: 28, borderRadius: 6, objectFit: 'cover',
+                                  border: '1px solid rgba(0,0,0,0.06)',
+                                }} loading="lazy"
+                                onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
+                                />
+                              ) : (
+                                <div style={{
+                                  width: 28, height: 28, borderRadius: 6,
+                                  background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                  <Icon size={12} style={{ color: 'var(--color-border)' }} />
+                                </div>
+                              )}
+                            </div>
+                            <div className="font-medium truncate">{sel.title || '—'}</div>
+                            <div className="text-[var(--color-muted)] truncate">
+                              {[sel.manufacturer_name, sel.model].filter(Boolean).join(' — ') || '—'}
+                            </div>
+                            <div className="text-[var(--color-muted)] truncate">
+                              {attrs.colour || '—'}
+                            </div>
+                            <div>
+                              <span className="text-[9px] text-[var(--color-muted)] bg-white/40 px-1.5 py-0.5 rounded">
+                                {sel.selection_kind || '—'}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          {groupedSchedule.length === 0 && (
+            <div className="text-center py-20 backdrop-blur-xl bg-white/30 rounded-xl border border-white/40">
+              <ListChecks size={24} className="mx-auto text-[var(--color-border)] mb-3" />
+              <p className="text-sm text-[var(--color-muted)] font-light">
+                {search ? 'No items match your search.' : 'No schedule data yet.'}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Document list */}
-      {Object.entries(grouped).map(([type, typeDocs]) => (
-        <section key={type} className="mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            <Folder size={14} className="text-[var(--color-muted)]" />
-            <h2 className="text-xs font-medium tracking-[1.5px] uppercase text-[var(--color-muted)]">{type}</h2>
-          </div>
+      {/* Documents tab */}
+      {activeTab === 'documents' && (
+        <div>
+          {filteredDocs.map(doc => (
+            <div key={doc.id} className="mb-2">
+              <DocumentRow doc={doc} onView={() => markViewed(doc.id)} />
+            </div>
+          ))}
 
-          <div className="space-y-2">
-            {typeDocs.map(doc => (
-              <DocumentRow key={doc.id} doc={doc} onView={() => markViewed(doc.id)} />
-            ))}
-          </div>
-        </section>
-      ))}
-
-      {docs.length === 0 && (
-        <div className="text-center py-20">
-          <FileText size={24} className="mx-auto text-[var(--color-border)] mb-3" />
-          <p className="text-sm text-[var(--color-muted)] font-light">No documents shared yet.</p>
-          <p className="text-xs text-[var(--color-muted)] font-light mt-1">
-            Documents will appear here when your architect shares them.
-          </p>
+          {filteredDocs.length === 0 && (
+            <div className="text-center py-20 backdrop-blur-xl bg-white/30 rounded-xl border border-white/40">
+              <FileText size={24} className="mx-auto text-[var(--color-border)] mb-3" />
+              <p className="text-sm text-[var(--color-muted)] font-light">
+                {search ? 'No documents match your search.' : 'No documents shared yet.'}
+              </p>
+              <p className="text-xs text-[var(--color-muted)] font-light mt-1">
+                Documents will appear here when your architect shares them.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -126,6 +300,8 @@ function DocumentRow({ doc, onView }) {
     return new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
+  const typeLabel = (pd.doc_type || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+
   return (
     <div className={`flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-white/40 border transition-all hover:shadow-sm ${
       isNew ? 'border-[var(--color-pending)]/40 border-l-[3px]' : 'border-white/40'
@@ -144,7 +320,8 @@ function DocumentRow({ doc, onView }) {
           )}
         </div>
         <div className="flex items-center gap-3 mt-0.5">
-          {pd.version && <span className="text-xs text-[var(--color-muted)] font-light">v{pd.version}</span>}
+          {typeLabel && <span className="text-[10px] text-[var(--color-muted)] bg-white/40 px-1.5 py-0.5 rounded">{typeLabel}</span>}
+          {pd.version && <span className="text-xs text-[var(--color-muted)] font-light">{pd.version}</span>}
           {pd.file_size_bytes && <span className="text-xs text-[var(--color-muted)] font-light">{formatSize(pd.file_size_bytes)}</span>}
           <span className="text-xs text-[var(--color-muted)] font-light flex items-center gap-1">
             <Clock size={10} /> {formatDate(doc.shared_at)}

@@ -1,0 +1,264 @@
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
+import { Check, ArrowUpRight, MessageSquare, Filter } from 'lucide-react'
+
+const FILTERS = ['all', 'pending', 'approved', 'confirmed']
+
+export default function Selections({ projectId }) {
+  const [groups, setGroups] = useState([])
+  const [items, setItems] = useState([])
+  const [filter, setFilter] = useState('all')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!projectId) return
+    loadSelections()
+  }, [projectId])
+
+  async function loadSelections() {
+    const [grpRes, selRes] = await Promise.all([
+      supabase.from('schedule_groups').select('*').eq('project_id', projectId).order('display_order'),
+      supabase.from('v_client_selection_schedule').select('*').eq('project_id', projectId),
+    ])
+    setGroups(grpRes.data || [])
+    setItems(selRes.data || [])
+    setLoading(false)
+  }
+
+  async function handleApprove(portalEntryId) {
+    await supabase.from('homeowner_selections_portal')
+      .update({ approval_status: 'approved', approved_at: new Date().toISOString() })
+      .eq('id', portalEntryId)
+    setItems(prev => prev.map(i =>
+      i.portal_entry_id === portalEntryId ? { ...i, approval_status: 'approved' } : i
+    ))
+  }
+
+  async function handleRequestChange(portalEntryId) {
+    const note = prompt('What change would you like? Your note will be sent to Sean.')
+    if (!note) return
+    await supabase.from('homeowner_selections_portal')
+      .update({ approval_status: 'change_requested', approval_note: note })
+      .eq('id', portalEntryId)
+    setItems(prev => prev.map(i =>
+      i.portal_entry_id === portalEntryId ? { ...i, approval_status: 'change_requested', approval_note: note } : i
+    ))
+  }
+
+  const filtered = items.filter(item => {
+    if (filter === 'all') return true
+    if (filter === 'pending') return item.approval_status === 'pending'
+    if (filter === 'approved') return item.approval_status === 'approved'
+    if (filter === 'confirmed') return item.approval_status === 'not_applicable'
+    return true
+  })
+
+  const groupedItems = groups.map(g => ({
+    ...g,
+    items: filtered.filter(i => i.schedule_group === g.group_key),
+  })).filter(g => g.items.length > 0)
+
+  const counts = {
+    all: items.length,
+    pending: items.filter(i => i.approval_status === 'pending').length,
+    approved: items.filter(i => i.approval_status === 'approved').length,
+    confirmed: items.filter(i => i.approval_status === 'not_applicable').length,
+  }
+
+  if (loading) return <div className="animate-pulse"><div className="h-8 w-48 bg-[var(--color-border)] rounded mb-8" /></div>
+
+  return (
+    <div className="max-w-4xl">
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-light tracking-tight mb-1">Selections</h1>
+          <p className="text-sm text-[var(--color-muted)] font-light">
+            {counts.pending > 0
+              ? `${counts.pending} item${counts.pending > 1 ? 's' : ''} awaiting your approval`
+              : 'All selections confirmed'}
+          </p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-2 mb-8 flex-wrap">
+        {FILTERS.map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-4 py-1.5 rounded-full text-xs tracking-wide transition-all ${
+              filter === f
+                ? 'bg-[var(--color-accent)] text-white font-medium'
+                : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-text)]'
+            }`}
+          >
+            {f === 'all' ? 'All' : f === 'confirmed' ? 'Confirmed' : f.charAt(0).toUpperCase() + f.slice(1)}
+            <span className="ml-1.5 opacity-60">{counts[f]}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Groups */}
+      <div className="space-y-10">
+        {groupedItems.map(group => (
+          <section key={group.id}>
+            <div className="flex items-baseline justify-between pb-3 border-b border-[var(--color-accent)] mb-5">
+              <h2 className="text-base font-normal tracking-wide">{group.group_name}</h2>
+              <span className="text-xs text-[var(--color-muted)]">{group.items.length} items</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {group.items.map(item => (
+                <SelectionCard
+                  key={item.portal_entry_id}
+                  item={item}
+                  onApprove={() => handleApprove(item.portal_entry_id)}
+                  onRequestChange={() => handleRequestChange(item.portal_entry_id)}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      {groupedItems.length === 0 && (
+        <div className="text-center py-20">
+          <Filter size={24} className="mx-auto text-[var(--color-border)] mb-3" />
+          <p className="text-sm text-[var(--color-muted)] font-light">No items match this filter.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SelectionCard({ item, onApprove, onRequestChange }) {
+  const isPending = item.approval_status === 'pending'
+  const isApproved = item.approval_status === 'approved'
+  const isChangeReq = item.approval_status === 'change_requested'
+  const isUrgent = item.priority === 'urgent'
+
+  const attrs = item.attributes || {}
+  const productUrl = attrs.product_url || attrs.image_url
+
+  return (
+    <div className={`bg-white rounded-xl border overflow-hidden transition-all hover:shadow-sm ${
+      isUrgent ? 'border-[var(--color-urgent)]/40 border-l-[3px]' :
+      isPending ? 'border-[var(--color-pending)]/40 border-l-[3px]' :
+      isApproved ? 'border-[var(--color-approved)]/30' :
+      isChangeReq ? 'border-[var(--color-change)]/30' :
+      'border-[var(--color-border)]'
+    }`}>
+      <div className="p-4">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-medium leading-snug truncate">{item.selection_title}</h3>
+            <span className="text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-light">
+              {item.selection_kind?.replace('_', ' ')}
+            </span>
+          </div>
+          <StatusBadge status={item.approval_status} priority={item.priority} />
+        </div>
+
+        {/* Details */}
+        <div className="space-y-1.5">
+          {item.manufacturer_name && <Detail label="Manufacturer" value={item.manufacturer_name} />}
+          {item.supplier_name && <Detail label="Supplier" value={item.supplier_name} />}
+          {item.model && <Detail label="Model" value={item.model} />}
+          {attrs.colour && <Detail label="Colour" value={attrs.colour} />}
+          {attrs.finish && <Detail label="Finish" value={attrs.finish} />}
+          {item.spec_reference && <Detail label="Spec" value={item.spec_reference} />}
+        </div>
+
+        {/* Notes */}
+        {item.selection_notes && (
+          <p className="text-xs text-[var(--color-muted)] font-light mt-3 px-3 py-2 bg-[var(--color-bg)] rounded-lg italic">
+            {item.selection_notes}
+          </p>
+        )}
+
+        {/* Product link */}
+        {productUrl && (
+          <a
+            href={productUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-[var(--color-text)] mt-3 hover:underline"
+          >
+            View product <ArrowUpRight size={12} />
+          </a>
+        )}
+
+        {/* Change request note */}
+        {isChangeReq && item.approval_note && (
+          <div className="flex items-start gap-2 mt-3 p-3 bg-[var(--color-change)]/5 rounded-lg">
+            <MessageSquare size={12} className="text-[var(--color-change)] mt-0.5 shrink-0" />
+            <p className="text-xs text-[var(--color-change)] font-light">{item.approval_note}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      {isPending && (
+        <div className="flex border-t border-[var(--color-border)]">
+          <button
+            onClick={onApprove}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-medium text-[var(--color-approved)] hover:bg-[var(--color-approved)]/5 transition-colors"
+          >
+            <Check size={14} /> Approve
+          </button>
+          <div className="w-px bg-[var(--color-border)]" />
+          <button
+            onClick={onRequestChange}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-light text-[var(--color-muted)] hover:text-[var(--color-change)] hover:bg-[var(--color-change)]/5 transition-colors"
+          >
+            Request change
+          </button>
+        </div>
+      )}
+
+      {isApproved && (
+        <div className="flex items-center justify-center gap-2 py-2.5 border-t border-[var(--color-border)] bg-[var(--color-approved)]/5">
+          <Check size={12} className="text-[var(--color-approved)]" />
+          <span className="text-xs text-[var(--color-approved)] font-medium">Approved</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Detail({ label, value }) {
+  return (
+    <div className="flex justify-between text-xs">
+      <span className="text-[var(--color-muted)] font-light">{label}</span>
+      <span className="font-normal text-right max-w-[60%] truncate">{value}</span>
+    </div>
+  )
+}
+
+function StatusBadge({ status, priority }) {
+  if (priority === 'urgent') return (
+    <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-[var(--color-urgent)]/10 text-[var(--color-urgent)]">
+      Action Required
+    </span>
+  )
+  const styles = {
+    pending: 'bg-[var(--color-pending)]/10 text-[var(--color-pending)]',
+    approved: 'bg-[var(--color-approved)]/10 text-[var(--color-approved)]',
+    change_requested: 'bg-[var(--color-change)]/10 text-[var(--color-change)]',
+    not_applicable: 'bg-[var(--color-border)] text-[var(--color-muted)]',
+    deferred: 'bg-purple-50 text-purple-700',
+  }
+  const labels = {
+    pending: 'Awaiting Approval',
+    approved: 'Approved',
+    change_requested: 'Change Requested',
+    not_applicable: 'Confirmed',
+    deferred: 'Deferred',
+  }
+  return (
+    <span className={`text-[10px] font-medium px-2 py-0.5 rounded whitespace-nowrap ${styles[status] || ''}`}>
+      {labels[status] || status}
+    </span>
+  )
+}

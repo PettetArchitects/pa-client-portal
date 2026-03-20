@@ -5,9 +5,10 @@ import {
   Check, ChevronDown, ChevronRight, MessageSquare, ArrowUpRight,
   ThumbsUp, Eye, EyeOff, Package, Palette, Wrench, AlertCircle,
   Home, Grid3X3, FileDown, ArrowUpDown, SlidersHorizontal, Search,
-  List, LayoutGrid,
+  List, LayoutGrid, Map,
 } from 'lucide-react'
 import { GROUP_ICONS } from '../components/SketchIcons'
+import InteractivePlan from '../components/InteractivePlan'
 
 const KIND_ICONS = {
   product: Package,
@@ -210,7 +211,7 @@ export default function Decisions({ projectId }) {
     )
   }
 
-  const viewTitle = viewMode === 'schedule' ? 'Selections' : viewMode === 'rooms' ? 'By Room' : 'Review'
+  const viewTitle = viewMode === 'schedule' ? 'Selections' : viewMode === 'plan' ? 'Floor Plan' : viewMode === 'rooms' ? 'By Room' : 'Review'
 
   return (
     <div className="max-w-4xl">
@@ -320,11 +321,29 @@ export default function Decisions({ projectId }) {
           >
             <LayoutGrid size={15} />
           </button>
+          <button
+            onClick={() => { setViewMode('plan'); setFilter(filter) }}
+            className={`p-1.5 rounded-lg transition-colors ${
+              viewMode === 'plan' ? 'bg-white/30 text-[var(--color-text)]' : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/40'
+            }`}
+            title="Plan view"
+          >
+            <Map size={15} />
+          </button>
         </div>
       </div>
 
       {/* Content by view mode */}
-      {viewMode === 'rooms' ? (
+      {viewMode === 'plan' ? (
+        <PlanView
+          items={items}
+          filteredItems={filteredItems}
+          roomMappings={roomMappings}
+          isArchitect={isArchitect}
+          onApproveItem={handleApproveItem}
+          onRequestChange={handleRequestChange}
+        />
+      ) : viewMode === 'rooms' ? (
         <RoomGroupedView
           rooms={roomGroupedData}
           expandedGroups={expandedGroups}
@@ -930,6 +949,43 @@ function ColourDot({ colour }) {
       display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
       background: bg, border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0,
     }} />
+  )
+}
+
+/* ── Plan View ── */
+function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveItem, onRequestChange }) {
+  const [selectedRoom, setSelectedRoom] = useState(null)
+
+  // Filter items by selected room
+  const roomItems = selectedRoom
+    ? filteredItems.filter(item => {
+        return roomMappings.some(m => m.project_selection_id === item.project_selection_id && m.room_key === selectedRoom)
+      })
+    : []
+
+  return (
+    <div>
+      <InteractivePlan
+        roomMappings={roomMappings}
+        items={items}
+        onSelectRoom={setSelectedRoom}
+        selectedRoom={selectedRoom}
+        isArchitect={isArchitect}
+      />
+
+      {/* Room selection list */}
+      {selectedRoom && roomItems.length > 0 && (
+        <div className="mt-4">
+          <ScheduleView items={roomItems} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+        </div>
+      )}
+
+      {selectedRoom && roomItems.length === 0 && (
+        <div className="mt-4 text-center py-8 glass-t">
+          <p className="text-sm text-[var(--color-muted)] font-light">No selections mapped to this room yet.</p>
+        </div>
+      )}
+    </div>
   )
 }
 

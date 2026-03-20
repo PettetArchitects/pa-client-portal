@@ -88,7 +88,8 @@ export default function Decisions({ projectId }) {
       supabase.from('homeowner_selections_portal').select(`
         *,
         project_selections:project_selection_id (
-          title, selection_kind, manufacturer_name, supplier_name, model, spec_reference, notes, attributes
+          id, title, selection_kind, manufacturer_name, supplier_name, model, spec_reference, notes, attributes,
+          is_component, parent_selection_id, component_role, component_order
         )
       `).eq('project_id', projectId).eq('active', true),
       supabase.from('portal_selection_rooms').select('*').eq('project_id', projectId),
@@ -676,28 +677,78 @@ const KIND_GROUP_LABELS = {
   material: 'Materials', finish: 'Finishes', other: 'Other',
 }
 
-function groupItemsByKind(items) {
-  const kindMap = {}
+/* ── Build parent→children tree from flat items list ── */
+function buildItemTree(items) {
+  // Index: project_selection_id → portal item
+  const bySelId = {}
+  items.forEach(i => { if (i.project_selections?.id) bySelId[i.project_selections.id] = i })
+
+  // Separate parents and components
+  const parents = []
+  const orphanComponents = [] // components whose parent isn't in this group
+  const childMap = {} // parent_selection_id → [children]
+
   items.forEach(item => {
     const sel = item.project_selections || {}
-    // Components group under their parent kind label
-    const kind = sel.is_component ? 'finish' : (sel.selection_kind || 'other')
+    if (sel.is_component && sel.parent_selection_id) {
+      if (!childMap[sel.parent_selection_id]) childMap[sel.parent_selection_id] = []
+      childMap[sel.parent_selection_id].push(item)
+    } else {
+      parents.push(item)
+    }
+  })
+
+  // Sort children by component_order
+  Object.values(childMap).forEach(children => {
+    children.sort((a, b) => (a.project_selections?.component_order || 99) - (b.project_selections?.component_order || 99))
+  })
+
+  // Attach children to parents, collect orphans
+  const tree = parents.map(p => ({
+    item: p,
+    children: childMap[p.project_selections?.id] || [],
+  }))
+
+  // Any children whose parent isn't in this items list → show as standalone
+  Object.entries(childMap).forEach(([parentId, children]) => {
+    if (!bySelId[parentId]) {
+      children.forEach(c => tree.push({ item: c, children: [] }))
+    }
+  })
+
+  return tree
+}
+
+/* ── Sub-group tree nodes by parent selection_kind ── */
+function groupTreeByKind(tree) {
+  const kindMap = {}
+  tree.forEach(node => {
+    const sel = node.item.project_selections || {}
+    const kind = sel.selection_kind || 'other'
     if (!kindMap[kind]) kindMap[kind] = []
-    kindMap[kind].push(item)
+    kindMap[kind].push(node)
   })
   return Object.entries(kindMap)
-    .map(([kind, kindItems]) => ({
+    .map(([kind, nodes]) => ({
       kind,
       label: KIND_GROUP_LABELS[kind] || kind.replace(/_/g, ' '),
       order: KIND_GROUP_ORDER[kind] || 99,
-      items: kindItems,
+      nodes,
     }))
     .sort((a, b) => a.order - b.order)
 }
 
-/* ── Schedule view: clean tabular list with codes above items, sub-grouped by kind ── */
+const ROLE_LABELS = {
+  hardware: 'Hardware', hinge: 'Hinge', finish_internal: 'Finish', finish_external: 'Finish',
+  closer: 'Lock / Closer', threshold: 'Threshold', accessory: 'Accessory', carcass: 'Carcass',
+  door_front: 'Door Front', drawer_front: 'Drawer', benchtop: 'Benchtop', edge_band: 'Edge Band',
+  shelf: 'Shelf', frame: 'Frame', glazing: 'Glazing', other: 'Other',
+}
+
+/* ── Schedule view: parent-child nesting with codes ── */
 function ScheduleView({ items, onApproveItem, onRequestChange }) {
-  const subGroups = groupItemsByKind(items)
+  const tree = buildItemTree(items)
+  const subGroups = groupTreeByKind(tree)
   const needsSubHeaders = subGroups.length > 1
 
   return (
@@ -709,104 +760,126 @@ function ScheduleView({ items, onApproveItem, onRequestChange }) {
               <span className="text-[9px] tracking-[1.5px] uppercase text-[var(--color-muted)] font-medium">
                 {sg.label}
               </span>
-              <span className="text-[9px] text-[var(--color-muted)] ml-1.5 font-light">{sg.items.length}</span>
+              <span className="text-[9px] text-[var(--color-muted)] ml-1.5 font-light">{sg.nodes.length}</span>
             </div>
           )}
           <div className="space-y-2">
-            {sg.items.map(item => {
-              const sel = item.project_selections || {}
-              const attrs = sel.attributes || {}
-              const st = STATUS_STYLES[item.approval_status] || STATUS_STYLES.not_applicable
-              const colourBg = getColourBackground(attrs.colour)
-              const Icon = KIND_ICONS[sel.selection_kind] || Package
-              const isPending = item.approval_status === 'pending'
-              const isChangeReq = item.approval_status === 'change_requested'
-              const { code, name } = parseCode(sel.title || item.selection_title)
-              return (
-                <div key={item.id} className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/40 transition-colors items-start"
-                  style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 100px' }}>
-                  {/* Thumbnail */}
-                  <div>
-                    {item.portal_image_url ? (
-                      <img src={item.portal_image_url} alt="" style={{
-                        width: 48, height: 48, borderRadius: 8, objectFit: 'cover',
-                        border: '1px solid rgba(0,0,0,0.06)',
-                      }} loading="lazy"
-                      onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
-                      />
-                    ) : colourBg ? (
-                      <div style={{
-                        width: 48, height: 48, borderRadius: 8,
-                        background: colourBg, border: '1px solid rgba(0,0,0,0.06)',
-                      }} />
-                    ) : (
-                      <div style={{
-                        width: 48, height: 48, borderRadius: 8,
-                        background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <Icon size={16} style={{ color: 'var(--color-border)' }} />
-                      </div>
-                    )}
+            {sg.nodes.map(node => (
+              <div key={node.item.id}>
+                <ItemRow item={node.item} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+                {node.children.length > 0 && (
+                  <div className="ml-6 pl-4 border-l-2 border-white/20 space-y-1 mt-1 mb-2">
+                    {node.children.map(child => (
+                      <CompactChildRow key={child.id} item={child} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+                    ))}
                   </div>
-                  <div>
-                    {code && (
-                      <span className="text-[9px] font-mono tracking-wider text-[var(--color-muted)] uppercase block mb-0.5">{code}</span>
-                    )}
-                    <div className="font-medium leading-snug text-[var(--color-text)]">{name}</div>
-                    {!code && sel.selection_kind && (
-                      <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{sel.selection_kind.replace(/_/g, ' ')}</span>
-                    )}
-                  </div>
-                  <div className="text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
-                    {sel.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{sel.manufacturer_name}</span>}
-                    {sel.manufacturer_name && sel.model && <br />}
-                    <span className="text-[var(--color-muted)]">{sel.model || (!sel.manufacturer_name && '\u2014')}</span>
-                  </div>
-                  <div className="text-[11px] text-[var(--color-text)] flex items-start gap-1.5" style={{ wordBreak: 'break-word' }}>
-                    {attrs.colour && (
-                      <>
-                        <ColourDot colour={attrs.colour} />
-                        <span className="leading-snug">{attrs.colour}</span>
-                      </>
-                    )}
-                    {!attrs.colour && <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
-                  </div>
-                  <div className="text-right flex items-start justify-end gap-1">
-                    {(isPending || isChangeReq) && onApproveItem && (
-                      <>
-                        <button
-                          onClick={() => onApproveItem(item.id)}
-                          className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(61,139,64,0.1)]"
-                          style={{ border: '1px solid rgba(61,139,64,0.3)', color: 'var(--color-approved)' }}
-                          title="Approve"
-                        >
-                          <Check size={11} />
-                        </button>
-                        <button
-                          onClick={() => onRequestChange(item.id)}
-                          className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(191,54,12,0.08)]"
-                          style={{ border: '1px solid rgba(232,232,229,0.8)', color: 'var(--color-muted)' }}
-                          title="Request change"
-                        >
-                          <MessageSquare size={10} />
-                        </button>
-                      </>
-                    )}
-                    {!isPending && !isChangeReq && (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap" style={{
-                        background: st.bg, color: st.text, border: `1px solid ${st.border}`
-                      }}>
-                        {st.label}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+                )}
+              </div>
+            ))}
           </div>
         </div>
       ))}
+    </div>
+  )
+}
+
+/* ── Parent item row (full-size) ── */
+function ItemRow({ item, onApproveItem, onRequestChange }) {
+  const sel = item.project_selections || {}
+  const attrs = sel.attributes || {}
+  const st = STATUS_STYLES[item.approval_status] || STATUS_STYLES.not_applicable
+  const colourBg = getColourBackground(attrs.colour)
+  const Icon = KIND_ICONS[sel.selection_kind] || Package
+  const isPending = item.approval_status === 'pending'
+  const isChangeReq = item.approval_status === 'change_requested'
+  const { code, name } = parseCode(sel.title || item.selection_title)
+  return (
+    <div className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/40 transition-colors items-start"
+      style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 100px' }}>
+      <div>
+        {item.portal_image_url ? (
+          <img src={item.portal_image_url} alt="" style={{
+            width: 48, height: 48, borderRadius: 8, objectFit: 'cover',
+            border: '1px solid rgba(0,0,0,0.06)',
+          }} loading="lazy"
+          onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
+          />
+        ) : colourBg ? (
+          <div style={{ width: 48, height: 48, borderRadius: 8, background: colourBg, border: '1px solid rgba(0,0,0,0.06)' }} />
+        ) : (
+          <div style={{ width: 48, height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon size={16} style={{ color: 'var(--color-border)' }} />
+          </div>
+        )}
+      </div>
+      <div>
+        {code && <span className="text-[9px] font-mono tracking-wider text-[var(--color-muted)] uppercase block mb-0.5">{code}</span>}
+        <div className="font-medium leading-snug text-[var(--color-text)]">{name}</div>
+        {!code && sel.selection_kind && <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{sel.selection_kind.replace(/_/g, ' ')}</span>}
+      </div>
+      <div className="text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
+        {sel.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{sel.manufacturer_name}</span>}
+        {sel.manufacturer_name && sel.model && <br />}
+        <span className="text-[var(--color-muted)]">{sel.model || (!sel.manufacturer_name && '\u2014')}</span>
+      </div>
+      <div className="text-[11px] text-[var(--color-text)] flex items-start gap-1.5" style={{ wordBreak: 'break-word' }}>
+        {attrs.colour ? (<><ColourDot colour={attrs.colour} /><span className="leading-snug">{attrs.colour}</span></>) : <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
+      </div>
+      <div className="text-right flex items-start justify-end gap-1">
+        {(isPending || isChangeReq) && onApproveItem && (<>
+          <button onClick={() => onApproveItem(item.id)} className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(61,139,64,0.1)]" style={{ border: '1px solid rgba(61,139,64,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={11} /></button>
+          <button onClick={() => onRequestChange(item.id)} className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(191,54,12,0.08)]" style={{ border: '1px solid rgba(232,232,229,0.8)', color: 'var(--color-muted)' }} title="Request change"><MessageSquare size={10} /></button>
+        </>)}
+        {!isPending && !isChangeReq && (
+          <span className="text-[9px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap" style={{ background: st.bg, color: st.text, border: `1px solid ${st.border}` }}>{st.label}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ── Compact child/component row (indented, smaller) ── */
+function CompactChildRow({ item, onApproveItem, onRequestChange }) {
+  const sel = item.project_selections || {}
+  const attrs = sel.attributes || {}
+  const st = STATUS_STYLES[item.approval_status] || STATUS_STYLES.not_applicable
+  const colourBg = getColourBackground(attrs.colour)
+  const isPending = item.approval_status === 'pending'
+  const isChangeReq = item.approval_status === 'change_requested'
+  const roleLabel = ROLE_LABELS[sel.component_role] || sel.component_role?.replace(/_/g, ' ') || ''
+
+  return (
+    <div className="grid gap-2 px-3 py-2 text-[11px] rounded-md border border-white/20 bg-white/5 hover:bg-white/30 transition-colors items-center"
+      style={{ gridTemplateColumns: '32px 2fr 2.5fr 1.5fr 80px' }}>
+      {/* Small thumbnail or colour dot */}
+      <div>
+        {colourBg ? (
+          <div style={{ width: 28, height: 28, borderRadius: 6, background: colourBg, border: '1px solid rgba(0,0,0,0.06)' }} />
+        ) : (
+          <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(255,255,255,0.3)', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Wrench size={11} style={{ color: 'var(--color-border)' }} />
+          </div>
+        )}
+      </div>
+      <div>
+        <span className="text-[8px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium block">{roleLabel}</span>
+        <div className="font-medium leading-snug text-[var(--color-text)] text-[11px]">{sel.title || item.selection_title}</div>
+      </div>
+      <div className="text-[10px] leading-relaxed text-[var(--color-muted)]" style={{ wordBreak: 'break-word' }}>
+        {sel.manufacturer_name && <span className="text-[var(--color-text)]">{sel.manufacturer_name} </span>}
+        {sel.model || ''}
+      </div>
+      <div className="text-[10px] text-[var(--color-text)] flex items-center gap-1" style={{ wordBreak: 'break-word' }}>
+        {attrs.colour ? (<><ColourDot colour={attrs.colour} /><span>{attrs.colour}</span></>) : <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
+      </div>
+      <div className="text-right flex items-center justify-end gap-1">
+        {(isPending || isChangeReq) && onApproveItem && (
+          <button onClick={() => onApproveItem(item.id)} className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[rgba(61,139,64,0.1)]" style={{ border: '1px solid rgba(61,139,64,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={9} /></button>
+        )}
+        {!isPending && !isChangeReq && (
+          <span className="text-[8px] font-medium px-1 py-0.5 rounded whitespace-nowrap" style={{ background: st.bg, color: st.text, border: `1px solid ${st.border}` }}>{st.label}</span>
+        )}
+      </div>
     </div>
   )
 }

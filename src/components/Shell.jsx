@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useProject } from '../hooks/useProject'
@@ -27,6 +27,15 @@ export default function Shell({ projectName }) {
   const { projects, project, switchProject, isArchitect } = useProject()
   const { practice } = usePractice()
   const [showSwitcher, setShowSwitcher] = useState(false)
+  const switcherBtnRef = useRef(null)
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 })
+
+  useEffect(() => {
+    if (showSwitcher && switcherBtnRef.current) {
+      const rect = switcherBtnRef.current.getBoundingClientRect()
+      setDropdownPos({ top: rect.bottom + 4, left: rect.left })
+    }
+  }, [showSwitcher])
 
   const navItems = isArchitect ? [...baseNavItems, ...architectNavItems] : baseNavItems
   const practiceName = practice?.practice_name || 'Pettet Architects'
@@ -53,8 +62,9 @@ export default function Shell({ projectName }) {
           <span className="text-[var(--color-border)]">·</span>
 
           {isArchitect && projects.length > 1 ? (
-            <div className="relative">
+            <>
               <button
+                ref={switcherBtnRef}
                 onClick={() => setShowSwitcher(!showSwitcher)}
                 className="flex items-center gap-1.5 text-[11px] font-light tracking-[2px] uppercase text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
               >
@@ -65,7 +75,10 @@ export default function Shell({ projectName }) {
               {showSwitcher && (
                 <>
                   <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setShowSwitcher(false)} />
-                  <div className="absolute top-8 left-0 backdrop-blur-2xl bg-white/80 border border-white/50 rounded-xl shadow-lg min-w-[260px] py-1.5" style={{ zIndex: 9999 }}>
+                  <div
+                    className="fixed backdrop-blur-2xl bg-white/80 border border-white/50 rounded-xl shadow-lg min-w-[260px] py-1.5"
+                    style={{ zIndex: 9999, top: dropdownPos.top, left: dropdownPos.left }}
+                  >
                     {projects.map(p => (
                       <button
                         key={p.project_id}
@@ -87,7 +100,7 @@ export default function Shell({ projectName }) {
                   </div>
                 </>
               )}
-            </div>
+            </>
           ) : (
             <span className="text-[11px] font-light tracking-[2px] uppercase text-[var(--color-muted)]">
               {projectName}

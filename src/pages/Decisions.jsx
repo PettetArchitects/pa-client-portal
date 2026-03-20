@@ -192,7 +192,7 @@ export default function Decisions({ projectId }) {
   if (loading) {
     return (
       <div className="max-w-4xl animate-pulse">
-        <div className="h-8 w-64 bg-white/40 rounded mb-4" />
+        <div className="h-8 w-64 bg-white/30 rounded mb-4" />
         <div className="h-3 w-48 bg-white/30 rounded mb-8" />
         {[1, 2, 3].map(i => <div key={i} className="h-16 bg-white/30 rounded-xl mb-3" />)}
       </div>
@@ -216,7 +216,7 @@ export default function Decisions({ projectId }) {
       </div>
 
       {/* Progress bar */}
-      <div className="backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 p-4 mb-6">
+      <div className="backdrop-blur-xl bg-white/30 rounded-xl border border-white/40 p-4 mb-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] tracking-[1.5px] uppercase text-[var(--color-muted)] font-medium">
             Selection progress
@@ -301,7 +301,7 @@ export default function Decisions({ projectId }) {
             const hasPending = group.pending > 0 || group.changeReq > 0
 
             return (
-              <div key={group.group_key} className={`backdrop-blur-xl bg-white/40 rounded-xl border overflow-hidden transition-all ${
+              <div key={group.group_key} className={`backdrop-blur-xl bg-white/30 rounded-xl border overflow-hidden transition-all ${
                 hasPending ? 'border-[var(--color-pending)]/30' : 'border-white/40'
               }`}>
                 {/* Group header */}
@@ -337,7 +337,7 @@ export default function Decisions({ projectId }) {
                       <Check size={14} className="text-[var(--color-approved)]" />
                     )}
                     {/* Mini progress */}
-                    <div className="w-12 h-1 bg-white/40 rounded-full overflow-hidden">
+                    <div className="w-12 h-1 bg-white/30 rounded-full overflow-hidden">
                       <div className="h-full rounded-full bg-[var(--color-approved)]/60" style={{
                         width: `${((group.approved + group.confirmed) / group.total) * 100}%`
                       }} />
@@ -460,7 +460,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
         const hasPending = room.pending > 0 || room.changeReq > 0
 
         return (
-          <div key={room.roomKey} className={`backdrop-blur-xl bg-white/40 rounded-xl border overflow-hidden transition-all ${
+          <div key={room.roomKey} className={`backdrop-blur-xl bg-white/30 rounded-xl border overflow-hidden transition-all ${
             hasPending ? 'border-[var(--color-pending)]/30' : 'border-white/40'
           }`}>
             {/* Room header */}
@@ -502,7 +502,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
                 {room.pending === 0 && room.changeReq === 0 && (
                   <Check size={14} className="text-[var(--color-approved)]" />
                 )}
-                <div className="w-12 h-1 bg-white/40 rounded-full overflow-hidden">
+                <div className="w-12 h-1 bg-white/30 rounded-full overflow-hidden">
                   <div className="h-full rounded-full bg-[var(--color-approved)]/60" style={{
                     width: `${room.total > 0 ? ((room.approved + room.confirmed) / room.total) * 100 : 0}%`
                   }} />

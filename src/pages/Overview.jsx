@@ -126,7 +126,7 @@ export default function Overview({ projectId }) {
           <Link
             key={to}
             to={to}
-            className="group backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 p-4 hover:bg-white/50 hover:shadow-sm transition-all"
+            className="group backdrop-blur-xl bg-white/30 rounded-xl border border-white/40 p-4 hover:bg-white/50 hover:shadow-sm transition-all"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-8 h-8 rounded-lg bg-white/50 flex items-center justify-center">
@@ -146,7 +146,7 @@ export default function Overview({ projectId }) {
           <h2 className="text-base font-medium tracking-wide mb-4">Progress Payments</h2>
 
           {/* Summary bar */}
-          <div className="backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 p-5 mb-3">
+          <div className="backdrop-blur-xl bg-white/30 rounded-xl border border-white/40 p-5 mb-3">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs text-[var(--color-muted)]">Contract total</span>
               <span className="text-sm font-medium">${totalContract.toLocaleString()} inc GST</span>
@@ -178,7 +178,7 @@ export default function Overview({ projectId }) {
           {/* Payment stages */}
           <div className="space-y-2">
             {payments.map(p => (
-              <div key={p.id} className={`flex items-center justify-between px-4 py-3 rounded-xl backdrop-blur-xl bg-white/40 border ${
+              <div key={p.id} className={`flex items-center justify-between px-4 py-3 rounded-xl backdrop-blur-xl bg-white/30 border ${
                 p.claim_status === 'claimed' ? 'border-[var(--color-pending)]/40' :
                 p.claim_status === 'certified' || p.claim_status === 'released' ? 'border-[var(--color-accent)]/40' :
                 p.claim_status === 'paid' ? 'border-[var(--color-approved)]/30' :

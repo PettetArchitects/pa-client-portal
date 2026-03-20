@@ -103,7 +103,7 @@ export default function Documents({ projectId }) {
   if (loading) {
     return (
       <div className="max-w-4xl animate-pulse">
-        <div className="h-8 w-48 bg-white/40 rounded mb-4" />
+        <div className="h-8 w-48 bg-white/30 rounded mb-4" />
         <div className="h-3 w-64 bg-white/30 rounded mb-8" />
         {[1, 2, 3].map(i => <div key={i} className="h-16 bg-white/30 rounded-xl mb-3" />)}
       </div>
@@ -138,7 +138,7 @@ export default function Documents({ projectId }) {
               <t.icon size={11} />
               {t.label}
               <span className={`text-[9px] px-1 py-0.5 rounded ${
-                activeTab === t.key ? 'bg-white/20' : 'bg-white/40'
+                activeTab === t.key ? 'bg-white/20' : 'bg-white/30'
               }`}>
                 {t.count}
               </span>
@@ -154,7 +154,7 @@ export default function Documents({ projectId }) {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={activeTab === 'schedules' ? 'Search selections…' : 'Search documents…'}
-            className="pl-7 pr-3 py-1.5 rounded-lg border border-white/40 backdrop-blur-xl bg-white/40 text-[11px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors w-48"
+            className="pl-7 pr-3 py-1.5 rounded-lg border border-white/40 backdrop-blur-xl bg-white/30 text-[11px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors w-48"
           />
         </div>
       </div>
@@ -165,7 +165,7 @@ export default function Documents({ projectId }) {
           {groupedSchedule.map(group => {
             const isExpanded = expandedGroups.has(group.group_key)
             return (
-              <div key={group.group_key} className="backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 overflow-hidden">
+              <div key={group.group_key} className="backdrop-blur-xl bg-white/30 rounded-xl border border-white/40 overflow-hidden">
                 <button
                   onClick={() => toggleGroup(group.group_key)}
                   className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/30 transition-colors"
@@ -243,7 +243,7 @@ export default function Documents({ projectId }) {
                               <span className={`text-[9px] px-1.5 py-0.5 rounded ${
                                 item.approval_status === 'locked' ? 'bg-[var(--color-confirmed)]/10 text-[var(--color-confirmed)]' :
                                 item.approval_status === 'proposed' ? 'bg-[var(--color-pending)]/10 text-[var(--color-pending)]' :
-                                'bg-white/40 text-[var(--color-muted)]'
+                                'bg-white/30 text-[var(--color-muted)]'
                               }`}>
                                 {STATUS_LABELS[item.approval_status] || item.approval_status || '—'}
                               </span>
@@ -314,7 +314,7 @@ function DocumentRow({ doc, onView }) {
   const typeLabel = (pd.doc_type || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
   return (
-    <div className={`flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-white/40 border transition-all hover:shadow-sm ${
+    <div className={`flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-white/30 border transition-all hover:shadow-sm ${
       isNew ? 'border-[var(--color-pending)]/40 border-l-[3px]' : 'border-white/40'
     }`}>
       <div className="w-9 h-9 rounded-lg bg-white/50 flex items-center justify-center shrink-0">
@@ -331,7 +331,7 @@ function DocumentRow({ doc, onView }) {
           )}
         </div>
         <div className="flex items-center gap-3 mt-0.5">
-          {typeLabel && <span className="text-[10px] text-[var(--color-muted)] bg-white/40 px-1.5 py-0.5 rounded">{typeLabel}</span>}
+          {typeLabel && <span className="text-[10px] text-[var(--color-muted)] bg-white/30 px-1.5 py-0.5 rounded">{typeLabel}</span>}
           {pd.version && <span className="text-xs text-[var(--color-muted)] font-light">{pd.version}</span>}
           {pd.file_size_bytes && <span className="text-xs text-[var(--color-muted)] font-light">{formatSize(pd.file_size_bytes)}</span>}
           <span className="text-xs text-[var(--color-muted)] font-light flex items-center gap-1">

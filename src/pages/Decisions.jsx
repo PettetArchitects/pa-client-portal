@@ -4,7 +4,8 @@ import { useProject } from '../hooks/useProject'
 import {
   Check, ChevronDown, ChevronRight, MessageSquare, ArrowUpRight,
   ThumbsUp, Eye, EyeOff, Package, Palette, Wrench, AlertCircle,
-  Home, Grid3X3,
+  Home, Grid3X3, FileDown, ArrowUpDown, SlidersHorizontal, Search,
+  List, LayoutGrid,
 } from 'lucide-react'
 
 const KIND_ICONS = {
@@ -70,6 +71,9 @@ export default function Decisions({ projectId }) {
   const [expandedGroups, setExpandedGroups] = useState(new Set())
   const [viewMode, setViewMode] = useState('schedule') // 'schedule', 'review', or 'rooms'
   const [filter, setFilter] = useState('all') // 'all', 'pending', 'approved', 'confirmed'
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState('group') // 'group', 'title', 'status'
+  const [showFilter, setShowFilter] = useState(false)
 
   useEffect(() => {
     if (!projectId) return
@@ -158,12 +162,18 @@ export default function Decisions({ projectId }) {
     })
   }
 
-  // Filter items
+  // Filter items by status + search
   const filteredItems = items.filter(i => {
-    if (filter === 'all') return true
-    if (filter === 'pending') return i.approval_status === 'pending' || i.approval_status === 'change_requested'
-    if (filter === 'approved') return i.approval_status === 'approved'
-    if (filter === 'confirmed') return i.approval_status === 'not_applicable'
+    // Status filter
+    if (filter === 'pending' && i.approval_status !== 'pending' && i.approval_status !== 'change_requested') return false
+    if (filter === 'approved' && i.approval_status !== 'approved') return false
+    if (filter === 'confirmed' && i.approval_status !== 'not_applicable') return false
+    // Search filter
+    if (search) {
+      const sel = i.project_selections || {}
+      const text = [sel.title, sel.manufacturer_name, sel.model, i.schedule_group, sel.attributes?.colour].filter(Boolean).join(' ').toLowerCase()
+      if (!text.includes(search.toLowerCase())) return false
+    }
     return true
   })
 
@@ -239,48 +249,85 @@ export default function Decisions({ projectId }) {
         </div>
       </div>
 
-      {/* View mode + filter controls */}
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <div className="flex gap-1 backdrop-blur-xl bg-white/20 rounded-lg p-0.5 border border-white/40">
-          {[
-            { key: 'schedule', label: 'Schedule', icon: Grid3X3 },
-            { key: 'review', label: 'Review' },
-            { key: 'rooms', label: 'By Room', icon: Home },
-          ].map(m => (
+      {/* Toolbar — Programa style */}
+      <div className="flex items-center justify-between mb-4 backdrop-blur-xl bg-white/20 rounded-xl border border-white/30 px-2 py-1.5">
+        {/* Left: actions */}
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/20 transition-colors"
+          >
+            <FileDown size={13} /> Export to PDF
+          </button>
+          <button
+            onClick={() => setSortBy(s => s === 'title' ? 'status' : s === 'status' ? 'group' : 'title')}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/20 transition-colors"
+            title={`Sort by: ${sortBy}`}
+          >
+            <ArrowUpDown size={13} />
+          </button>
+          <div className="relative">
             <button
-              key={m.key}
-              onClick={() => { setViewMode(m.key); setFilter('all') }}
-              className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5 ${
-                viewMode === m.key
-                  ? 'bg-[var(--color-accent)] text-white'
-                  : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
+              onClick={() => setShowFilter(f => !f)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] transition-colors ${
+                filter !== 'all' ? 'text-[var(--color-text)] bg-white/20' : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/20'
               }`}
             >
-              {m.icon && <m.icon size={11} />}
-              {m.label}
+              <SlidersHorizontal size={13} />
             </button>
-          ))}
+            {showFilter && (
+              <div className="absolute top-full left-0 mt-1 backdrop-blur-xl bg-white/90 rounded-lg border border-white/60 shadow-lg py-1 z-50 min-w-[140px]">
+                {[
+                  { key: 'all', label: 'All items' },
+                  { key: 'pending', label: `To review (${totalPending})` },
+                  { key: 'approved', label: 'Approved' },
+                  { key: 'confirmed', label: 'Confirmed' },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => { setFilter(f.key); setShowFilter(false) }}
+                    className={`w-full text-left px-3 py-1.5 text-[11px] transition-colors ${
+                      filter === f.key ? 'text-[var(--color-text)] font-medium bg-white/50' : 'text-[var(--color-muted)] hover:bg-white/30'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="relative ml-1">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-[var(--color-muted)] pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search"
+              className="pl-7 pr-3 py-1.5 rounded-lg bg-transparent text-[11px] font-light focus:outline-none focus:bg-white/20 transition-colors w-32 placeholder:text-[var(--color-muted)]"
+            />
+          </div>
         </div>
 
-        <div className="flex gap-1">
-          {[
-            { key: 'all', label: 'All' },
-            { key: 'pending', label: `To review (${totalPending})` },
-            { key: 'approved', label: 'Approved' },
-            { key: 'confirmed', label: 'Confirmed' },
-          ].map(f => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`px-2.5 py-1 rounded text-[10px] font-medium transition-all ${
-                filter === f.key
-                  ? 'bg-white/60 text-[var(--color-text)] border border-white/60'
-                  : 'text-[var(--color-muted)] hover:text-[var(--color-text)] border border-transparent'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        {/* Right: view toggles */}
+        <div className="flex items-center gap-0.5 border-l border-white/30 pl-2 ml-2">
+          <button
+            onClick={() => { setViewMode('schedule'); setFilter(filter) }}
+            className={`p-1.5 rounded-lg transition-colors ${
+              viewMode === 'schedule' ? 'bg-white/30 text-[var(--color-text)]' : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/20'
+            }`}
+            title="List view"
+          >
+            <List size={15} />
+          </button>
+          <button
+            onClick={() => { setViewMode('review'); setFilter(filter) }}
+            className={`p-1.5 rounded-lg transition-colors ${
+              viewMode === 'review' ? 'bg-white/30 text-[var(--color-text)]' : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/20'
+            }`}
+            title="Card view"
+          >
+            <LayoutGrid size={15} />
+          </button>
         </div>
       </div>
 
@@ -592,16 +639,7 @@ function ReviewView({ items, groupKey, hasPending, pendingCount, onApproveItem, 
 /* ── Schedule view: clean tabular list with thumbnails + inline approve ── */
 function ScheduleView({ items, onApproveItem, onRequestChange }) {
   return (
-    <div className="divide-y divide-white/20">
-      {/* Table header */}
-      <div className="grid gap-3 px-5 py-2.5 text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium"
-        style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 100px' }}>
-        <div></div>
-        <div>Item</div>
-        <div>Product / Finish</div>
-        <div>Colour</div>
-        <div className="text-right">Status</div>
-      </div>
+    <div className="px-4 py-3 space-y-2">
       {items.map(item => {
         const sel = item.project_selections || {}
         const attrs = sel.attributes || {}
@@ -611,7 +649,7 @@ function ScheduleView({ items, onApproveItem, onRequestChange }) {
         const isPending = item.approval_status === 'pending'
         const isChangeReq = item.approval_status === 'change_requested'
         return (
-          <div key={item.id} className="grid gap-3 px-5 py-3 text-[12px] hover:bg-white/20 transition-colors items-start"
+          <div key={item.id} className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/20 transition-colors items-start"
             style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 100px' }}>
             {/* Thumbnail */}
             <div>

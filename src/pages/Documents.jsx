@@ -187,25 +187,13 @@ export default function Documents({ projectId }) {
                 </button>
 
                 {isExpanded && (
-                  <div className="border-t border-white/30">
-                    {/* Table header */}
-                    <div className="grid gap-3 px-5 py-2 text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium"
-                      style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 80px' }}>
-                      <div></div>
-                      <div>Item</div>
-                      <div>Product / Finish</div>
-                      <div>Colour</div>
-                      <div>Status</div>
-                    </div>
-
-                    {/* Rows */}
-                    <div className="divide-y divide-white/20">
+                  <div className="border-t border-white/30 px-4 py-3 space-y-2">
                       {group.items.map(item => {
                         const sel = item.project_selections || {}
                         const attrs = sel.attributes || {}
                         const Icon = KIND_ICONS[sel.selection_kind] || Package
                         return (
-                          <div key={item.id} className="grid gap-3 px-5 py-3 text-[12px] hover:bg-white/20 transition-colors items-start"
+                          <div key={item.id} className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/20 transition-colors items-start"
                             style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 80px' }}>
                             <div>
                               {item.portal_image_url ? (
@@ -251,7 +239,6 @@ export default function Documents({ projectId }) {
                           </div>
                         )
                       })}
-                    </div>
                   </div>
                 )}
               </div>

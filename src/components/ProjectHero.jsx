@@ -36,7 +36,7 @@ export default function ProjectHero({ project }) {
             backgroundImage: `url(${satelliteUrl})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            opacity: 0.18,
+            opacity: 0.35,
             animation: loaded ? 'kenburns 40s ease-in-out infinite alternate' : 'none',
           }}
         />

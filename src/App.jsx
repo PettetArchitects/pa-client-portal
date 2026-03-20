@@ -100,7 +100,7 @@ function LoadingScreen() {
   const [quote] = useState(() => LOADING_QUOTES[Math.floor(Math.random() * LOADING_QUOTES.length)])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#E8E8E4]">
+    <div className="min-h-screen flex items-center justify-center bg-[#F5F5F3]">
       <div className="text-center max-w-md px-6">
         {/* Bouncing + spinning PA logo */}
         <div className="mb-8" style={{ animation: 'logoBounce 2s ease-in-out infinite' }}>

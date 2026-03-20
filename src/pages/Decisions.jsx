@@ -255,7 +255,10 @@ export default function Decisions({ projectId }) {
         {/* Left: actions */}
         <div className="flex items-center gap-0.5">
           <button
-            onClick={() => window.print()}
+            onClick={() => {
+              const url = `https://mmfhjlpsumhyxjqhyirw.supabase.co/functions/v1/export-selections-pdf?project_id=${projectId}&print=1`
+              window.open(url, '_blank')
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/40 transition-colors"
           >
             <FileDown size={13} /> Export to PDF

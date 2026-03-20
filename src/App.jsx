@@ -15,7 +15,7 @@ import Profile from './pages/Profile'
 import Admin from './pages/Admin'
 import ProjectData from './pages/ProjectData'
 
-const MIN_LOADING_MS = 3000
+const MIN_LOADING_MS = 4000
 
 function ProtectedApp() {
   const { user, loading: authLoading } = useAuth()

@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { Z } from '../layers'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useProject } from '../hooks/useProject'
@@ -49,7 +50,7 @@ export default function Shell({ projectName }) {
       <ProjectHero project={project} />
 
       {/* Top bar — glass */}
-      <header className="h-14 border-b border-white/30 backdrop-blur-xl bg-white/40 flex items-center px-6 shrink-0" style={{ position: 'relative', zIndex: 10 }}>
+      <header className="h-14 border-b border-white/30 backdrop-blur-xl bg-white/40 flex items-center px-6 shrink-0" style={{ position: 'relative', zIndex: Z.CHROME }}>
         <div className="flex items-center gap-3 flex-1">
           {/* Logo + practice name */}
           {logoUrl && (
@@ -76,13 +77,13 @@ export default function Shell({ projectName }) {
               {showSwitcher && createPortal(
                 <>
                   <div
-                    style={{ position: 'fixed', inset: 0, zIndex: 99998 }}
+                    style={{ position: 'fixed', inset: 0, zIndex: Z.OVERLAY }}
                     onClick={() => setShowSwitcher(false)}
                   />
                   <div
                     style={{
                       position: 'fixed',
-                      zIndex: 99999,
+                      zIndex: Z.DROPDOWN,
                       top: dropdownPos.top,
                       left: dropdownPos.left,
                       minWidth: 260,
@@ -152,7 +153,7 @@ export default function Shell({ projectName }) {
         </div>
       </header>
 
-      <div className="flex flex-1" style={{ position: 'relative', zIndex: 10 }}>
+      <div className="flex flex-1" style={{ position: 'relative', zIndex: Z.CHROME }}>
         {/* Sidebar — glass */}
         <nav className="w-52 border-r border-white/30 backdrop-blur-xl bg-white/40 py-6 px-3 shrink-0 hidden md:flex md:flex-col md:justify-between">
           <div className="space-y-0.5">

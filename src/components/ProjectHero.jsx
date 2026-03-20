@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Z } from '../layers'
 
 /**
  * Satellite aerial background — pre-stored in Supabase Storage.
@@ -23,7 +24,7 @@ export default function ProjectHero({ project }) {
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
-          zIndex: 0,
+          zIndex: Z.SATELLITE,
           overflow: 'hidden',
           opacity: loaded ? 1 : 0,
           transition: 'opacity 1.8s ease-in',
@@ -46,7 +47,7 @@ export default function ProjectHero({ project }) {
       <div
         className="fixed bottom-3 right-3 pointer-events-none"
         style={{
-          zIndex: 11,
+          zIndex: Z.ATTRIBUTION,
           opacity: loaded ? 0.4 : 0,
           transition: 'opacity 2s ease-in',
         }}

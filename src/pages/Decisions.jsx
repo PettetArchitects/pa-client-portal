@@ -225,7 +225,7 @@ export default function Decisions({ projectId }) {
           </span>
           <span className="text-sm font-medium">{progressPct}%</span>
         </div>
-        <p className="text-[11px] text-[var(--color-muted)] font-light mb-3">
+        <p className="text-[11px] text-[var(--color-text)] font-light mb-3">
           {totalPending > 0
             ? `${totalPending} material and finish selection${totalPending !== 1 ? 's' : ''} need${totalPending === 1 ? 's' : ''} your review — approve each item or request a change.`
             : progressPct === 100
@@ -399,7 +399,7 @@ export default function Decisions({ projectId }) {
                       <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded ml-2 inline-flex items-center align-middle">
                         {group.items.length}
                       </span>
-                      <p className="text-[11px] text-[var(--color-muted)] font-light mt-0.5">{group.description}</p>
+                      <p className="text-[11px] text-[var(--color-text)] font-light mt-0.5">{group.description}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -447,7 +447,7 @@ export default function Decisions({ projectId }) {
       {((sortBy !== 'room' && groupedData.length === 0) || (sortBy === 'room' && roomGroupedData.length === 0)) && (
         <div className="text-center py-20 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
           <Package size={24} className="mx-auto text-[var(--color-border)] mb-3" />
-          <p className="text-sm text-[var(--color-muted)] font-light">
+          <p className="text-sm text-[var(--color-text)] font-light">
             {filter !== 'all' ? 'No items match this filter.' : 'No selections yet.'}
           </p>
         </div>
@@ -551,7 +551,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
                       {room.totalVisible}
                     </span>
                   </div>
-                  <p className="text-[10px] text-[var(--color-muted)] font-light mt-0.5">
+                  <p className="text-[10px] text-[var(--color-text)] font-light mt-0.5">
                     {room.elements.map(e => e.label).join(' \u00b7 ')}
                   </p>
                 </div>
@@ -990,7 +990,7 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
 
         {/* Notes */}
         {sel.notes && (
-          <p className="text-[10px] text-[var(--color-muted)] font-light mt-1.5 italic leading-relaxed">{sel.notes}</p>
+          <p className="text-[10px] text-[var(--color-text)] font-light mt-1.5 italic leading-relaxed">{sel.notes}</p>
         )}
 
         {/* Change request note */}
@@ -1130,7 +1130,7 @@ function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveIt
 
       {selectedRoom && roomItems.length === 0 && (
         <div className="mt-4 text-center py-8 glass-t">
-          <p className="text-sm text-[var(--color-muted)] font-light">No selections mapped to this room yet.</p>
+          <p className="text-sm text-[var(--color-text)] font-light">No selections mapped to this room yet.</p>
         </div>
       )}
     </div>

@@ -1006,10 +1006,12 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
   const cols = specFields.slice(0, 5)
 
   // Column widths: # | Item | Product | Brand | spec cols... | Status
-  const colTemplate = `28px minmax(140px, 2fr) minmax(90px, 1.2fr) minmax(80px, 1fr) ${cols.map(() => 'minmax(80px, 1fr)').join(' ')} ${cols.length < 5 ? Array(5 - cols.length).fill('0fr').join(' ') : ''} 72px`
+  // Use fr units that sum to a reasonable total, with min widths for readability
+  const colTemplate = `28px minmax(120px, 2fr) minmax(80px, 1.2fr) minmax(70px, 1fr) ${cols.map(() => 'minmax(70px, 1fr)').join(' ')} 76px`
 
   return (
-    <div className="px-2 py-2">
+    <div className="py-2 -mx-2 overflow-x-auto">
+      <div className="min-w-[700px] px-2">
       {/* Column headers */}
       <div className="grid gap-2 px-3 py-2 text-[8px] tracking-[0.8px] uppercase text-[var(--color-muted)] font-medium border-b border-white/30"
         style={{ gridTemplateColumns: colTemplate }}>
@@ -1018,7 +1020,6 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
         <span>Product</span>
         <span>Brand</span>
         {cols.map(f => <span key={f.key}>{f.label}</span>)}
-        {cols.length < 5 && Array.from({ length: 5 - cols.length }).map((_, i) => <span key={`e-${i}`} />)}
         <span className="text-right">Status</span>
       </div>
 
@@ -1073,7 +1074,6 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
                   ) : (val || '\u2014')}
                 </span>
               ))}
-              {cols.length < 5 && Array.from({ length: 5 - cols.length }).map((_, i) => <span key={`ep-${i}`} />)}
               <div className="text-right">
                 {(isPending || isChangeReq) && onApproveItem ? (
                   <div className="flex items-center justify-end gap-1">
@@ -1113,7 +1113,6 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
                       ) : (val || '\u2014')}
                     </span>
                   ))}
-                  {cols.length < 5 && Array.from({ length: 5 - cols.length }).map((_, i) => <span key={`ec-${i}`} />)}
                   <div className="text-right">
                     {(cIsPending || cIsChange) && onApproveItem ? (
                       <button onClick={() => onApproveItem(child.id)} className="w-5 h-5 rounded flex items-center justify-center hover:bg-[rgba(45,74,38,0.1)]" style={{ border: '1px solid rgba(45,74,38,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={9} /></button>
@@ -1127,6 +1126,7 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
           </div>
         )
       })}
+    </div>
     </div>
   )
 }

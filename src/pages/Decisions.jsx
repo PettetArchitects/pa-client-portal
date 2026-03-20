@@ -11,15 +11,19 @@ export default function Decisions({ projectId }) {
 
   useEffect(() => {
     if (!projectId) return
-    loadDecisions()
+    seedAndLoad()
   }, [projectId])
 
-  async function loadDecisions() {
+  async function seedAndLoad() {
+    // Auto-seed portal entries from project_selections (idempotent — skips existing)
+    await supabase.rpc('sync_portal_selections', { p_project_id: projectId })
+
+    // Load groups and portal items with correct FK join
     const [grpRes, selRes] = await Promise.all([
-      supabase.from('schedule_groups').select('*').eq('project_id', projectId).order('display_order'),
+      supabase.from('schedule_groups').select('*').eq('project_id', projectId).eq('visible_to_homeowner', true).order('display_order'),
       supabase.from('homeowner_selections_portal').select(`
         *,
-        project_selections:selection_id (
+        project_selections:project_selection_id (
           title, selection_kind, manufacturer_name, supplier_name, model, spec_reference, notes, attributes
         )
       `).eq('project_id', projectId).eq('active', true),

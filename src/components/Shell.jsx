@@ -6,7 +6,7 @@ import { usePractice } from '../hooks/usePractice'
 import ProjectHero from './ProjectHero'
 import {
   LayoutGrid, CheckSquare, FileText,
-  Clock, MessageCircle, LogOut, ChevronDown, Settings, Users
+  Clock, MessageCircle, LogOut, ChevronDown, Settings, Users, Database
 } from 'lucide-react'
 
 const baseNavItems = [
@@ -17,7 +17,10 @@ const baseNavItems = [
   { to: '/profile', icon: Settings, label: 'Profile' },
 ]
 
-const adminNavItem = { to: '/admin', icon: Users, label: 'Clients' }
+const architectNavItems = [
+  { to: '/data', icon: Database, label: 'Project Data' },
+  { to: '/admin', icon: Users, label: 'Clients' },
+]
 
 export default function Shell({ projectName }) {
   const { user, signOut } = useAuth()
@@ -25,7 +28,7 @@ export default function Shell({ projectName }) {
   const { practice } = usePractice()
   const [showSwitcher, setShowSwitcher] = useState(false)
 
-  const navItems = isArchitect ? [...baseNavItems, adminNavItem] : baseNavItems
+  const navItems = isArchitect ? [...baseNavItems, ...architectNavItems] : baseNavItems
   const practiceName = practice?.practice_name || 'Pettet Architects'
   const logoUrl = practice?.logo_url
   const accreditations = practice?.accreditations || {}

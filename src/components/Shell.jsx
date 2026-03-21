@@ -23,7 +23,7 @@ const architectNavItems = [
   { to: '/data', icon: Database, label: 'Project Data' },
 ]
 
-/* ── Hand-drawn north point SVG ── */
+/* ââ Hand-drawn north point SVG ââ */
 function NorthPoint({ size = 28, className = '' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" fill="none" className={className} style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))' }}>
@@ -35,14 +35,14 @@ function NorthPoint({ size = 28, className = '' }) {
   )
 }
 
-/* ── Format coordinates as DMS ── */
+/* ââ Format coordinates as DMS ââ */
 function formatDMS(decimal, isLat) {
   const abs = Math.abs(decimal)
   const d = Math.floor(abs)
   const m = Math.floor((abs - d) * 60)
   const s = ((abs - d - m / 60) * 3600).toFixed(1)
   const dir = isLat ? (decimal >= 0 ? 'N' : 'S') : (decimal >= 0 ? 'E' : 'W')
-  return `${d}°${String(m).padStart(2, '0')}'${s}"${dir}`
+  return `${d}Â°${String(m).padStart(2, '0')}'${s}"${dir}`
 }
 
 export default function Shell({ projectName }) {
@@ -70,7 +70,7 @@ export default function Shell({ projectName }) {
       {/* Full-bleed satellite background */}
       <ProjectHero project={project} />
 
-      {/* Top bar — glass */}
+      {/* Top bar â glass */}
       <header className="h-14 border-b border-white/20 backdrop-blur-xl bg-white/50 flex items-center px-6 shrink-0" style={{ position: 'relative', zIndex: Z.CHROME }}>
         <div className="flex items-center gap-3 flex-1">
           {/* Logo + practice name */}
@@ -82,7 +82,7 @@ export default function Shell({ projectName }) {
           </span>
 
           {/* Project name / switcher */}
-          <span className="text-[var(--color-border)]">·</span>
+          <span className="text-[var(--color-border)]">Â·</span>
 
           {isArchitect && projects.length > 1 ? (
             <>
@@ -174,7 +174,7 @@ export default function Shell({ projectName }) {
         </div>
       </header>
 
-      {/* Project info strip — stage + coordinates + north point */}
+      {/* Project info strip â stage + coordinates + north point */}
       {project && (
         <div className="h-9 border-b border-white/15 backdrop-blur-xl bg-white/35 flex items-center justify-between px-6 shrink-0" style={{ position: 'relative', zIndex: Z.CHROME }}>
           <div className="flex items-center gap-4">
@@ -203,7 +203,7 @@ export default function Shell({ projectName }) {
                     ? 'bg-[var(--color-pending)] text-white border-[var(--color-pending)]'
                     : 'bg-white/40 text-[var(--color-muted)] border-white/50 hover:bg-white/60'
                 }`}
-                title={clientPreview ? 'Viewing as client — click to return to architect view' : 'Preview what the client sees'}
+                title={clientPreview ? 'Viewing as client â click to return to architect view' : 'Preview what the client sees'}
               >
                 <Eye size={11} />
                 {clientPreview ? 'Client view' : 'Preview'}
@@ -223,7 +223,7 @@ export default function Shell({ projectName }) {
       )}
 
       <div className="flex flex-1" style={{ position: 'relative', zIndex: Z.CHROME }}>
-        {/* Sidebar — glass */}
+        {/* Sidebar â glass */}
         <nav className="w-52 border-r border-white/20 backdrop-blur-xl bg-white/50 py-6 px-3 shrink-0 hidden md:flex md:flex-col md:justify-between">
           <div className="space-y-0.5">
             {navItems.map(({ to, icon: Icon, label }) => (
@@ -260,13 +260,13 @@ export default function Shell({ projectName }) {
               )}
             </p>
             <p className="text-[9px] text-[var(--color-border)] mt-3 font-light tracking-[0.5px]">
-              Build {typeof __BUILD_HASH__ !== 'undefined' ? __BUILD_HASH__ : 'dev'}{' · '}
+              Build {typeof __BUILD_HASH__ !== 'undefined' ? __BUILD_HASH__ : 'dev'}{' Â· '}
               {typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : ''}
             </p>
           </div>
         </nav>
 
-        {/* Mobile nav — glass */}
+        {/* Mobile nav â glass */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 backdrop-blur-xl bg-white/50 border-t border-white/20 z-50 flex justify-around py-2 px-4">
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink
@@ -285,8 +285,8 @@ export default function Shell({ projectName }) {
           ))}
         </nav>
 
-        {/* Main content — transparent so satellite shows through */}
-        <main className="flex-1 p-6 md:pl-14 md:pr-10 md:pt-10 md:pb-10 pb-24 overflow-y-auto backdrop-blur-md bg-white/30">
+        {/* Main content â transparent so satellite shows through */}
+        <main className="flex-1 p-6 md:pl-14 md:pr-10 md:pt-10 md:pb-10 pb-24 overflow-y-auto bg-white/30">
           <Outlet />
         </main>
       </div>

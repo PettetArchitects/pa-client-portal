@@ -24,6 +24,8 @@ export default function ImageManager() {
 
   const [selections, setSelections] = useState([])
   const [groups, setGroups] = useState([])
+  const [scheduleSheets, setScheduleSheets] = useState([])
+  const [elementLabels, setElementLabels] = useState({})
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
@@ -31,6 +33,7 @@ export default function ImageManager() {
   const [kindFilter, setKindFilter] = useState('all')
   const [elementFilter, setElementFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [sheetFilter, setSheetFilter] = useState('all')
   const [viewMode, setViewMode] = useState(VIEW_MODES.grid)
   const [brokenUrls, setBrokenUrls] = useState(new Set())
   const [selectedItem, setSelectedItem] = useState(null)
@@ -46,7 +49,7 @@ export default function ImageManager() {
 
   async function loadData() {
     setLoading(true)
-    const [selRes, grpRes] = await Promise.all([
+    const [selRes, grpRes, sheetRes, elemRes] = await Promise.all([
       supabase
         .from('homeowner_selections_portal')
         .select(`*, project_selections:project_selection_id (id, title, selection_kind, element_type, manufacturer_name, supplier_name, model, spec_reference, notes, attributes)`)
@@ -57,9 +60,22 @@ export default function ImageManager() {
         .select('*')
         .eq('project_id', projectId)
         .order('display_order'),
+      supabase
+        .from('schedule_output_definitions')
+        .select('output_code, output_title, element_types, display_order')
+        .eq('active', true)
+        .order('display_order'),
+      supabase
+        .from('sub_criteria_definitions')
+        .select('element_type, element_label'),
     ])
     setSelections(selRes.data || [])
     setGroups(grpRes.data || [])
+    setScheduleSheets(sheetRes.data || [])
+    // Build element_type → label lookup from canonical definitions
+    const labels = {}
+    ;(elemRes.data || []).forEach(e => { if (!labels[e.element_type]) labels[e.element_type] = e.element_label })
+    setElementLabels(labels)
     setBrokenUrls(new Set())
     setLoading(false)
   }
@@ -95,12 +111,18 @@ export default function ImageManager() {
     }
   })
 
-  /* ── Derived Filter Options ── */
+  /* ── Derived Filter Options (canonical labels from Supabase) ── */
   const kindOptions = [...new Set(selections.map(s => s.project_selections?.selection_kind).filter(Boolean))].sort()
   const elementOptions = [...new Set(selections.map(s => s.project_selections?.element_type).filter(Boolean))].sort()
   const approvalOptions = [...new Set(selections.map(s => s.approval_status).filter(Boolean))].sort()
 
-  const activeFilterCount = [groupFilter, kindFilter, elementFilter, statusFilter].filter(f => f !== 'all').length
+  // Helper: resolve element_type to canonical label
+  const getElementLabel = (et) => elementLabels[et] || et?.replace(/_/g, ' ') || '—'
+
+  // Helper: find which schedule sheet(s) an element_type belongs to
+  const getSheetForElement = (et) => scheduleSheets.find(sh => sh.element_types?.includes(et))
+
+  const activeFilterCount = [groupFilter, kindFilter, elementFilter, statusFilter, sheetFilter].filter(f => f !== 'all').length
 
   /* ── Filtering ── */
   const filteredSelections = selections.filter(s => {
@@ -115,6 +137,10 @@ export default function ImageManager() {
     if (kindFilter !== 'all' && sel.selection_kind !== kindFilter) return false
     if (elementFilter !== 'all' && sel.element_type !== elementFilter) return false
     if (statusFilter !== 'all' && s.approval_status !== statusFilter) return false
+    if (sheetFilter !== 'all') {
+      const sheet = scheduleSheets.find(sh => sh.output_code === sheetFilter)
+      if (sheet && !sheet.element_types?.includes(sel.element_type)) return false
+    }
     // Image status filter
     if (filter === 'missing') return !s.portal_image_url
     if (filter === 'broken') return s.portal_image_url && brokenUrls.has(s.portal_image_url)
@@ -319,19 +345,25 @@ export default function ImageManager() {
           onChange={setGroupFilter}
         />
         <FilterDropdown
+          label="Schedule"
+          value={sheetFilter}
+          options={scheduleSheets.map(sh => ({ key: sh.output_code, label: sh.output_title }))}
+          onChange={setSheetFilter}
+        />
+        <FilterDropdown
+          label="Element"
+          value={elementFilter}
+          options={elementOptions.map(e => ({ key: e, label: getElementLabel(e) }))}
+          onChange={setElementFilter}
+        />
+        <FilterDropdown
           label="Kind"
           value={kindFilter}
           options={kindOptions.map(k => ({ key: k, label: k.replace(/_/g, ' ') }))}
           onChange={setKindFilter}
         />
         <FilterDropdown
-          label="Element"
-          value={elementFilter}
-          options={elementOptions.map(e => ({ key: e, label: e.replace(/_/g, ' ') }))}
-          onChange={setElementFilter}
-        />
-        <FilterDropdown
-          label="Status"
+          label="Approval"
           value={statusFilter}
           options={approvalOptions.map(a => ({ key: a, label: a.replace(/_/g, ' ') }))}
           onChange={setStatusFilter}
@@ -342,7 +374,7 @@ export default function ImageManager() {
           <>
             <div className="w-px h-5 bg-[var(--color-border)]" />
             <button
-              onClick={() => { setGroupFilter('all'); setKindFilter('all'); setElementFilter('all'); setStatusFilter('all') }}
+              onClick={() => { setGroupFilter('all'); setKindFilter('all'); setElementFilter('all'); setStatusFilter('all'); setSheetFilter('all') }}
               className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium hover:bg-white/40 transition-colors"
               style={{ color: 'var(--color-urgent)' }}
             >
@@ -568,11 +600,11 @@ function ImageCard({ item, isBroken, onImageError, onClick }) {
         </div>
         <div className="flex items-center gap-1 mt-1 flex-wrap">
           {sel.element_type && (
-            <span className="text-[8px] px-1 py-0.5 rounded bg-white/40 capitalize" style={{ color: 'var(--color-muted)' }}>
-              {sel.element_type.replace(/_/g, ' ')}
+            <span className="text-[8px] px-1 py-0.5 rounded bg-white/40" style={{ color: 'var(--color-muted)' }}>
+              {elementLabels[sel.element_type] || sel.element_type?.replace(/_/g, ' ')}
             </span>
           )}
-          <span className="text-[8px] px-1 py-0.5 rounded bg-white/40 capitalize" style={{ color: 'var(--color-muted)' }}>
+          <span className="text-[8px] px-1 py-0.5 rounded bg-white/40" style={{ color: 'var(--color-muted)' }}>
             {item.schedule_group?.replace(/_/g, ' ')}
           </span>
         </div>
@@ -631,8 +663,8 @@ function ImageRow({ item, isBroken, onImageError, onClick }) {
       {/* Tags */}
       <div className="flex items-center gap-1 shrink-0">
         {sel.element_type && (
-          <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/40 capitalize" style={{ color: 'var(--color-muted)' }}>
-            {sel.element_type.replace(/_/g, ' ')}
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/40" style={{ color: 'var(--color-muted)' }}>
+            {elementLabels[sel.element_type] || sel.element_type?.replace(/_/g, ' ')}
           </span>
         )}
         <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/40 capitalize" style={{ color: 'var(--color-muted)' }}>

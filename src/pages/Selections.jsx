@@ -15,11 +15,27 @@ const ROLE_LABELS = {
   product:   'Product',
 }
 
+// Walk up the codeHierarchyMap to find the root assembly (role=assembly, no parent).
+// Guards against circular refs. Returns null if code isn't in the map.
+function getTopLevelAssemblyCode(code, codeHierarchyMap) {
+  let current = code
+  const seen = new Set()
+  while (current && !seen.has(current)) {
+    seen.add(current)
+    const info = codeHierarchyMap[current]
+    if (!info) return null
+    if (!info.parent_canonical_code) return current
+    current = info.parent_canonical_code
+  }
+  return null // circular reference guard
+}
+
 export default function Selections({ projectId }) {
   const [groups, setGroups] = useState([])
   const [items, setItems] = useState([])
   const [codeTitleMap, setCodeTitleMap] = useState({})
   const [codeHierarchyMap, setCodeHierarchyMap] = useState({})
+  const [selectionCodeMap, setSelectionCodeMap] = useState({}) // selection_id → canonical_code (from link table)
   const [filter, setFilter] = useState('all')
   const [viewMode, setViewMode] = useState('group') // 'group' | 'code'
   const [loading, setLoading] = useState(true)
@@ -30,13 +46,17 @@ export default function Selections({ projectId }) {
   }, [projectId])
 
   async function loadSelections() {
-    const [grpRes, selRes, codeRes] = await Promise.all([
+    const [grpRes, selRes, codeRes, linkRes] = await Promise.all([
       supabase.from('schedule_groups').select('*').eq('project_id', projectId).order('display_order'),
       supabase.from('v_client_selection_schedule').select('*').eq('project_id', projectId),
       supabase.from('master_code_entries')
         .select('id, canonical_code, title, component_role, parent_code_id')
         .eq('status', 'active'),
+      // Fetch primary code links for all selections — this is how child codes attach to selections
+      supabase.from('project_selection_code_links')
+        .select('project_selection_id, entry_id'),
     ])
+
     setGroups(grpRes.data || [])
     setItems(selRes.data || [])
 
@@ -47,7 +67,7 @@ export default function Selections({ projectId }) {
     codes.forEach(c => { ctMap[c.canonical_code] = c.title })
     setCodeTitleMap(ctMap)
 
-    // id → canonical_code lookup
+    // id → canonical_code lookup (needed to resolve parent_code_id UUIDs → strings)
     const codeIdToCode = {}
     codes.forEach(c => { codeIdToCode[c.id] = c.canonical_code })
 
@@ -61,6 +81,17 @@ export default function Selections({ projectId }) {
       }
     })
     setCodeHierarchyMap(hierarchyMap)
+
+    // Build selection_id → canonical_code from the link table.
+    // If a selection has multiple links, the first one wins (is_primary isn't always set).
+    const scMap = {}
+    ;(linkRes.data || []).forEach(link => {
+      if (!scMap[link.project_selection_id]) {
+        const canonical = codeIdToCode[link.entry_id]
+        if (canonical) scMap[link.project_selection_id] = canonical
+      }
+    })
+    setSelectionCodeMap(scMap)
 
     setLoading(false)
   }
@@ -200,6 +231,7 @@ export default function Selections({ projectId }) {
           items={filtered}
           codeHierarchyMap={codeHierarchyMap}
           codeTitleMap={codeTitleMap}
+          selectionCodeMap={selectionCodeMap}
           onApprove={handleApprove}
           onRequestChange={handleRequestChange}
         />
@@ -210,53 +242,45 @@ export default function Selections({ projectId }) {
 
 /* ── Code Hierarchy View ──────────────────────────────────────────────────── */
 
-function CodeHierarchyView({ items, codeHierarchyMap, codeTitleMap, onApprove, onRequestChange }) {
-  // Sort items within a group by role order (finish → colour → hardware → accessory → product)
-  const sortByRole = (a, b) => {
-    const aRole = codeHierarchyMap[a.attributes?.code]?.role || 'product'
-    const bRole = codeHierarchyMap[b.attributes?.code]?.role || 'product'
-    const ai = ROLE_ORDER.indexOf(aRole)
-    const bi = ROLE_ORDER.indexOf(bRole)
-    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
-  }
+function CodeHierarchyView({ items, codeHierarchyMap, codeTitleMap, selectionCodeMap, onApprove, onRequestChange }) {
+  // Resolve canonical code for an item:
+  // 1. Check project_selection_code_links map first (includes child codes D1-ACC, FT1-COL etc.)
+  // 2. Fall back to attributes.code for legacy items
+  const resolveCode = (item) =>
+    selectionCodeMap[item.selection_id] || item.attributes?.code || null
 
-  // Build assembly groups keyed by assembly canonical_code
-  const assemblyMap = {}
-  const generalItems = []
+  // Build assembly groups keyed by TOP-LEVEL assembly canonical_code.
+  // Each item is enriched with its resolvedCode for rendering.
+  const assemblyMap = {}   // topAssemblyCode → { code, title, items[] }
+  const generalItems = []  // items with no code or no top-level assembly
 
   items.forEach(item => {
-    const code = item.attributes?.code || null
+    const code = resolveCode(item)
     if (!code) {
-      generalItems.push(item)
+      generalItems.push({ item, code: null })
       return
     }
-    const codeInfo = codeHierarchyMap[code]
-    if (!codeInfo) {
-      generalItems.push(item)
+    const topAssembly = getTopLevelAssemblyCode(code, codeHierarchyMap)
+    if (!topAssembly) {
+      generalItems.push({ item, code })
       return
     }
-
-    if (codeInfo.role === 'assembly' && !codeInfo.parent_canonical_code) {
-      // Item is directly coded as an assembly
-      if (!assemblyMap[code]) {
-        assemblyMap[code] = { code, title: codeInfo.title || code, items: [] }
-      }
-      assemblyMap[code].items.push(item)
-    } else if (codeInfo.parent_canonical_code) {
-      const parentCode = codeInfo.parent_canonical_code
-      if (!assemblyMap[parentCode]) {
-        const parentInfo = codeHierarchyMap[parentCode]
-        assemblyMap[parentCode] = { code: parentCode, title: parentInfo?.title || parentCode, items: [] }
-      }
-      assemblyMap[parentCode].items.push(item)
-    } else {
-      // Non-assembly, no parent → General
-      generalItems.push(item)
+    if (!assemblyMap[topAssembly]) {
+      const info = codeHierarchyMap[topAssembly]
+      assemblyMap[topAssembly] = { code: topAssembly, title: info?.title || topAssembly, items: [] }
     }
+    assemblyMap[topAssembly].items.push({ item, code })
   })
 
+  // Sort items within each group by role order (finish → colour → hardware → accessory → product)
+  const roleIndex = (code) => {
+    const role = codeHierarchyMap[code]?.role || 'product'
+    const i = ROLE_ORDER.indexOf(role)
+    return i === -1 ? 99 : i
+  }
+
   const assemblyGroups = Object.values(assemblyMap)
-  assemblyGroups.forEach(g => g.items.sort(sortByRole))
+  assemblyGroups.forEach(g => g.items.sort((a, b) => roleIndex(a.code) - roleIndex(b.code)))
 
   const hasContent = assemblyGroups.length > 0 || generalItems.length > 0
 
@@ -279,10 +303,11 @@ function CodeHierarchyView({ items, codeHierarchyMap, codeTitleMap, onApprove, o
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {group.items.map(item => (
+            {group.items.map(({ item, code }) => (
               <SelectionCard
                 key={item.portal_entry_id}
                 item={item}
+                displayCode={code}
                 codeTitleMap={codeTitleMap}
                 codeHierarchyMap={codeHierarchyMap}
                 onApprove={() => onApprove(item.portal_entry_id)}
@@ -302,10 +327,11 @@ function CodeHierarchyView({ items, codeHierarchyMap, codeTitleMap, onApprove, o
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {generalItems.map(item => (
+            {generalItems.map(({ item, code }) => (
               <SelectionCard
                 key={item.portal_entry_id}
                 item={item}
+                displayCode={code}
                 codeTitleMap={codeTitleMap}
                 codeHierarchyMap={codeHierarchyMap}
                 onApprove={() => onApprove(item.portal_entry_id)}
@@ -328,7 +354,10 @@ function CodeHierarchyView({ items, codeHierarchyMap, codeTitleMap, onApprove, o
 
 /* ── Selection Card ───────────────────────────────────────────────────────── */
 
-function SelectionCard({ item, codeTitleMap, codeHierarchyMap, onApprove, onRequestChange }) {
+// displayCode: optional override for the code badge (used in By Code view to
+//   show the canonical code from project_selection_code_links rather than attrs.code)
+// codeHierarchyMap: optional — when present (By Code view only) shows role label
+function SelectionCard({ item, codeTitleMap, codeHierarchyMap, displayCode, onApprove, onRequestChange }) {
   const isPending = item.approval_status === 'pending'
   const isApproved = item.approval_status === 'approved'
   const isChangeReq = item.approval_status === 'change_requested'
@@ -336,10 +365,12 @@ function SelectionCard({ item, codeTitleMap, codeHierarchyMap, onApprove, onRequ
 
   const attrs = item.attributes || {}
   const productUrl = attrs.product_url || attrs.image_url
-  const code = attrs.code || null
+
+  // Use displayCode if provided (By Code view), otherwise fall back to attrs.code (By Group view)
+  const code = displayCode !== undefined ? displayCode : (attrs.code || null)
   const codeTitle = code && codeTitleMap ? codeTitleMap[code] : null
 
-  // Role label — only present when codeHierarchyMap is provided (code view); null in flat group view
+  // Role label — only present when codeHierarchyMap is provided (By Code view)
   const codeInfo = code && codeHierarchyMap ? codeHierarchyMap[code] : null
   const roleLabel = codeInfo?.role ? (ROLE_LABELS[codeInfo.role] || codeInfo.role) : null
 

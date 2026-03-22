@@ -7,7 +7,7 @@ import { useProject } from '../hooks/useProject'
 import { usePractice } from '../hooks/usePractice'
 import ProjectHero from './ProjectHero'
 import {
-  LayoutGrid, ClipboardList, FileText, Home,
+  LayoutGrid, ClipboardList, FileText, Home, Image,
   MessageCircle, LogOut, ChevronDown, Settings, Users, Database, Compass, Eye
 } from 'lucide-react'
 
@@ -22,6 +22,7 @@ const baseNavItems = [
 
 const architectNavItems = [
   { to: '/data', icon: Database, label: 'Project Data' },
+  { to: '/images', icon: Image, label: 'Images' },
 ]
 
 /* Ã¢ÂÂÃ¢ÂÂ Hand-drawn north point SVG Ã¢ÂÂÃ¢ÂÂ */

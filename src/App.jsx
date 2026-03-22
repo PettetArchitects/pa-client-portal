@@ -15,6 +15,7 @@ import Profile from './pages/Profile'
 import Admin from './pages/Admin'
 import ProjectData from './pages/ProjectData'
 import DecisionMap from './pages/DecisionMap'
+import ImageManager from './pages/ImageManager'
 import LogoAnimation from './components/LogoAnimation'
 
 const MIN_LOADING_MS = 3000
@@ -111,6 +112,7 @@ function ProtectedApp() {
         <Route path="data" element={<ProjectData projectId={pid} />} />
         <Route path="decisions" element={<DecisionMap />} />
         <Route path="admin" element={<Admin />} />
+        <Route path="images" element={<ImageManager />} />
       </Route>
     </Routes>
   )

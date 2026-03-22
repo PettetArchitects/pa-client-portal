@@ -34,6 +34,7 @@ export function ProjectProvider({ children }) {
           .from('projects')
           .select('*')
           .in('id', projectIds)
+          .eq('stream', 'architectural')
 
         if (projectData) {
           // Merge access metadata (project_name, client) into project records

@@ -79,6 +79,7 @@ export default function Decisions({ projectId }) {
   const [subCriteriaMap, setSubCriteriaMap] = useState({}) // element_type → [{field_key, field_label, field_type, field_unit, display_order}]
   const [codeTitleMap, setCodeTitleMap] = useState({}) // canonical_code → title (e.g. "LT1" → "Light Type 01")
   const [selectionCodeMap, setSelectionCodeMap] = useState({}) // project_selection_id → canonical_code (from link table)
+  const [codeHierarchyMap, setCodeHierarchyMap] = useState({}) // canonical_code → { role, parent_canonical_code, title }
   const [loading, setLoading] = useState(true)
   const [expandedGroups, setExpandedGroups] = useState(new Set())
   const [viewMode, setViewMode] = useState('schedule') // 'schedule', 'plan'
@@ -105,7 +106,7 @@ export default function Decisions({ projectId }) {
       `).eq('project_id', projectId).eq('active', true),
       supabase.from('portal_selection_rooms').select('*').eq('project_id', projectId),
       supabase.from('sub_criteria_definitions').select('*').order('display_order'),
-      supabase.from('master_code_entries').select('id, canonical_code, title').eq('status', 'active'),
+      supabase.from('master_code_entries').select('id, canonical_code, title, component_role, parent_code_id').eq('status', 'active'),
       supabase.from('project_selection_code_links').select('project_selection_id, entry_id'),
     ])
 
@@ -114,11 +115,13 @@ export default function Decisions({ projectId }) {
     setRoomMappings(roomRes.data || [])
 
     // Build code title lookup: canonical_code → title (e.g. "LT1" → "Light Type 01")
+    const codes = codeRes.data || []
     const ctMap = {}
+    // Build id→code lookup (shared by both maps below)
     const codeIdToCode = {}
-    ;(codeRes.data || []).forEach(e => {
-      ctMap[e.canonical_code] = e.title
-      codeIdToCode[e.id] = e.canonical_code
+    codes.forEach(c => {
+      ctMap[c.canonical_code] = c.title
+      codeIdToCode[c.id] = c.canonical_code
     })
     setCodeTitleMap(ctMap)
 
@@ -132,6 +135,18 @@ export default function Decisions({ projectId }) {
       }
     })
     setSelectionCodeMap(selCodeMap)
+
+    // Build hierarchy map: canonical_code → { role, parent_canonical_code, title }
+    // Surfaces master_code_entries.component_role and parent_code_id hierarchy.
+    const hierarchyMap = {}
+    codes.forEach(c => {
+      hierarchyMap[c.canonical_code] = {
+        role: c.component_role || 'product',
+        parent_canonical_code: c.parent_code_id ? (codeIdToCode[c.parent_code_id] || null) : null,
+        title: c.title,
+      }
+    })
+    setCodeHierarchyMap(hierarchyMap)
 
     // Build sub-criteria lookup: element_type → sorted fields array
     const scMap = {}
@@ -447,6 +462,7 @@ export default function Decisions({ projectId }) {
           onRequestChange={handleRequestChange}
           codeTitleMap={codeTitleMap}
           selectionCodeMap={selectionCodeMap}
+          codeHierarchyMap={codeHierarchyMap}
         />
       ) : sortBy === 'boq' ? (
         <BoQView groupedData={groupedData} natspecMap={natspecMap} codeTitleMap={codeTitleMap} />
@@ -461,6 +477,7 @@ export default function Decisions({ projectId }) {
           subCriteriaMap={subCriteriaMap}
           codeTitleMap={codeTitleMap}
           selectionCodeMap={selectionCodeMap}
+          codeHierarchyMap={codeHierarchyMap}
         />
       ) : sortBy === 'room' ? (
         <RoomGroupedView
@@ -537,7 +554,7 @@ export default function Decisions({ projectId }) {
                 {/* Expanded items */}
                 {isExpanded && (
                   <div className="border-t border-white/30">
-                    <ScheduleView items={group.items} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} roomMappings={roomMappings} codeTitleMap={codeTitleMap} selectionCodeMap={selectionCodeMap} onApproveItem={handleApproveItem} onRequestChange={handleRequestChange} />
+                    <ScheduleView items={group.items} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} roomMappings={roomMappings} codeTitleMap={codeTitleMap} selectionCodeMap={selectionCodeMap} codeHierarchyMap={codeHierarchyMap} onApproveItem={handleApproveItem} onRequestChange={handleRequestChange} />
                   </div>
                 )}
               </div>
@@ -901,7 +918,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
 }
 
 /* ── Component-grouped view: by parent assembly ── */
-function ComponentGroupedView({ components, expandedGroups, toggleGroup, onApproveItem, onRequestChange, natspecMap, subCriteriaMap, codeTitleMap, selectionCodeMap }) {
+function ComponentGroupedView({ components, expandedGroups, toggleGroup, onApproveItem, onRequestChange, natspecMap, subCriteriaMap, codeTitleMap, selectionCodeMap, codeHierarchyMap = {} }) {
   return (
     <div className="space-y-3">
       {components.map(comp => {
@@ -954,7 +971,7 @@ function ComponentGroupedView({ components, expandedGroups, toggleGroup, onAppro
             {/* Expanded: all items in this IFC family */}
             {isExpanded && (
               <div className="border-t border-white/30">
-                <ScheduleView items={comp.children} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} codeTitleMap={codeTitleMap} selectionCodeMap={selectionCodeMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+                <ScheduleView items={comp.children} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} codeTitleMap={codeTitleMap} selectionCodeMap={selectionCodeMap} codeHierarchyMap={codeHierarchyMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
               </div>
             )}
           </div>
@@ -1101,7 +1118,7 @@ function getDominantElementType(items) {
 }
 
 /* ── Schedule view: proper tabular schedule with column headers ── */
-function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, codeTitleMap, selectionCodeMap, onApproveItem, onRequestChange }) {
+function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, codeTitleMap, selectionCodeMap, codeHierarchyMap = {}, onApproveItem, onRequestChange }) {
   const tree = buildItemTree(items)
   const allItems = tree.flatMap(n => [n.item, ...n.children])
   const elementType = getDominantElementType(allItems)
@@ -1172,6 +1189,9 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, codeTit
                 {code && codeTitleMap && codeTitleMap[code] && (
                   <span className="text-[7px] uppercase tracking-wider text-[var(--color-muted)] leading-tight block truncate">{codeTitleMap[code]}</span>
                 )}
+                {code && codeHierarchyMap[code]?.role && (
+                  <span className="text-[6px] uppercase tracking-[0.8px] text-[var(--color-muted)] opacity-60 leading-tight block mt-0.5">{ROLE_LABELS[codeHierarchyMap[code].role] || codeHierarchyMap[code].role}</span>
+                )}
               </div>
               {/* Thumbnail */}
               <div>
@@ -1229,7 +1249,9 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, codeTit
               const cSel = child.project_selections || {}
               const cAttrs = cSel.attributes || {}
               const cSt = STATUS_STYLES[child.approval_status] || STATUS_STYLES.not_applicable
-              const cRole = ROLE_LABELS[cSel.component_role] || cSel.component_role?.replace(/_/g, ' ') || ''
+              // Prefer code-level role from master_code_entries hierarchy; fall back to selection-level component_role
+              const cCodeRole = cCode ? codeHierarchyMap[cCode]?.role : null
+              const cRole = ROLE_LABELS[cCodeRole || cSel.component_role] || (cCodeRole || cSel.component_role)?.replace(/_/g, ' ') || ''
               const cIsPending = child.approval_status === 'pending'
               const cIsChange = child.approval_status === 'change_requested'
               const cColValues = cols.map(col => cAttrs[col.key] || null)
@@ -1246,6 +1268,9 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, codeTit
                     <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] uppercase block">{cCode || ''}</span>
                     {cCode && codeTitleMap && codeTitleMap[cCode] && (
                       <span className="text-[6px] uppercase tracking-wider text-[var(--color-muted)] opacity-70 leading-tight block truncate">{codeTitleMap[cCode]}</span>
+                    )}
+                    {cCode && codeHierarchyMap[cCode]?.role && (
+                      <span className="text-[6px] uppercase tracking-[0.8px] text-[var(--color-muted)] opacity-50 leading-tight block mt-0.5">{ROLE_LABELS[codeHierarchyMap[cCode].role] || codeHierarchyMap[cCode].role}</span>
                     )}
                   </div>
                   {/* Child thumbnail */}
@@ -1799,7 +1824,7 @@ function formatK(n) {
 }
 
 /* ── Plan View ── */
-function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveItem, onRequestChange, codeTitleMap, selectionCodeMap }) {
+function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveItem, onRequestChange, codeTitleMap, selectionCodeMap, codeHierarchyMap = {} }) {
   const [selectedRoom, setSelectedRoom] = useState(null)
 
   // Filter items by selected room
@@ -1822,7 +1847,7 @@ function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveIt
       {/* Room selection list */}
       {selectedRoom && roomItems.length > 0 && (
         <div className="mt-4">
-          <ScheduleView items={roomItems} natspecMap={{}} subCriteriaMap={{}} codeTitleMap={codeTitleMap} selectionCodeMap={selectionCodeMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+          <ScheduleView items={roomItems} natspecMap={{}} subCriteriaMap={{}} codeTitleMap={codeTitleMap} selectionCodeMap={selectionCodeMap} codeHierarchyMap={codeHierarchyMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
         </div>
       )}
 

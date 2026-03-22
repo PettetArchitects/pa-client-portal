@@ -22,7 +22,7 @@ const DOCUMENT_PRECEDENCE = [
     label: 'Specifications',
     description: 'Written intent — highest precedence',
     icon: BookOpen,
-    docTypes: ['specification'],
+    docTypes: ['specification', 'spec', 'natspec', 'project_specification'],
   },
   {
     tier: 2,
@@ -30,7 +30,7 @@ const DOCUMENT_PRECEDENCE = [
     label: 'Drawings',
     description: 'Graphic record, subordinate to specification',
     icon: PenTool,
-    docTypes: ['drawing_set', 'tender_drawing_detail_matrix'],
+    docTypes: ['drawing_set', 'drawing', 'architectural_drawing', 'construction_drawing'],
   },
   {
     tier: 3,
@@ -47,7 +47,7 @@ const DOCUMENT_PRECEDENCE = [
     label: 'Reports',
     description: 'Supporting technical evidence',
     icon: FileBarChart,
-    docTypes: ['geotechnical_report', 'consultant_report'],
+    docTypes: ['geotechnical_report', 'consultant_report', 'tender_drawing_detail_matrix'],
   },
   {
     tier: 5,

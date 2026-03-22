@@ -508,7 +508,7 @@ export default function Decisions({ projectId }) {
                 {/* Expanded items */}
                 {isExpanded && (
                   <div className="border-t border-white/30">
-                    <ScheduleView items={group.items} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} onApproveItem={handleApproveItem} onRequestChange={handleRequestChange} />
+                    <ScheduleView items={group.items} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} roomMappings={roomMappings} onApproveItem={handleApproveItem} onRequestChange={handleRequestChange} />
                   </div>
                 )}
               </div>
@@ -1070,7 +1070,7 @@ function getDominantElementType(items) {
 }
 
 /* ── Schedule view: proper tabular schedule with column headers ── */
-function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequestChange }) {
+function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, onApproveItem, onRequestChange }) {
   const tree = buildItemTree(items)
   const allItems = tree.flatMap(n => [n.item, ...n.children])
   const elementType = getDominantElementType(allItems)
@@ -1078,9 +1078,19 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
   // Show up to 5 spec columns
   const cols = specFields.slice(0, 5)
 
-  // Column widths: # | Image | Item | Product | Brand | spec cols... | Status
-  // Use fr units that sum to a reasonable total, with min widths for readability
-  const colTemplate = `28px 44px minmax(120px, 2fr) minmax(80px, 1.2fr) minmax(70px, 1fr) ${cols.map(() => 'minmax(70px, 1fr)').join(' ')} 76px`
+  // Build room lookup: project_selection_id → [room_key, ...]
+  const roomLookup = {}
+  if (roomMappings) {
+    roomMappings.forEach(m => {
+      if (!roomLookup[m.project_selection_id]) roomLookup[m.project_selection_id] = []
+      if (!roomLookup[m.project_selection_id].includes(m.room_key)) {
+        roomLookup[m.project_selection_id].push(m.room_key)
+      }
+    })
+  }
+
+  // Column widths: Code | Image | Item | Location | Product | Brand | spec cols... | Status
+  const colTemplate = `56px 44px minmax(120px, 2fr) minmax(70px, 1fr) minmax(80px, 1.2fr) minmax(70px, 1fr) ${cols.map(() => 'minmax(70px, 1fr)').join(' ')} 76px`
 
   return (
     <div className="py-2 -mx-2 overflow-x-auto">
@@ -1088,9 +1098,10 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
       {/* Column headers */}
       <div className="grid gap-2 px-3 py-2 text-[8px] tracking-[0.8px] uppercase text-[var(--color-muted)] font-medium border-b border-white/30"
         style={{ gridTemplateColumns: colTemplate }}>
-        <span className="text-right">#</span>
+        <span>Code</span>
         <span></span>
         <span>Item</span>
+        <span>Location</span>
         <span>Product</span>
         <span>Brand</span>
         {cols.map(f => <span key={f.key}>{f.label}</span>)}
@@ -1115,12 +1126,16 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
           return attrs[col.key] || null
         })
 
+        const itemRooms = roomLookup[node.item.project_selection_id] || []
+        const roomLabels = itemRooms.map(k => ROOM_CONFIG[k]?.label || k.replace(/_/g, ' ')).join(', ')
+
         return (
           <div key={node.item.id}>
             {/* Parent row */}
             <div className={`grid gap-2 px-3 py-2.5 items-center text-[11px] border-b border-white/15 hover:bg-white/30 transition-colors ${node.children.length > 0 ? 'font-medium' : ''}`}
               style={{ gridTemplateColumns: colTemplate }}>
-              <span className="text-[9px] font-mono text-[var(--color-muted)] text-right tabular-nums">{node.item.display_order || ''}</span>
+              {/* Code — leading column */}
+              <span className="text-[9px] font-mono tracking-wider text-[var(--color-text)] uppercase font-medium">{code || '\u2014'}</span>
               {/* Thumbnail */}
               <div>
                 {node.item.portal_image_url ? (
@@ -1143,13 +1158,14 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
                     </a>
                   )}
                 </div>
-                {code && <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] uppercase">{code}</span>}
                 {natspecCodes.length > 0 && (
                   <span className="text-[7px] font-mono tracking-wider text-[var(--color-muted)] opacity-70 block">
                     {natspecCodes.map(n => n.ref).join(' · ')}
                   </span>
                 )}
               </div>
+              {/* Location */}
+              <span className="text-[10px] text-[var(--color-muted)] break-words capitalize">{roomLabels || '\u2014'}</span>
               <span className="text-[var(--color-text)] break-words">{sel.model || '\u2014'}</span>
               <span className="text-[var(--color-muted)] break-words">{sel.manufacturer_name || '\u2014'}</span>
               {colValues.map((val, i) => (
@@ -1180,11 +1196,12 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
               const cIsPending = child.approval_status === 'pending'
               const cIsChange = child.approval_status === 'change_requested'
               const cColValues = cols.map(col => cAttrs[col.key] || null)
+              const { code: cCode } = parseCode(cSel.title || child.selection_title, cAttrs)
 
               return (
                 <div key={child.id} className="grid gap-2 px-3 py-1.5 items-center text-[10px] border-b border-white/10 hover:bg-white/20 transition-colors bg-white/5"
                   style={{ gridTemplateColumns: colTemplate }}>
-                  <span />
+                  <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] uppercase">{cCode || ''}</span>
                   {/* Child thumbnail */}
                   <div>
                     {child.portal_image_url ? (
@@ -1200,6 +1217,7 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
                     <span className="text-[7px] tracking-[0.8px] uppercase text-[var(--color-muted)] font-medium block">{cRole}</span>
                     <div className="break-words text-[var(--color-text)]">{cSel.title || child.selection_title}</div>
                   </div>
+                  <span className="text-[10px] text-[var(--color-muted)]">{'\u2014'}</span>
                   <span className="text-[var(--color-text)] break-words">{cSel.model || '\u2014'}</span>
                   <span className="text-[var(--color-muted)] break-words">{cSel.manufacturer_name || '\u2014'}</span>
                   {cColValues.map((val, i) => (

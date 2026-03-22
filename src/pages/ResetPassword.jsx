@@ -55,7 +55,7 @@ export default function ResetPassword() {
             </h1>
           </div>
           <div className="bg-white rounded-xl border border-[var(--color-border)] p-8">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(45, 74, 38, 0.1)' }}>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(91, 138, 101, 0.1)' }}>
               <Check size={18} style={{ color: 'var(--color-approved)' }} />
             </div>
             <p className="text-[13px] font-medium text-[var(--color-text)] mb-2">Password updated</p>

@@ -192,7 +192,7 @@ function LoadingScreen() {
   }, [])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#E8E8E5]" style={{ overflow: 'hidden' }}>
+    <div className="min-h-screen flex items-center justify-center bg-[#E2E0D8]" style={{ overflow: 'hidden' }}>
       <div className="text-center max-w-lg px-6" style={{ position: 'relative', zIndex: 2 }}>
 
         <div style={{ marginBottom: 40 }}>

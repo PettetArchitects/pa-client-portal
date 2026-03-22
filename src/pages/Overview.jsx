@@ -35,12 +35,12 @@ const UNIFORMAT_GROUPS = {
 
 // LOD level human labels and colours
 const LOD_META = {
-  100: { label: 'LOD 100', sublabel: 'Conceptual', color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
-  200: { label: 'LOD 200', sublabel: 'Schematic', color: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
-  300: { label: 'LOD 300', sublabel: 'Design Dev.', color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
-  350: { label: 'LOD 350', sublabel: 'Coord. Docs', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  400: { label: 'LOD 400', sublabel: 'Fab. Ready', color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
-  500: { label: 'LOD 500', sublabel: 'As-Built', color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
+  100: { label: 'LOD 100', sublabel: 'Conceptual', color: '#B8B0A0', bg: 'rgba(184,176,160,0.12)' },
+  200: { label: 'LOD 200', sublabel: 'Schematic', color: '#A09880', bg: 'rgba(160,152,128,0.12)' },
+  300: { label: 'LOD 300', sublabel: 'Design Dev.', color: '#7A9A7E', bg: 'rgba(122,154,126,0.12)' },
+  350: { label: 'LOD 350', sublabel: 'Coord. Docs', color: '#5B8A65', bg: 'rgba(91,138,101,0.12)' },
+  400: { label: 'LOD 400', sublabel: 'Fab. Ready', color: '#A07358', bg: 'rgba(160,115,88,0.12)' },
+  500: { label: 'LOD 500', sublabel: 'As-Built', color: '#C47B5C', bg: 'rgba(196,123,92,0.12)' },
 }
 
 function lodBarWidth(lod) {

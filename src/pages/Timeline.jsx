@@ -264,7 +264,7 @@ export default function Timeline({ projectId }) {
                       </h3>
                       {isActive && (
                         <span className="text-[9px] font-medium tracking-wider uppercase px-2 py-0.5 rounded-full"
-                          style={{ background: 'rgba(251,188,4,0.1)', color: 'var(--color-pending)' }}>
+                          style={{ background: 'rgba(196,162,101,0.1)', color: 'var(--color-pending)' }}>
                           Current
                         </span>
                       )}

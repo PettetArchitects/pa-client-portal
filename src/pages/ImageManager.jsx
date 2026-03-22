@@ -285,12 +285,12 @@ export default function ImageManager() {
                   {sh.withImage}/{sh.total}
                 </span>
                 {sh.missing > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: 'var(--color-urgent)', background: 'rgba(107, 45, 10, 0.08)' }}>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: 'var(--color-urgent)', background: 'rgba(196, 123, 92, 0.08)' }}>
                     {sh.missing} missing
                   </span>
                 )}
                 {sh.broken > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: 'var(--color-change)', background: 'rgba(90, 32, 16, 0.08)' }}>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: 'var(--color-change)', background: 'rgba(160, 115, 88, 0.08)' }}>
                     {sh.broken} broken
                   </span>
                 )}

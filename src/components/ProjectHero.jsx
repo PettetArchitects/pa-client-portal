@@ -81,7 +81,7 @@ export default function ProjectHero({ project }) {
         />
         <div
           className="absolute inset-0"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.10)' }}
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.28)' }}
         />
       </div>
 

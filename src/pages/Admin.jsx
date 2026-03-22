@@ -151,20 +151,20 @@ const DISCIPLINE_ICONS = {
 }
 
 const STATUS_CONFIG = {
-  engaged: { label: 'Engaged', icon: CircleCheck, color: 'var(--color-approved)', bg: 'rgba(52,168,83,0.08)' },
-  issued: { label: 'Brief Issued', icon: Clock, color: 'var(--color-pending)', bg: 'rgba(251,188,4,0.08)' },
-  draft: { label: 'Brief Draft', icon: CircleDashed, color: 'var(--color-muted)', bg: 'rgba(0,0,0,0.04)' },
-  not_engaged: { label: 'Required', icon: CircleDashed, color: 'var(--color-muted)', bg: 'rgba(0,0,0,0.04)' },
-  received: { label: 'Report Received', icon: Check, color: 'var(--color-approved)', bg: 'rgba(52,168,83,0.08)' },
+  engaged: { label: 'Engaged', icon: CircleCheck, color: 'var(--color-approved)', bg: 'rgba(91,138,101,0.08)' },
+  issued: { label: 'Brief Issued', icon: Clock, color: 'var(--color-pending)', bg: 'rgba(196,162,101,0.08)' },
+  draft: { label: 'Brief Draft', icon: CircleDashed, color: 'var(--color-muted)', bg: 'rgba(107,107,96,0.06)' },
+  not_engaged: { label: 'Required', icon: CircleDashed, color: 'var(--color-muted)', bg: 'rgba(107,107,96,0.06)' },
+  received: { label: 'Report Received', icon: Check, color: 'var(--color-approved)', bg: 'rgba(91,138,101,0.08)' },
 }
 
 /* ── QA Gate status config ── */
 const GATE_STATUS = {
-  passed: { label: 'Passed', icon: CheckCircle2, color: 'var(--color-approved)', bg: 'rgba(52,168,83,0.08)' },
-  in_progress: { label: 'In Progress', icon: Clock, color: 'var(--color-pending)', bg: 'rgba(251,188,4,0.08)' },
-  blocked: { label: 'Blocked', icon: XCircle, color: 'var(--color-change)', bg: 'rgba(234,67,53,0.08)' },
-  not_started: { label: 'Not Started', icon: CircleDashed, color: 'var(--color-muted)', bg: 'rgba(0,0,0,0.04)' },
-  warning: { label: 'Warning', icon: AlertTriangle, color: 'var(--color-pending)', bg: 'rgba(251,188,4,0.08)' },
+  passed: { label: 'Passed', icon: CheckCircle2, color: 'var(--color-approved)', bg: 'rgba(91,138,101,0.08)' },
+  in_progress: { label: 'In Progress', icon: Clock, color: 'var(--color-pending)', bg: 'rgba(196,162,101,0.08)' },
+  blocked: { label: 'Blocked', icon: XCircle, color: 'var(--color-change)', bg: 'rgba(160,115,88,0.08)' },
+  not_started: { label: 'Not Started', icon: CircleDashed, color: 'var(--color-muted)', bg: 'rgba(107,107,96,0.06)' },
+  warning: { label: 'Warning', icon: AlertTriangle, color: 'var(--color-pending)', bg: 'rgba(196,162,101,0.08)' },
 }
 
 async function callManageClient(action, body = {}) {

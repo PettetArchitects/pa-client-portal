@@ -25,9 +25,9 @@ const KIND_ICONS = {
 }
 
 const STATUS_STYLES = {
-  pending: { bg: 'rgba(107,79,0,0.08)', border: 'rgba(107,79,0,0.3)', text: 'var(--color-pending)', label: 'Needs your input' },
-  approved: { bg: 'rgba(45,74,38,0.06)', border: 'rgba(45,74,38,0.2)', text: 'var(--color-approved)', label: 'Approved' },
-  change_requested: { bg: 'rgba(90,32,16,0.06)', border: 'rgba(90,32,16,0.25)', text: 'var(--color-change)', label: 'Change requested' },
+  pending: { bg: 'rgba(196,162,101,0.08)', border: 'rgba(196,162,101,0.3)', text: 'var(--color-pending)', label: 'Needs your input' },
+  approved: { bg: 'rgba(91,138,101,0.06)', border: 'rgba(91,138,101,0.2)', text: 'var(--color-approved)', label: 'Approved' },
+  change_requested: { bg: 'rgba(160,115,88,0.06)', border: 'rgba(160,115,88,0.25)', text: 'var(--color-change)', label: 'Change requested' },
   not_applicable: { bg: 'rgba(255,255,255,0.3)', border: 'rgba(232,232,229,0.6)', text: 'var(--color-muted)', label: 'Confirmed' },
 }
 
@@ -478,14 +478,14 @@ export default function Decisions({ projectId }) {
                   <div className="flex items-center gap-2">
                     {group.pending > 0 && (
                       <span className="text-[10px] font-medium px-2 py-0.5 rounded" style={{
-                        background: 'rgba(107,79,0,0.1)', color: 'var(--color-pending)'
+                        background: 'rgba(196,162,101,0.1)', color: 'var(--color-pending)'
                       }}>
                         {group.pending} to review
                       </span>
                     )}
                     {group.changeReq > 0 && (
                       <span className="text-[10px] font-medium px-2 py-0.5 rounded" style={{
-                        background: 'rgba(90,32,16,0.1)', color: 'var(--color-change)'
+                        background: 'rgba(160,115,88,0.1)', color: 'var(--color-change)'
                       }}>
                         {group.changeReq} change{group.changeReq !== 1 ? 's' : ''}
                       </span>
@@ -795,14 +795,14 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
               <div className="flex items-center gap-2">
                 {room.pending > 0 && (
                   <span className="text-[10px] font-medium px-2 py-0.5 rounded" style={{
-                    background: 'rgba(107,79,0,0.1)', color: 'var(--color-pending)'
+                    background: 'rgba(196,162,101,0.1)', color: 'var(--color-pending)'
                   }}>
                     {room.pending} to review
                   </span>
                 )}
                 {room.changeReq > 0 && (
                   <span className="text-[10px] font-medium px-2 py-0.5 rounded" style={{
-                    background: 'rgba(90,32,16,0.1)', color: 'var(--color-change)'
+                    background: 'rgba(160,115,88,0.1)', color: 'var(--color-change)'
                   }}>
                     {room.changeReq} change{room.changeReq !== 1 ? 's' : ''}
                   </span>
@@ -904,7 +904,7 @@ function ComponentGroupedView({ components, expandedGroups, toggleGroup, onAppro
               <div className="flex items-center gap-2">
                 {comp.pending > 0 && (
                   <span className="text-[10px] font-medium px-2 py-0.5 rounded" style={{
-                    background: 'rgba(107,79,0,0.1)', color: 'var(--color-pending)'
+                    background: 'rgba(196,162,101,0.1)', color: 'var(--color-pending)'
                   }}>{comp.pending} to review</span>
                 )}
                 {comp.pending === 0 && comp.changeReq === 0 && (
@@ -1162,8 +1162,8 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
               <div className="text-right">
                 {(isPending || isChangeReq) && onApproveItem ? (
                   <div className="flex items-center justify-end gap-1">
-                    <button onClick={() => onApproveItem(node.item.id)} className="w-5 h-5 rounded flex items-center justify-center hover:bg-[rgba(45,74,38,0.1)]" style={{ border: '1px solid rgba(45,74,38,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={9} /></button>
-                    <button onClick={() => onRequestChange(node.item.id)} className="w-5 h-5 rounded flex items-center justify-center hover:bg-[rgba(90,32,16,0.08)]" style={{ border: '1px solid rgba(232,232,229,0.8)', color: 'var(--color-muted)' }} title="Request change"><MessageSquare size={9} /></button>
+                    <button onClick={() => onApproveItem(node.item.id)} className="w-5 h-5 rounded flex items-center justify-center hover:bg-[rgba(91,138,101,0.1)]" style={{ border: '1px solid rgba(91,138,101,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={9} /></button>
+                    <button onClick={() => onRequestChange(node.item.id)} className="w-5 h-5 rounded flex items-center justify-center hover:bg-[rgba(160,115,88,0.08)]" style={{ border: '1px solid rgba(232,232,229,0.8)', color: 'var(--color-muted)' }} title="Request change"><MessageSquare size={9} /></button>
                   </div>
                 ) : (
                   <span className="text-[8px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap" style={{ background: st.bg, color: st.text, border: `1px solid ${st.border}` }}>{st.label}</span>
@@ -1211,7 +1211,7 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
                   ))}
                   <div className="text-right">
                     {(cIsPending || cIsChange) && onApproveItem ? (
-                      <button onClick={() => onApproveItem(child.id)} className="w-5 h-5 rounded flex items-center justify-center hover:bg-[rgba(45,74,38,0.1)]" style={{ border: '1px solid rgba(45,74,38,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={9} /></button>
+                      <button onClick={() => onApproveItem(child.id)} className="w-5 h-5 rounded flex items-center justify-center hover:bg-[rgba(91,138,101,0.1)]" style={{ border: '1px solid rgba(91,138,101,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={9} /></button>
                     ) : (
                       <span className="text-[7px] font-medium px-1 py-0.5 rounded whitespace-nowrap" style={{ background: cSt.bg, color: cSt.text, border: `1px solid ${cSt.border}` }}>{cSt.label}</span>
                     )}
@@ -1318,8 +1318,8 @@ function ItemRow({ item, natspecMap, subCriteriaMap, onApproveItem, onRequestCha
         {/* Status / actions */}
         <div className="flex items-start justify-end gap-1 pt-1">
           {(isPending || isChangeReq) && onApproveItem && (<>
-            <button onClick={() => onApproveItem(item.id)} className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(45,74,38,0.1)]" style={{ border: '1px solid rgba(45,74,38,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={11} /></button>
-            <button onClick={() => onRequestChange(item.id)} className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(90,32,16,0.08)]" style={{ border: '1px solid rgba(232,232,229,0.8)', color: 'var(--color-muted)' }} title="Request change"><MessageSquare size={10} /></button>
+            <button onClick={() => onApproveItem(item.id)} className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(91,138,101,0.1)]" style={{ border: '1px solid rgba(91,138,101,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={11} /></button>
+            <button onClick={() => onRequestChange(item.id)} className="w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(160,115,88,0.08)]" style={{ border: '1px solid rgba(232,232,229,0.8)', color: 'var(--color-muted)' }} title="Request change"><MessageSquare size={10} /></button>
           </>)}
           {!isPending && !isChangeReq && (
             <span className="text-[9px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap" style={{ background: st.bg, color: st.text, border: `1px solid ${st.border}` }}>{st.label}</span>
@@ -1399,7 +1399,7 @@ function CompactChildRow({ item, natspecMap, subCriteriaMap, onApproveItem, onRe
         {/* Status */}
         <div className="flex items-center justify-end gap-1">
           {(isPending || isChangeReq) && onApproveItem && (
-            <button onClick={() => onApproveItem(item.id)} className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[rgba(45,74,38,0.1)]" style={{ border: '1px solid rgba(45,74,38,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={9} /></button>
+            <button onClick={() => onApproveItem(item.id)} className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[rgba(91,138,101,0.1)]" style={{ border: '1px solid rgba(91,138,101,0.3)', color: 'var(--color-approved)' }} title="Approve"><Check size={9} /></button>
           )}
           {!isPending && !isChangeReq && (
             <span className="text-[8px] font-medium px-1 py-0.5 rounded whitespace-nowrap" style={{ background: st.bg, color: st.text, border: `1px solid ${st.border}` }}>{st.label}</span>
@@ -1547,8 +1547,8 @@ function SelectionCard({ item, natspecMap, onApprove, onRequestChange }) {
           <button
             onClick={onApprove}
             className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-            style={{ border: '1px solid rgba(45,74,38,0.3)', color: 'var(--color-approved)' }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(45,74,38,0.1)'}
+            style={{ border: '1px solid rgba(91,138,101,0.3)', color: 'var(--color-approved)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(91,138,101,0.1)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             title="Approve"
           >
@@ -1558,7 +1558,7 @@ function SelectionCard({ item, natspecMap, onApprove, onRequestChange }) {
             onClick={onRequestChange}
             className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
             style={{ border: '1px solid rgba(232,232,229,0.8)', color: 'var(--color-muted)' }}
-            onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-change)'; e.currentTarget.style.borderColor = 'rgba(90,32,16,0.3)' }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-change)'; e.currentTarget.style.borderColor = 'rgba(160,115,88,0.3)' }}
             onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-muted)'; e.currentTarget.style.borderColor = 'rgba(232,232,229,0.8)' }}
             title="Request change"
           >

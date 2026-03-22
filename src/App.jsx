@@ -102,7 +102,8 @@ function ProtectedApp() {
   }
 
   const pid = project.project_id
-  const pname = project.display_name || project.name || 'Your Project'
+  const baseName = project.display_name || project.name || 'Your Project'
+  const pname = project.project_code ? `${project.project_code} \u2014 ${baseName}` : baseName
 
   return (
     <Suspense fallback={<div className="max-w-4xl animate-pulse p-6"><div className="h-8 w-64 bg-white/40 rounded mb-4" /><div className="h-3 w-48 bg-white/40 rounded mb-8" /></div>}>

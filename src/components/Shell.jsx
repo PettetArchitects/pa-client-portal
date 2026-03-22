@@ -47,6 +47,13 @@ function formatDMS(decimal, isLat) {
   return `${d}°${String(m).padStart(2, '0')}'${s}"${dir}`
 }
 
+// Format project display: "CODE — Name" when code exists, otherwise just name
+function formatProjectName(p) {
+  const name = p?.display_name || p?.name || 'Project'
+  const code = p?.project_code
+  return code ? `${code} \u2014 ${name}` : name
+}
+
 export default function Shell({ projectName }) {
   const { user, signOut } = useAuth()
   const { projects, project, switchProject, isArchitect, isActualArchitect, clientPreview, setClientPreview } = useProject()
@@ -137,6 +144,11 @@ export default function Shell({ projectName }) {
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.7)'}
                         onMouseLeave={e => e.currentTarget.style.background = p.project_id === project?.project_id ? 'rgba(255,255,255,0.6)' : 'transparent'}
                       >
+                        {p.project_code && (
+                          <span style={{ display: 'block', fontSize: 9, fontWeight: 600, letterSpacing: '1.5px', color: 'var(--color-muted)', textTransform: 'uppercase', fontFamily: 'monospace', marginBottom: 1 }}>
+                            {p.project_code}
+                          </span>
+                        )}
                         <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: 'var(--color-text)' }}>
                           {p.display_name || p.name}
                         </span>

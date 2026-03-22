@@ -1078,9 +1078,9 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
   // Show up to 5 spec columns
   const cols = specFields.slice(0, 5)
 
-  // Column widths: # | Item | Product | Brand | spec cols... | Status
+  // Column widths: # | Image | Item | Product | Brand | spec cols... | Status
   // Use fr units that sum to a reasonable total, with min widths for readability
-  const colTemplate = `28px minmax(120px, 2fr) minmax(80px, 1.2fr) minmax(70px, 1fr) ${cols.map(() => 'minmax(70px, 1fr)').join(' ')} 76px`
+  const colTemplate = `28px 44px minmax(120px, 2fr) minmax(80px, 1.2fr) minmax(70px, 1fr) ${cols.map(() => 'minmax(70px, 1fr)').join(' ')} 76px`
 
   return (
     <div className="py-2 -mx-2 overflow-x-auto">
@@ -1089,6 +1089,7 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
       <div className="grid gap-2 px-3 py-2 text-[8px] tracking-[0.8px] uppercase text-[var(--color-muted)] font-medium border-b border-white/30"
         style={{ gridTemplateColumns: colTemplate }}>
         <span className="text-right">#</span>
+        <span></span>
         <span>Item</span>
         <span>Product</span>
         <span>Brand</span>
@@ -1120,6 +1121,17 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
             <div className={`grid gap-2 px-3 py-2.5 items-center text-[11px] border-b border-white/15 hover:bg-white/30 transition-colors ${node.children.length > 0 ? 'font-medium' : ''}`}
               style={{ gridTemplateColumns: colTemplate }}>
               <span className="text-[9px] font-mono text-[var(--color-muted)] text-right tabular-nums">{node.item.display_order || ''}</span>
+              {/* Thumbnail */}
+              <div>
+                {node.item.portal_image_url ? (
+                  <img src={node.item.portal_image_url} alt="" loading="lazy" style={{
+                    width: 36, height: 36, borderRadius: 6, objectFit: 'cover',
+                    border: '1px solid rgba(0,0,0,0.06)',
+                  }} onError={e => { e.target.style.display = 'none' }} />
+                ) : (
+                  <div style={{ width: 36, height: 36, borderRadius: 6, background: 'rgba(255,255,255,0.4)', border: '1px solid rgba(0,0,0,0.04)' }} />
+                )}
+              </div>
               <div className="min-w-0">
                 <div className="break-words text-[var(--color-text)]">
                   {name}
@@ -1173,6 +1185,17 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, onApproveItem, onRequ
                 <div key={child.id} className="grid gap-2 px-3 py-1.5 items-center text-[10px] border-b border-white/10 hover:bg-white/20 transition-colors bg-white/5"
                   style={{ gridTemplateColumns: colTemplate }}>
                   <span />
+                  {/* Child thumbnail */}
+                  <div>
+                    {child.portal_image_url ? (
+                      <img src={child.portal_image_url} alt="" loading="lazy" style={{
+                        width: 28, height: 28, borderRadius: 4, objectFit: 'cover',
+                        border: '1px solid rgba(0,0,0,0.06)',
+                      }} onError={e => { e.target.style.display = 'none' }} />
+                    ) : (
+                      <div style={{ width: 28, height: 28, borderRadius: 4, background: 'rgba(255,255,255,0.3)', border: '1px solid rgba(0,0,0,0.04)' }} />
+                    )}
+                  </div>
                   <div className="min-w-0 pl-4 border-l-2 border-white/25">
                     <span className="text-[7px] tracking-[0.8px] uppercase text-[var(--color-muted)] font-medium block">{cRole}</span>
                     <div className="break-words text-[var(--color-text)]">{cSel.title || child.selection_title}</div>

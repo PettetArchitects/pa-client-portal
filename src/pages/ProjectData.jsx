@@ -14,6 +14,12 @@ const TABS = [
   { key: 'portal', label: 'Portal Status', icon: Layers },
 ]
 
+function humanizeKind(kind) {
+  return (kind || '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+}
+
 export default function ProjectData({ projectId }) {
   const { isArchitect } = useProject()
   const [activeTab, setActiveTab] = useState('selections')
@@ -164,13 +170,13 @@ export default function ProjectData({ projectId }) {
           {Object.entries(selectionsByKind).map(([kind, items]) => {
             const isExpanded = expandedKind === kind
             return (
-              <div key={kind} className="mb-2">
+              <div key={kind} className="mb-2 glass-s rounded-xl border border-white/40 overflow-hidden">
                 <button
                   onClick={() => setExpandedKind(isExpanded ? null : kind)}
-                  className="w-full flex items-center justify-between px-4 py-3 glass-t-hover transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/40 transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-[12px] font-medium">{kind}</span>
+                    <span className="text-[12px] font-medium">{humanizeKind(kind)}</span>
                     <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-2 py-0.5 rounded-full">{items.length}</span>
                   </div>
                   {isExpanded ? <ChevronDown size={14} className="text-[var(--color-muted)]" /> : <ChevronRight size={14} className="text-[var(--color-muted)]" />}

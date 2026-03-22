@@ -36,7 +36,7 @@ function ProtectedApp() {
     }
   }, [])
 
-  // Preload satellite image Ã¢ÂÂ stored URL first (instant), ESRI fallback only if needed
+  // Preload satellite image â stored URL first (instant), ESRI fallback only if needed
   useEffect(() => {
     if (!project) return
     const storedUrl = project.satellite_image_url
@@ -63,7 +63,7 @@ function ProtectedApp() {
     const img = new Image()
     img.onload = () => setSatelliteReady(true)
     img.onerror = () => {
-      // Primary failed Ã¢ÂÂ try fallback
+      // Primary failed â try fallback
       if (primaryUrl && esriUrl) {
         const fb = new Image()
         fb.onload = () => setSatelliteReady(true)
@@ -147,7 +147,7 @@ const LOADING_QUOTES = [
   { text: 'Have nothing in your house that you do not know to be useful, or believe to be beautiful.', author: 'William Morris', year: '1880' },
   { text: 'You can use an eraser on the drafting table or a sledgehammer on the construction site.', author: 'Frank Lloyd Wright', year: '1938' },
   { text: 'Light creates ambience and feel of a place, as well as the expression of a structure.', author: 'Le Corbusier', year: '1954' },
-  { text: 'Form follows function Ã¢ÂÂ that has been misunderstood. Form and function should be one.', author: 'Frank Lloyd Wright', year: '1939' },
+  { text: 'Form follows function â that has been misunderstood. Form and function should be one.', author: 'Frank Lloyd Wright', year: '1939' },
   { text: 'To create, one must first question everything.', author: 'Eileen Gray', year: '1929' },
   { text: 'We shape our buildings; thereafter they shape us.', author: 'Winston Churchill', year: '1943' },
   { text: 'Architecture is the thoughtful making of space.', author: 'Louis Kahn', year: '1967' },
@@ -212,7 +212,7 @@ function LoadingScreen() {
         <p className="text-[11px] text-[var(--color-muted)] tracking-[2px] uppercase font-medium"
           style={{ opacity: textVisible ? 1 : 0, transform: textVisible ? 'translateY(0)' : 'translateY(10px)',
             transition: 'opacity 0.8s ease-out 0.7s, transform 0.8s ease-out 0.7s' }}>
-          Ã¢ÂÂ {quote.author}{quote.year ? `, ${quote.year}` : ''}
+          â {quote.author}{quote.year ? `, ${quote.year}` : ''}
         </p>
       </div>
     </div>

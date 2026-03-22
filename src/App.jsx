@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense, Component } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { ProjectProvider, useProject } from './hooks/useProject'
@@ -22,6 +22,25 @@ const DecisionMap = lazy(() => import('./pages/DecisionMap'))
 const ImageManager = lazy(() => import('./pages/ImageManager'))
 
 const MIN_LOADING_MS = 3000
+
+class PageErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null } }
+  static getDerivedStateFromError(error) { return { error } }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="max-w-xl mx-auto mt-20 p-6 glass rounded-xl">
+          <h2 className="text-[14px] font-medium mb-2" style={{ color: 'var(--color-change)' }}>Something went wrong</h2>
+          <pre className="text-[11px] text-[var(--color-muted)] font-mono whitespace-pre-wrap break-words">{this.state.error.message}{'\n'}{this.state.error.stack}</pre>
+          <button onClick={() => this.setState({ error: null })} className="mt-4 px-4 py-2 text-[12px] font-medium rounded-lg" style={{ background: 'var(--color-accent)', color: 'white' }}>
+            Try again
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 function ProtectedApp() {
   const { user, loading: authLoading } = useAuth()
@@ -111,15 +130,15 @@ function ProtectedApp() {
     <Routes>
       <Route element={<Shell projectName={pname} />}>
         <Route index element={<Overview projectId={pid} />} />
-        <Route path="selections" element={<Suspense fallback={pageFallback}><Decisions projectId={pid} /></Suspense>} />
-        <Route path="documents" element={<Suspense fallback={pageFallback}><Documents projectId={pid} /></Suspense>} />
-        <Route path="timeline" element={<Suspense fallback={pageFallback}><Timeline projectId={pid} /></Suspense>} />
-        <Route path="messages" element={<Suspense fallback={pageFallback}><Messages projectId={pid} /></Suspense>} />
-        <Route path="profile" element={<Suspense fallback={pageFallback}><Profile /></Suspense>} />
-        <Route path="data" element={<Suspense fallback={pageFallback}><ProjectData projectId={pid} /></Suspense>} />
-        <Route path="decisions" element={<Suspense fallback={pageFallback}><DecisionMap /></Suspense>} />
-        <Route path="admin" element={<Suspense fallback={pageFallback}><Admin /></Suspense>} />
-        <Route path="images" element={<Suspense fallback={pageFallback}><ImageManager /></Suspense>} />
+        <Route path="selections" element={<PageErrorBoundary><Suspense fallback={pageFallback}><Decisions projectId={pid} /></Suspense></PageErrorBoundary>} />
+        <Route path="documents" element={<PageErrorBoundary><Suspense fallback={pageFallback}><Documents projectId={pid} /></Suspense></PageErrorBoundary>} />
+        <Route path="timeline" element={<PageErrorBoundary><Suspense fallback={pageFallback}><Timeline projectId={pid} /></Suspense></PageErrorBoundary>} />
+        <Route path="messages" element={<PageErrorBoundary><Suspense fallback={pageFallback}><Messages projectId={pid} /></Suspense></PageErrorBoundary>} />
+        <Route path="profile" element={<PageErrorBoundary><Suspense fallback={pageFallback}><Profile /></Suspense></PageErrorBoundary>} />
+        <Route path="data" element={<PageErrorBoundary><Suspense fallback={pageFallback}><ProjectData projectId={pid} /></Suspense></PageErrorBoundary>} />
+        <Route path="decisions" element={<PageErrorBoundary><Suspense fallback={pageFallback}><DecisionMap /></Suspense></PageErrorBoundary>} />
+        <Route path="admin" element={<PageErrorBoundary><Suspense fallback={pageFallback}><Admin /></Suspense></PageErrorBoundary>} />
+        <Route path="images" element={<PageErrorBoundary><Suspense fallback={pageFallback}><ImageManager /></Suspense></PageErrorBoundary>} />
       </Route>
     </Routes>
   )

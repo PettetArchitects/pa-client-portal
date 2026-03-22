@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import {
   FileText, Eye, Clock, Search, Folder, ChevronDown, ChevronRight,
   Package, Palette, Wrench, Grid3X3, ListChecks, Download, ExternalLink,
-  Ruler, CheckCircle2, Circle, AlertCircle
+  ArrowLeft, X
 } from 'lucide-react'
 
 const KIND_ICONS = {
@@ -40,38 +40,59 @@ const DOC_TYPE_LABELS = {
   transmittal: 'Transmittal',
 }
 
-// Sheet code → human label mapping
-const SHEET_LABELS = {
-  A_61000: 'Floor & Slab Details',
-  A_71000A: 'Wall, Door & Window Details',
-  A_73000: 'Roof & Eave Details',
-  A_81000: 'Stair Details',
-  A_82000: 'Balustrade Details',
-  A_91000: 'Site & External Details',
-}
+/* ── Document viewer styles injected once ── */
+const DOC_VIEWER_STYLES = `
+  .doc-viewer-content .doc-content { font-family: 'Inter', -apple-system, sans-serif; color: #1a1a1a; line-height: 1.7; }
+  .doc-viewer-content .doc-header { margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid rgba(0,0,0,0.08); }
+  .doc-viewer-content .doc-header h1 { font-size: 1.5rem; font-weight: 500; margin: 0.5rem 0 0.25rem; letter-spacing: -0.01em; }
+  .doc-viewer-content .doc-subtitle { font-size: 0.85rem; color: #666; margin: 0; }
+  .doc-viewer-content .doc-date { font-size: 0.75rem; color: #999; margin: 0.25rem 0 0; }
+  .doc-viewer-content .doc-meta { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; }
+  .doc-viewer-content .doc-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.5px; padding: 0.2rem 0.6rem; border-radius: 4px; background: rgba(0,0,0,0.04); color: #666; font-weight: 500; }
+  .doc-viewer-content .doc-version { font-size: 0.65rem; color: #999; }
+  .doc-viewer-content .doc-status { font-size: 0.65rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 500; }
+  .doc-viewer-content .doc-status.approved { background: rgba(34,139,34,0.08); color: #228b22; }
+  .doc-viewer-content .doc-status.for-review { background: rgba(184,134,11,0.08); color: #b8860b; }
+  .doc-viewer-content section { margin-bottom: 1.75rem; }
+  .doc-viewer-content h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.75rem; color: #1a1a1a; letter-spacing: 0.01em; }
+  .doc-viewer-content h3 { font-size: 0.85rem; font-weight: 600; margin: 1.25rem 0 0.5rem; color: #333; }
+  .doc-viewer-content p { font-size: 0.8rem; margin: 0 0 0.75rem; color: #444; }
+  .doc-viewer-content ul, .doc-viewer-content ol { font-size: 0.8rem; padding-left: 1.5rem; margin: 0 0 0.75rem; color: #444; }
+  .doc-viewer-content li { margin-bottom: 0.35rem; }
+  .doc-viewer-content table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1rem; font-size: 0.75rem; }
+  .doc-viewer-content th { text-align: left; padding: 0.5rem 0.75rem; background: rgba(0,0,0,0.03); border-bottom: 1px solid rgba(0,0,0,0.1); font-weight: 600; color: #333; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  .doc-viewer-content td { padding: 0.45rem 0.75rem; border-bottom: 1px solid rgba(0,0,0,0.04); color: #444; }
+  .doc-viewer-content tr:hover td { background: rgba(0,0,0,0.01); }
+  .doc-viewer-content td.pass { color: #228b22; font-weight: 500; }
+  .doc-viewer-content td.gap { color: #b8860b; font-weight: 500; }
+  .doc-viewer-content td.highlight { background: rgba(184,134,11,0.06); font-weight: 500; }
+  .doc-viewer-content tr.highlight-row td { background: rgba(184,134,11,0.08); font-weight: 600; }
+  .doc-viewer-content .info-table td:first-child { font-weight: 500; color: #666; width: 40%; white-space: nowrap; }
+  .doc-viewer-content .callout { padding: 1rem 1.25rem; border-radius: 8px; margin: 0.75rem 0; font-size: 0.8rem; line-height: 1.6; }
+  .doc-viewer-content .callout.highlight { background: rgba(184,134,11,0.06); border-left: 3px solid #b8860b; }
+  .doc-viewer-content .callout.warning { background: rgba(220,80,40,0.05); border-left: 3px solid #dc5028; }
+  .doc-viewer-content .callout.info { background: rgba(60,120,180,0.05); border-left: 3px solid #3c78b4; }
+  .doc-viewer-content .stats-row { display: flex; gap: 1rem; margin: 1rem 0; flex-wrap: wrap; }
+  .doc-viewer-content .stat { text-align: center; padding: 0.75rem 1.25rem; background: rgba(0,0,0,0.02); border-radius: 8px; flex: 1; min-width: 80px; }
+  .doc-viewer-content .stat-value { display: block; font-size: 1.5rem; font-weight: 600; color: #1a1a1a; }
+  .doc-viewer-content .stat-label { display: block; font-size: 0.65rem; color: #999; text-transform: uppercase; letter-spacing: 1px; margin-top: 0.25rem; }
+  .doc-viewer-content .doc-footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.06); }
+  .doc-viewer-content .doc-footer p { font-size: 0.7rem; color: #999; margin: 0 0 0.25rem; }
+`
 
-// Derive priority badge from trigger_source stage number
-function getDetailPriority(triggerSource) {
-  if (!triggerSource) return null
-  const match = triggerSource.match(/stage:(\d+)/)
-  if (!match) return null
-  const stage = parseInt(match[1])
-  if (stage <= 23) return 'Tender Critical'
-  return 'Post-Tender'
-}
+const SUPABASE_FN_URL = (import.meta.env.VITE_SUPABASE_URL || 'https://mmfhjlpsumhyxjqhyirw.supabase.co') + '/functions/v1'
 
 export default function Documents({ projectId }) {
-  const { isArchitect, project } = useProject()
+  const { isArchitect } = useProject()
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('documents')
   const [docs, setDocs] = useState([])
   const [allProjectDocs, setAllProjectDocs] = useState([])
-  const [scheduleGroups, setScheduleGroups] = useState([])
-  const [selections, setSelections] = useState([])
-  const [details, setDetails] = useState([])
+  const [scheduleData, setScheduleData] = useState({ groups: [], meta: { total: 0, confirmed: 0, approved: 0, to_review: 0 } })
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [expandedGroups, setExpandedGroups] = useState(new Set())
+  const [selectedDoc, setSelectedDoc] = useState(null)
 
   useEffect(() => {
     if (!projectId) return
@@ -80,29 +101,18 @@ export default function Documents({ projectId }) {
 
   async function loadAll() {
     const queries = [
-      // Shared documents (for client view)
       supabase
         .from('homeowner_document_shares')
-        .select(`*, project_documents:project_document_id (id, title, doc_type, storage_path, file_size_bytes, version, issued_at, notes, status, stage)`)
+        .select(`*, project_documents:project_document_id (id, title, doc_type, storage_path, file_size_bytes, version, issued_at, notes, status, stage, content_html)`)
         .eq('project_id', projectId)
         .eq('active', true)
         .order('shared_at', { ascending: false }),
-      // Schedule groups
-      supabase
-        .from('schedule_groups')
-        .select('*')
-        .eq('project_id', projectId)
-        .eq('visible_to_homeowner', true)
-        .order('display_order'),
-      // Selections for schedule view
-      supabase
-        .from('homeowner_selections_portal')
-        .select(`*, project_selections:project_selection_id (title, selection_kind, manufacturer_name, supplier_name, model, spec_reference, notes, attributes)`)
-        .eq('project_id', projectId)
-        .eq('active', true),
+      // Selections now come from the portal-selections edge function
+      fetch(`${SUPABASE_FN_URL}/portal-selections?project_id=${encodeURIComponent(projectId)}`)
+        .then(r => r.json())
+        .catch(() => ({ groups: [], meta: { total: 0, confirmed: 0, approved: 0, to_review: 0 } })),
     ]
 
-    // Architect gets all project documents directly
     if (isArchitect) {
       queries.push(
         supabase
@@ -114,36 +124,12 @@ export default function Documents({ projectId }) {
       )
     }
 
-    // Required details via project_detail_engine view (uses project_guid)
-    if (project?.project_guid) {
-      queries.push(
-        supabase
-          .from('project_detail_engine')
-          .select('id, junction_key, junction_name, sheet_code, condition_key, condition_name, detail_name, detail_number, drawing_ref, status, trigger_source, typical_location, assembly_label, primary_assembly, secondary_assembly')
-          .eq('project_guid', project.project_guid)
-          .order('sheet_code')
-      )
-    }
-
     const results = await Promise.all(queries)
-    const [docRes, grpRes, selRes] = results
-    let archDocRes = null
-    let detailRes = null
-
-    if (isArchitect && project?.project_guid) {
-      archDocRes = results[3]
-      detailRes = results[4]
-    } else if (isArchitect) {
-      archDocRes = results[3]
-    } else if (project?.project_guid) {
-      detailRes = results[3]
-    }
+    const [docRes, selData] = results
 
     setDocs(docRes.data || [])
-    setScheduleGroups(grpRes.data || [])
-    setSelections(selRes.data || [])
-    if (archDocRes) setAllProjectDocs(archDocRes.data || [])
-    if (detailRes) setDetails(detailRes.data || [])
+    setScheduleData(selData)
+    if (results[2]) setAllProjectDocs(results[2].data || [])
     setLoading(false)
   }
 
@@ -151,6 +137,15 @@ export default function Documents({ projectId }) {
     await supabase.from('homeowner_document_shares')
       .update({ viewed_at: new Date().toISOString() })
       .eq('id', id)
+  }
+
+  function openDocument(doc) {
+    // For architect view, doc is the project_documents row directly
+    // For client view, doc is the share row with project_documents nested
+    const pd = isArchitect ? doc : doc.project_documents
+    if (!pd) return
+    setSelectedDoc({ ...pd, shareId: doc.id, shareNote: doc.share_note })
+    if (!isArchitect && !doc.viewed_at) markViewed(doc.id)
   }
 
   function toggleGroup(key) {
@@ -161,21 +156,17 @@ export default function Documents({ projectId }) {
     })
   }
 
-  // Filter selections by search
-  const filteredSelections = selections.filter(s => {
-    if (!search) return true
-    const sel = s.project_selections || {}
-    const text = [sel.title, sel.manufacturer_name, sel.model, s.schedule_group].join(' ').toLowerCase()
-    return text.includes(search.toLowerCase())
-  })
-
-  // Group selections by schedule_group
-  const groupedSchedule = scheduleGroups.map(g => {
-    const items = filteredSelections.filter(s => s.schedule_group === g.group_key)
-    return { ...g, items }
+  // Filter schedule data from edge function by search term
+  const groupedSchedule = (scheduleData.groups || []).map(g => {
+    if (!search) return g
+    const q = search.toLowerCase()
+    const items = g.items.filter(item => {
+      const text = [item.code, item.title, item.manufacturer_name, item.model, item.colour, item.schedule_group].filter(Boolean).join(' ').toLowerCase()
+      return text.includes(q)
+    })
+    return { ...g, items, item_count: items.length }
   }).filter(g => g.items.length > 0)
 
-  // For architects: show all project documents; for clients: show shared documents
   const documentList = isArchitect ? allProjectDocs : docs
   const filteredDocs = documentList.filter(d => {
     if (!search) return true
@@ -184,7 +175,6 @@ export default function Documents({ projectId }) {
     return [title, docType].join(' ').toLowerCase().includes(search.toLowerCase())
   })
 
-  // Group project docs by hierarchy_group for architect view
   const groupedDocs = isArchitect
     ? Object.entries(
         filteredDocs.reduce((acc, d) => {
@@ -196,27 +186,13 @@ export default function Documents({ projectId }) {
       )
     : null
 
-  // Group details by sheet_code
-  const filteredDetails = details.filter(d => {
-    if (!search) return true
-    const text = [d.junction_name, d.condition_name, d.sheet_code, d.detail_name].join(' ').toLowerCase()
-    return text.includes(search.toLowerCase())
-  })
-
-  const groupedDetails = Object.entries(
-    filteredDetails.reduce((acc, d) => {
-      const key = d.sheet_code || 'Other'
-      if (!acc[key]) acc[key] = []
-      acc[key].push(d)
-      return acc
-    }, {})
-  ).sort(([a], [b]) => a.localeCompare(b))
-
-  const resolvedCount = details.filter(d => d.drawing_ref || d.detail_number).length
-  const pendingCount = details.length - resolvedCount
-
-  const totalScheduleItems = selections.length
+  const totalScheduleItems = scheduleData.meta?.total || 0
   const totalDocs = isArchitect ? allProjectDocs.length : docs.length
+
+  // ── Document viewer ──
+  if (selectedDoc) {
+    return <DocumentViewer doc={selectedDoc} onBack={() => setSelectedDoc(null)} />
+  }
 
   if (loading) {
     return (
@@ -232,11 +208,10 @@ export default function Documents({ projectId }) {
     <div className="max-w-4xl">
       {/* Tab bar */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <div className="flex gap-1 glass-t rounded-lg p-0.5">
+        <div className="flex gap-1 backdrop-blur-xl bg-white/40 rounded-lg p-0.5 border border-white/40">
           {[
             { key: 'documents', label: 'Documents', icon: FileText, count: totalDocs },
             { key: 'schedules', label: 'Schedules', icon: Grid3X3, count: totalScheduleItems },
-            { key: 'details', label: 'Req. Details', icon: Ruler, count: details.length },
           ].map(t => (
             <button
               key={t.key}
@@ -249,26 +224,23 @@ export default function Documents({ projectId }) {
             >
               <t.icon size={11} />
               {t.label}
-              <span className="text-[9px] px-1 py-0.5 rounded bg-white/40">
+              <span className={`text-[9px] px-1 py-0.5 rounded ${
+                activeTab === t.key ? 'bg-white/40' : 'bg-white/40'
+              }`}>
                 {t.count}
               </span>
             </button>
           ))}
         </div>
 
-        {/* Search */}
         <div className="relative">
           <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-muted)]" />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder={
-              activeTab === 'schedules' ? 'Search selections\u2026' :
-              activeTab === 'details' ? 'Search details\u2026' :
-              'Search documents\u2026'
-            }
-            className="pl-7 pr-3 py-1.5 glass-t text-[11px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors w-48"
+            placeholder={activeTab === 'schedules' ? 'Search selections\u2026' : 'Search documents\u2026'}
+            className="pl-7 pr-3 py-1.5 rounded-lg border border-white/40 backdrop-blur-xl bg-white/40 text-[11px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors w-48"
           />
         </div>
       </div>
@@ -277,7 +249,6 @@ export default function Documents({ projectId }) {
       {activeTab === 'documents' && (
         <div>
           {isArchitect && groupedDocs ? (
-            // Architect view — grouped by hierarchy_group
             <div className="space-y-4">
               {groupedDocs.map(([group, items]) => (
                 <div key={group}>
@@ -286,31 +257,30 @@ export default function Documents({ projectId }) {
                   </h3>
                   <div className="space-y-2">
                     {items.map(doc => (
-                      <ArchitectDocRow key={doc.id} doc={doc} />
+                      <ArchitectDocRow key={doc.id} doc={doc} onClick={() => openDocument(doc)} />
                     ))}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            // Client view — shared documents
             <div>
               {filteredDocs.map(doc => (
                 <div key={doc.id} className="mb-2">
-                  <ClientDocRow doc={doc} onView={() => markViewed(doc.id)} />
+                  <ClientDocRow doc={doc} onClick={() => openDocument(doc)} />
                 </div>
               ))}
             </div>
           )}
 
           {filteredDocs.length === 0 && (
-            <div className="text-center py-20 glass-t">
+            <div className="text-center py-20 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
               <FileText size={24} className="mx-auto text-[var(--color-border)] mb-3" />
-              <p className="text-[13px] text-[var(--color-muted)] font-light">
+              <p className="text-sm text-[var(--color-muted)] font-light">
                 {search ? 'No documents match your search.' : 'No documents shared yet.'}
               </p>
               {!isArchitect && (
-                <p className="text-[11px] text-[var(--color-muted)] font-light mt-1">
+                <p className="text-xs text-[var(--color-muted)] font-light mt-1">
                   Documents will appear here when your architect shares them.
                 </p>
               )}
@@ -325,15 +295,14 @@ export default function Documents({ projectId }) {
           {groupedSchedule.map(group => {
             const isExpanded = expandedGroups.has(group.group_key)
             return (
-              <div key={group.group_key} className="glass-t overflow-hidden">
+              <div key={group.group_key} className="backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 overflow-hidden">
                 <button
                   onClick={() => toggleGroup(group.group_key)}
-                  aria-expanded={isExpanded}
                   className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
                 >
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-[13px] font-medium" style={{ color: 'var(--color-text)' }}>{group.group_name}</h2>
+                      <h2 className="text-sm font-medium">{group.group_name}</h2>
                       <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded">
                         {group.items.length}
                       </span>
@@ -342,20 +311,30 @@ export default function Documents({ projectId }) {
                   </div>
                   <div className="flex items-center gap-2">
                     {isExpanded
-                      ? <ChevronDown size={14} style={{ color: 'var(--color-muted)' }} />
-                      : <ChevronRight size={14} style={{ color: 'var(--color-muted)' }} />}
+                      ? <ChevronDown size={14} className="text-[var(--color-muted)]" />
+                      : <ChevronRight size={14} className="text-[var(--color-muted)]" />}
                   </div>
                 </button>
 
                 {isExpanded && (
                   <div className="border-t border-white/30 px-4 py-3 space-y-2">
                     {group.items.map(item => {
-                      const sel = item.project_selections || {}
-                      const attrs = sel.attributes || {}
-                      const Icon = KIND_ICONS[sel.selection_kind] || Package
+                      const Icon = KIND_ICONS[item.selection_kind] || Package
                       return (
-                        <div key={item.id} className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/40 transition-colors items-start"
-                          style={{ gridTemplateColumns: '48px 2.5fr 3fr 1.5fr 80px' }}>
+                        <div key={item.portal_id} className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/40 transition-colors items-start"
+                          style={{ gridTemplateColumns: '60px 48px 2fr 2.5fr 1.5fr 80px' }}>
+                          {/* CODE — leading column, the cross-reference key */}
+                          <div>
+                            {item.code ? (
+                              <span className="font-semibold text-[13px] text-[var(--color-text)] tracking-tight leading-none">{item.code}</span>
+                            ) : (
+                              <span className="text-[10px] text-[var(--color-border)]">{'\u2014'}</span>
+                            )}
+                            {item.selection_kind && (
+                              <span className="block text-[8px] text-[var(--color-muted)] mt-1 uppercase tracking-wider">{item.selection_kind.replace(/_/g, ' ')}</span>
+                            )}
+                          </div>
+                          {/* IMAGE */}
                           <div>
                             {item.portal_image_url ? (
                               <img src={item.portal_image_url} alt="" style={{
@@ -374,23 +353,27 @@ export default function Documents({ projectId }) {
                               </div>
                             )}
                           </div>
+                          {/* ITEM NAME */}
                           <div>
-                            <div className="font-medium leading-snug text-[var(--color-text)]">{sel.title || '\u2014'}</div>
-                            {sel.selection_kind && (
-                              <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{sel.selection_kind.replace(/_/g, ' ')}</span>
+                            <div className="font-medium leading-snug text-[var(--color-text)]">{item.title || '\u2014'}</div>
+                            {item.is_component && item.component_role && (
+                              <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{item.component_role.replace(/_/g, ' ')}</span>
                             )}
                           </div>
+                          {/* BRAND / PRODUCT */}
                           <div className="text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
-                            {sel.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{sel.manufacturer_name}</span>}
-                            {sel.manufacturer_name && sel.model && <br />}
-                            <span className="text-[var(--color-muted)]">{sel.model || (!sel.manufacturer_name && '\u2014')}</span>
+                            {item.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{item.manufacturer_name}</span>}
+                            {item.manufacturer_name && item.model && <br />}
+                            <span className="text-[var(--color-muted)]">{item.model || (!item.manufacturer_name && '\u2014')}</span>
                           </div>
+                          {/* COLOUR */}
                           <div className="text-[var(--color-text)] text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
-                            {attrs.colour || <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
+                            {item.colour || <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
                           </div>
+                          {/* STATUS */}
                           <div>
                             <span className={`text-[9px] px-1.5 py-0.5 rounded ${
-                              item.approval_status === 'locked' ? 'bg-[var(--color-approved)]/10 text-[var(--color-approved)]' :
+                              item.approval_status === 'locked' ? 'bg-[var(--color-confirmed)]/10 text-[var(--color-confirmed)]' :
                               item.approval_status === 'proposed' ? 'bg-[var(--color-pending)]/10 text-[var(--color-pending)]' :
                               'bg-white/40 text-[var(--color-muted)]'
                             }`}>
@@ -407,162 +390,10 @@ export default function Documents({ projectId }) {
           })}
 
           {groupedSchedule.length === 0 && (
-            <div className="text-center py-20 glass-t">
+            <div className="text-center py-20 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
               <ListChecks size={24} className="mx-auto text-[var(--color-border)] mb-3" />
-              <p className="text-[13px] text-[var(--color-muted)] font-light">
+              <p className="text-sm text-[var(--color-muted)] font-light">
                 {search ? 'No items match your search.' : 'No schedule data yet.'}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Required Details tab */}
-      {activeTab === 'details' && (
-        <div>
-          {/* Summary strip */}
-          {details.length > 0 && (
-            <div className="flex items-center gap-4 mb-4 px-4 py-3 glass-t rounded-lg">
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 size={13} className="text-[var(--color-approved)]" />
-                <span className="text-[11px] font-medium text-[var(--color-approved)]">{resolvedCount} resolved</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Circle size={13} className="text-[var(--color-pending)]" />
-                <span className="text-[11px] font-medium text-[var(--color-pending)]">{pendingCount} pending</span>
-              </div>
-              <div className="flex-1 h-1.5 bg-white/50 rounded-full overflow-hidden ml-2">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{
-                    width: details.length > 0 ? `${Math.round((resolvedCount / details.length) * 100)}%` : '0%',
-                    background: 'var(--color-approved)',
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Details grouped by sheet */}
-          <div className="space-y-3">
-            {groupedDetails.map(([sheetCode, items]) => {
-              const isExpanded = expandedGroups.has(`detail_${sheetCode}`)
-              const sheetLabel = SHEET_LABELS[sheetCode] || sheetCode?.replace(/_/g, ' ')
-              const sheetResolved = items.filter(d => d.drawing_ref || d.detail_number).length
-              return (
-                <div key={sheetCode} className="glass-t overflow-hidden">
-                  <button
-                    onClick={() => toggleGroup(`detail_${sheetCode}`)}
-                    aria-expanded={isExpanded}
-                    className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-7 h-7 rounded bg-white/60 flex items-center justify-center shrink-0">
-                        <Ruler size={12} style={{ color: 'var(--color-muted)' }} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-[13px] font-medium truncate" style={{ color: 'var(--color-text)' }}>
-                            {sheetLabel}
-                          </h2>
-                          <span className="text-[9px] font-mono text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded shrink-0">
-                            {sheetCode}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-[var(--color-muted)] font-light mt-0.5">
-                          {sheetResolved}/{items.length} resolved
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0 ml-3">
-                      <div className="w-16 h-1 bg-white/40 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${Math.round((sheetResolved / items.length) * 100)}%`,
-                            background: sheetResolved === items.length ? 'var(--color-approved)' : 'var(--color-accent)',
-                          }}
-                        />
-                      </div>
-                      {isExpanded
-                        ? <ChevronDown size={14} style={{ color: 'var(--color-muted)' }} />
-                        : <ChevronRight size={14} style={{ color: 'var(--color-muted)' }} />}
-                    </div>
-                  </button>
-
-                  {isExpanded && (
-                    <div className="border-t border-white/30 px-4 py-3 space-y-2">
-                      {items.map(detail => {
-                        const isResolved = !!(detail.drawing_ref || detail.detail_number)
-                        const priority = getDetailPriority(detail.trigger_source)
-                        return (
-                          <div
-                            key={detail.id}
-                            className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-white/10 hover:bg-white/30 transition-colors"
-                            style={{ borderColor: isResolved ? 'rgba(var(--color-approved-rgb, 34,197,94), 0.2)' : 'rgba(255,255,255,0.3)' }}
-                          >
-                            <div className="mt-0.5 shrink-0">
-                              {isResolved
-                                ? <CheckCircle2 size={14} className="text-[var(--color-approved)]" />
-                                : <Circle size={14} className="text-[var(--color-border)]" />
-                              }
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-[12px] font-medium text-[var(--color-text)] truncate">
-                                  {detail.junction_name || detail.junction_key?.replace(/_/g, ' ')}
-                                </span>
-                                {detail.condition_name && (
-                                  <span className="text-[10px] text-[var(--color-muted)] font-light">— {detail.condition_name}</span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                {priority && (
-                                  <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded tracking-wide ${
-                                    priority === 'Tender Critical'
-                                      ? 'bg-[var(--color-urgent)]/10 text-[var(--color-urgent)]'
-                                      : 'bg-white/40 text-[var(--color-muted)]'
-                                  }`}>
-                                    {priority}
-                                  </span>
-                                )}
-                                {detail.assembly_label && (
-                                  <span className="text-[10px] text-[var(--color-muted)] font-light">{detail.assembly_label}</span>
-                                )}
-                                {isResolved && detail.detail_number && (
-                                  <span className="text-[10px] font-mono text-[var(--color-accent)] bg-[var(--color-accent)]/5 px-1.5 py-0.5 rounded">
-                                    {detail.detail_number}
-                                  </span>
-                                )}
-                                {isResolved && detail.drawing_ref && (
-                                  <span className="text-[10px] text-[var(--color-muted)] font-light">{detail.drawing_ref}</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="shrink-0">
-                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
-                                isResolved
-                                  ? 'bg-[var(--color-approved)]/10 text-[var(--color-approved)]'
-                                  : 'bg-white/40 text-[var(--color-muted)]'
-                              }`}>
-                                {isResolved ? 'Drawn' : 'Pending'}
-                              </span>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {details.length === 0 && (
-            <div className="text-center py-20 glass-t">
-              <Ruler size={24} className="mx-auto text-[var(--color-border)] mb-3" />
-              <p className="text-[13px] text-[var(--color-muted)] font-light">
-                {search ? 'No details match your search.' : 'No required details registered yet.'}
               </p>
             </div>
           )}
@@ -572,9 +403,100 @@ export default function Documents({ projectId }) {
   )
 }
 
+/* ── Document Viewer ── */
+function DocumentViewer({ doc, onBack }) {
+  const hasContent = !!doc.content_html
+
+  return (
+    <div className="max-w-4xl">
+      <style>{DOC_VIEWER_STYLES}</style>
+
+      {/* Back button bar */}
+      <div className="flex items-center gap-3 mb-4">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg backdrop-blur-xl bg-white/40 border border-white/40 text-[11px] font-medium text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/60 transition-all"
+        >
+          <ArrowLeft size={12} />
+          Documents
+        </button>
+        <div className="flex-1" />
+        <span className="text-[10px] text-[var(--color-muted)] bg-white/30 px-2 py-0.5 rounded">
+          {DOC_TYPE_LABELS[doc.doc_type] || doc.doc_type?.replace(/_/g, ' ') || 'Document'}
+        </span>
+        {doc.version && (
+          <span className="text-[10px] text-[var(--color-muted)]">{doc.version}</span>
+        )}
+      </div>
+
+      {/* Document content panel */}
+      <div className="backdrop-blur-xl bg-white/70 rounded-2xl border border-white/50 shadow-sm overflow-hidden">
+        {hasContent ? (
+          <div className="doc-viewer-content p-8 md:p-10 lg:p-12">
+            <div dangerouslySetInnerHTML={{ __html: doc.content_html }} />
+          </div>
+        ) : (
+          /* Fallback: render from metadata */
+          <div className="p-8 md:p-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-white/60 flex items-center justify-center">
+                <FileText size={24} strokeWidth={1.2} className="text-[var(--color-muted)]" />
+              </div>
+              <div>
+                <h1 className="text-lg font-medium text-[var(--color-text)]">{doc.title || 'Untitled Document'}</h1>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded">
+                    {DOC_TYPE_LABELS[doc.doc_type] || doc.doc_type?.replace(/_/g, ' ')}
+                  </span>
+                  <span className="text-[10px] font-medium" style={{
+                    color: doc.status === 'approved' ? 'var(--color-approved)' :
+                           doc.status === 'for_review' ? 'var(--color-pending)' :
+                           'var(--color-muted)'
+                  }}>
+                    {doc.status?.replace(/_/g, ' ')}
+                  </span>
+                  {doc.version && <span className="text-[10px] text-[var(--color-muted)]">{doc.version}</span>}
+                </div>
+              </div>
+            </div>
+
+            {doc.stage && (
+              <div className="mb-4 px-4 py-3 rounded-lg bg-white/40 border border-white/30">
+                <span className="text-[10px] text-[var(--color-muted)] uppercase tracking-wider font-medium">Stage</span>
+                <p className="text-sm text-[var(--color-text)] mt-0.5">{doc.stage}</p>
+              </div>
+            )}
+
+            {doc.notes && (
+              <div className="mb-4">
+                <span className="text-[10px] text-[var(--color-muted)] uppercase tracking-wider font-medium">Summary</span>
+                <p className="text-sm text-[var(--color-text)] mt-1 leading-relaxed font-light">{doc.notes}</p>
+              </div>
+            )}
+
+            {doc.shareNote && (
+              <div className="mb-4 px-4 py-3 rounded-lg bg-[var(--color-pending)]/5 border-l-2 border-[var(--color-pending)]">
+                <span className="text-[10px] text-[var(--color-muted)] uppercase tracking-wider font-medium">Architect Note</span>
+                <p className="text-sm text-[var(--color-text)] mt-1 font-light italic">{doc.shareNote}</p>
+              </div>
+            )}
+
+            <div className="mt-8 pt-4 border-t border-white/30">
+              <p className="text-[11px] text-[var(--color-muted)] font-light">
+                Full document content is being prepared. Contact your architect for the complete document.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ── Architect document row ── */
-function ArchitectDocRow({ doc }) {
+function ArchitectDocRow({ doc, onClick }) {
   const typeLabel = DOC_TYPE_LABELS[doc.doc_type] || doc.doc_type?.replace(/_/g, ' ') || 'Document'
+  const hasContent = !!doc.content_html
 
   const statusColor = {
     approved: 'var(--color-approved)',
@@ -584,13 +506,16 @@ function ArchitectDocRow({ doc }) {
   }[doc.status] || 'var(--color-muted)'
 
   return (
-    <div className="flex items-center gap-4 p-4 glass-s glass-s-hover transition-all">
-      <div className="w-9 h-9 rounded-lg bg-white/60 flex items-center justify-center shrink-0">
+    <button
+      onClick={onClick}
+      className="w-full text-left flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-white/50 border border-white/40 hover:bg-white/70 hover:shadow-sm transition-all cursor-pointer group"
+    >
+      <div className="w-9 h-9 rounded-lg bg-white/60 flex items-center justify-center shrink-0 group-hover:bg-white/80 transition-colors">
         <FileText size={16} strokeWidth={1.5} className="text-[var(--color-muted)]" />
       </div>
 
       <div className="flex-1 min-w-0">
-        <h3 className="text-[13px] font-normal truncate text-[var(--color-text)]">{doc.title}</h3>
+        <h3 className="text-sm font-normal truncate text-[var(--color-text)]">{doc.title}</h3>
         <div className="flex items-center gap-3 mt-0.5">
           <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded">{typeLabel}</span>
           <span className="text-[10px] font-medium" style={{ color: statusColor }}>
@@ -601,30 +526,38 @@ function ArchitectDocRow({ doc }) {
         </div>
       </div>
 
-      <span className="text-[10px] text-[var(--color-muted)] bg-white/40 px-2 py-0.5 rounded shrink-0">
-        {doc.stage}
-      </span>
-    </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="text-[10px] text-[var(--color-muted)] bg-white/40 px-2 py-0.5 rounded">
+          {doc.stage}
+        </span>
+        <div className="w-7 h-7 rounded-md flex items-center justify-center text-[var(--color-muted)] group-hover:text-[var(--color-accent)] transition-colors">
+          <Eye size={13} />
+        </div>
+      </div>
+    </button>
   )
 }
 
 /* ── Client document row ── */
-function ClientDocRow({ doc, onView }) {
+function ClientDocRow({ doc, onClick }) {
   const pd = doc.project_documents || {}
   const isNew = !doc.viewed_at
   const typeLabel = DOC_TYPE_LABELS[pd.doc_type] || (pd.doc_type || '').replace(/_/g, ' ') || 'Document'
 
   return (
-    <div className={`flex items-center gap-4 p-4 glass-t glass-t-hover transition-all ${
-      isNew ? 'border-[var(--color-pending)]/40 border-l-[3px]' : 'border-white/40'
-    }`}>
-      <div className="w-9 h-9 rounded-lg bg-white/50 flex items-center justify-center shrink-0">
+    <button
+      onClick={onClick}
+      className={`w-full text-left flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-white/40 border transition-all hover:shadow-sm hover:bg-white/60 cursor-pointer group ${
+        isNew ? 'border-[var(--color-pending)]/40 border-l-[3px]' : 'border-white/40'
+      }`}
+    >
+      <div className="w-9 h-9 rounded-lg bg-white/50 flex items-center justify-center shrink-0 group-hover:bg-white/70 transition-colors">
         <FileText size={16} strokeWidth={1.5} className="text-[var(--color-muted)]" />
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="text-[13px] font-normal truncate" style={{ color: 'var(--color-text)' }}>{pd.title || 'Untitled'}</h3>
+          <h3 className="text-sm font-normal truncate">{pd.title || 'Untitled'}</h3>
           {isNew && (
             <span className="text-[9px] font-medium tracking-wider uppercase px-1.5 py-0.5 rounded bg-[var(--color-pending)]/10 text-[var(--color-pending)]">
               New
@@ -633,25 +566,21 @@ function ClientDocRow({ doc, onView }) {
         </div>
         <div className="flex items-center gap-3 mt-0.5">
           {typeLabel && <span className="text-[10px] text-[var(--color-muted)] bg-white/40 px-1.5 py-0.5 rounded">{typeLabel}</span>}
-          {pd.version && <span className="text-[12px] text-[var(--color-muted)] font-light">{pd.version}</span>}
-          {pd.file_size_bytes && <span className="text-[12px] text-[var(--color-muted)] font-light">{formatSize(pd.file_size_bytes)}</span>}
-          <span className="text-[12px] text-[var(--color-muted)] font-light flex items-center gap-1">
-            <Clock size={10} style={{ color: 'var(--color-muted)' }} /> {formatDate(doc.shared_at)}
+          {pd.version && <span className="text-xs text-[var(--color-muted)] font-light">{pd.version}</span>}
+          {pd.file_size_bytes && <span className="text-xs text-[var(--color-muted)] font-light">{formatSize(pd.file_size_bytes)}</span>}
+          <span className="text-xs text-[var(--color-muted)] font-light flex items-center gap-1">
+            <Clock size={10} /> {formatDate(doc.shared_at)}
           </span>
         </div>
         {doc.share_note && (
-          <p className="text-[12px] text-[var(--color-muted)] font-light mt-1 italic">{doc.share_note}</p>
+          <p className="text-xs text-[var(--color-muted)] font-light mt-1 italic">{doc.share_note}</p>
         )}
       </div>
 
-      <button
-        onClick={onView}
-        className="shrink-0 w-8 h-8 rounded-lg border border-white/40 flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)] hover:border-[var(--color-accent)] transition-colors"
-        title="View document"
-      >
-        <Eye size={14} style={{ color: 'var(--color-muted)' }} />
-      </button>
-    </div>
+      <div className="w-7 h-7 rounded-md flex items-center justify-center text-[var(--color-muted)] group-hover:text-[var(--color-accent)] transition-colors shrink-0">
+        <Eye size={14} />
+      </div>
+    </button>
   )
 }
 

@@ -73,6 +73,7 @@ export function ProjectProvider({ children }) {
     <ProjectContext.Provider value={{
       projects,
       project: selectedProject,
+      projectGuid: selectedProject?.project_guid ?? null,
       switchProject,
       accessLevel,
       loading,

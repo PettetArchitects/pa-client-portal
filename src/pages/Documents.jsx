@@ -140,11 +140,12 @@ const DOC_VIEWER_STYLES = `
 const SUPABASE_FN_URL = (import.meta.env.VITE_SUPABASE_URL || 'https://mmfhjlpsumhyxjqhyirw.supabase.co') + '/functions/v1'
 
 export default function Documents({ projectId }) {
-  const { isArchitect } = useProject()
+  const { isArchitect, projectGuid } = useProject()
   const { user } = useAuth()
   const [docs, setDocs] = useState([])
   const [allProjectDocs, setAllProjectDocs] = useState([])
   const [scheduleData, setScheduleData] = useState({ groups: [], meta: { total: 0, confirmed: 0, approved: 0, to_review: 0 } })
+  const [specSections, setSpecSections] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [expandedTiers, setExpandedTiers] = useState(new Set(['specifications', 'drawings', 'schedules']))
@@ -155,6 +156,20 @@ export default function Documents({ projectId }) {
     if (!projectId) return
     loadAll()
   }, [projectId])
+
+  useEffect(() => {
+    if (!projectGuid) return
+    loadSpecSections()
+  }, [projectGuid])
+
+  async function loadSpecSections() {
+    const { data } = await supabase
+      .from('v_project_natspec_sections')
+      .select('section_ref, section_title, trigger_source, trigger_key')
+      .eq('project_guid', projectGuid)
+      .order('section_ref')
+    setSpecSections(data || [])
+  }
 
   async function loadAll() {
     const queries = [
@@ -427,6 +442,9 @@ export default function Documents({ projectId }) {
           )
         })}
       </div>
+
+      {/* Specification Sections */}
+      <SpecSectionsBlock sections={specSections} />
     </div>
   )
 }
@@ -637,6 +655,108 @@ function DocumentViewer({ doc, onBack }) {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/* ── Specification Sections block ── */
+const TRIGGER_SOURCE_LABELS = {
+  always_include: 'Practice Standards',
+  assembly:       'Building Assemblies',
+  selection_kind: 'Product Selections',
+  component_role: 'Component Roles',
+}
+
+function SpecSectionsBlock({ sections }) {
+  const [isExpanded, setIsExpanded] = useState(true)
+
+  if (!sections) return null
+
+  // Group by trigger_source, preserving insertion order
+  const grouped = sections.reduce((acc, row) => {
+    const key = row.trigger_source || 'assembly'
+    if (!acc[key]) acc[key] = []
+    // Deduplicate within group by section_ref
+    if (!acc[key].some(r => r.section_ref === row.section_ref)) acc[key].push(row)
+    return acc
+  }, {})
+
+  const sourceKeys = Object.keys(grouped)
+
+  return (
+    <div className="glass-s overflow-hidden mt-3">
+      {/* Header */}
+      <button
+        onClick={() => setIsExpanded(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-white/50 flex items-center justify-center shrink-0">
+            <ListChecks size={16} style={{ color: 'var(--color-muted)' }} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-[14px] font-medium" style={{ color: 'var(--color-text)' }}>
+                Specification Sections
+              </h2>
+              <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-white/50"
+                    style={{ color: 'var(--color-muted)' }}>
+                {sections.length > 0
+                  ? [...new Set(sections.map(s => s.section_ref))].length
+                  : 0}
+              </span>
+            </div>
+            <p className="text-[11px] font-light mt-0.5" style={{ color: 'var(--color-muted)' }}>
+              NATSPEC worksections required for this project
+            </p>
+          </div>
+        </div>
+        <div className="shrink-0">
+          {isExpanded
+            ? <ChevronDown size={14} style={{ color: 'var(--color-muted)' }} />
+            : <ChevronRight size={14} style={{ color: 'var(--color-muted)' }} />}
+        </div>
+      </button>
+
+      {/* Content */}
+      {isExpanded && (
+        <div className="border-t border-white/30 px-5 py-4">
+          {sections.length === 0 ? (
+            <p className="text-[12px] font-light py-4 text-center" style={{ color: 'var(--color-muted)' }}>
+              No specification sections recorded yet.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {sourceKeys.map(sourceKey => (
+                <div key={sourceKey}>
+                  <p className="text-[10px] uppercase tracking-[2px] font-medium mb-2 px-1"
+                     style={{ color: 'var(--color-muted)' }}>
+                    {TRIGGER_SOURCE_LABELS[sourceKey] || sourceKey}
+                  </p>
+                  <div className="space-y-1">
+                    {grouped[sourceKey].map(row => (
+                      <div
+                        key={row.section_ref}
+                        className="flex items-center gap-3 px-4 py-2.5 rounded-lg glass-t"
+                      >
+                        <span
+                          className="inline-block font-semibold text-[11px] tracking-tight leading-none px-2 py-1 rounded-full border bg-white/20 whitespace-nowrap shrink-0"
+                          style={{ color: 'var(--color-text)', borderColor: 'rgba(26,26,26,0.2)' }}
+                        >
+                          {row.section_ref}
+                        </span>
+                        <span className="text-[13px] font-light" style={{ color: 'var(--color-text)' }}>
+                          {row.section_title}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

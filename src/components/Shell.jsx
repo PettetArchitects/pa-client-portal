@@ -7,13 +7,12 @@ import { useProject } from '../hooks/useProject'
 import { usePractice } from '../hooks/usePractice'
 import ProjectHero from './ProjectHero'
 import {
-  LayoutGrid, ClipboardList, FileText, Home, Image,
+  LayoutGrid, FileText, Home, Image,
   MessageCircle, LogOut, ChevronDown, Settings, Users, Database, Compass, Eye
 } from 'lucide-react'
 
 const baseNavItems = [
   { to: '/', icon: LayoutGrid, label: 'Dashboard' },
-  { to: '/selections', icon: ClipboardList, label: 'Schedules' },
   { to: '/documents', icon: FileText, label: 'Documents' },
   { to: '/admin', icon: Users, label: 'Team' },
   { to: '/decisions', icon: Compass, label: 'Decisions' },

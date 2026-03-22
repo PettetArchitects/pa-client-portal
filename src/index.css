@@ -2,20 +2,26 @@
 
 @theme {
   --font-sans: 'Jost', system-ui, -apple-system, sans-serif;
-  --color-bg: #FAFAF8;
+  /* ── Earthy / Vegetation Palette ──
+     After Albers: equal luminosity across status hues,
+     warm/cool tension, colour perceived through glass layers.
+     Drawn from Northern Beaches satellite — eucalyptus,
+     sandstone, terracotta, warm clay.
+     ──────────────────────────────────────────────── */
+  --color-bg: #FAF9F5;
   --color-surface: #FFFFFF;
-  --color-text: #1A1A1A;
-  --color-muted: #444440;
-  --color-border: #E8E8E5;
-  --color-accent: #1A1A1A;
-  --color-pending: #6B4F00;
-  --color-approved: #2D4A26;
-  --color-urgent: #6B2D0A;
-  --color-change: #5A2010;
+  --color-text: #33332E;
+  --color-muted: #6B6B60;
+  --color-border: #E2E0D8;
+  --color-accent: #7A9A7E;
+  --color-pending: #C4A265;
+  --color-approved: #5B8A65;
+  --color-urgent: #C47B5C;
+  --color-change: #A07358;
 }
 
 body {
-  background: #E8E8E5;
+  background: #E2E0D8;
   color: var(--color-text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -78,13 +84,13 @@ body {
 .glass-t-hover:hover { background: rgba(255, 255, 255, 0.58); }
 
 /* Pending accent border override */
-.glass-pending { border-color: rgba(107, 79, 0, 0.35); }
+.glass-pending { border-color: rgba(196, 162, 101, 0.35); }
 
 /* ── Text contrast — guaranteed readable on any glass tier ── */
-.text-primary { color: #1A1A1A; }
-.text-secondary { color: #333330; }
-.text-tertiary { color: #444440; }
-.text-caption { color: #555550; font-size: 10px; }
+.text-primary { color: #33332E; }
+.text-secondary { color: #4A4A42; }
+.text-tertiary { color: #6B6B60; }
+.text-caption { color: #7A7A6E; font-size: 10px; }
 
 /* ── Toast animation ── */
 @keyframes slideInRight {

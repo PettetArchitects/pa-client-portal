@@ -389,23 +389,33 @@ export default function Overview({ projectId }) {
               </span>
             </div>
           </div>
-          {/* Category breakdown */}
-          <div className="space-y-2.5">
+          {/* Category breakdown — dot grid */}
+          <div className="space-y-3">
             {groups.map(g => {
-              const approvedCatPct = g.total > 0 ? Math.round((g.approved / g.total) * 100) : 0
-              const confirmedCatPct = g.total > 0 ? Math.round((g.confirmed / g.total) * 100) : 0
+              // Build array of dots: approved first, then confirmed, then pending
+              const dots = []
+              for (let i = 0; i < g.approved; i++) dots.push('approved')
+              for (let i = 0; i < g.confirmed; i++) dots.push('confirmed')
+              for (let i = 0; i < g.pending; i++) dots.push('pending')
               return (
-                <div key={g.key} className="flex items-center gap-3">
-                  <span className="text-[12px] font-light w-36 shrink-0 truncate capitalize" style={{ color: 'var(--color-text)' }}>{g.label}</span>
-                  <div className="flex-1 h-1.5 bg-white/50 rounded-full overflow-hidden flex">
-                    {approvedCatPct > 0 && (
-                      <div className="h-full bg-[var(--color-approved)] transition-all duration-500" style={{ width: `${approvedCatPct}%` }} />
-                    )}
-                    {confirmedCatPct > 0 && (
-                      <div className="h-full bg-[var(--color-accent)] transition-all duration-500" style={{ width: `${confirmedCatPct}%` }} />
-                    )}
+                <div key={g.key} className="flex items-start gap-3">
+                  <div className="w-36 shrink-0 pt-0.5">
+                    <span className="text-[12px] font-light truncate block capitalize" style={{ color: 'var(--color-text)' }}>{g.label}</span>
                   </div>
-                  <span className="text-[10px] text-[var(--color-muted)] w-14 text-right shrink-0">{g.approved + g.confirmed}/{g.total}</span>
+                  <div className="flex-1 flex flex-wrap gap-[3px] pt-1">
+                    {dots.map((status, i) => (
+                      <span
+                        key={i}
+                        className="w-[7px] h-[7px] rounded-full"
+                        style={{
+                          background: status === 'approved' ? 'var(--color-approved)' :
+                                     status === 'confirmed' ? 'var(--color-accent)' :
+                                     'var(--color-border)',
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-[10px] text-[var(--color-muted)] w-14 text-right shrink-0 pt-0.5">{g.approved + g.confirmed}/{g.total}</span>
                 </div>
               )
             })}

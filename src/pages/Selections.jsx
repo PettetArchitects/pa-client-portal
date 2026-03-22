@@ -7,6 +7,7 @@ const FILTERS = ['all', 'pending', 'approved', 'confirmed']
 export default function Selections({ projectId }) {
   const [groups, setGroups] = useState([])
   const [items, setItems] = useState([])
+  const [codeTitleMap, setCodeTitleMap] = useState({})
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
 
@@ -16,12 +17,16 @@ export default function Selections({ projectId }) {
   }, [projectId])
 
   async function loadSelections() {
-    const [grpRes, selRes] = await Promise.all([
+    const [grpRes, selRes, codeRes] = await Promise.all([
       supabase.from('schedule_groups').select('*').eq('project_id', projectId).order('display_order'),
       supabase.from('v_client_selection_schedule').select('*').eq('project_id', projectId),
+      supabase.from('master_code_entries').select('canonical_code, title').eq('status', 'active'),
     ])
     setGroups(grpRes.data || [])
     setItems(selRes.data || [])
+    const ctMap = {}
+    ;(codeRes.data || []).forEach(e => { ctMap[e.canonical_code] = e.title })
+    setCodeTitleMap(ctMap)
     setLoading(false)
   }
 
@@ -112,6 +117,7 @@ export default function Selections({ projectId }) {
                 <SelectionCard
                   key={item.portal_entry_id}
                   item={item}
+                  codeTitleMap={codeTitleMap}
                   onApprove={() => handleApprove(item.portal_entry_id)}
                   onRequestChange={() => handleRequestChange(item.portal_entry_id)}
                 />
@@ -131,7 +137,7 @@ export default function Selections({ projectId }) {
   )
 }
 
-function SelectionCard({ item, onApprove, onRequestChange }) {
+function SelectionCard({ item, codeTitleMap, onApprove, onRequestChange }) {
   const isPending = item.approval_status === 'pending'
   const isApproved = item.approval_status === 'approved'
   const isChangeReq = item.approval_status === 'change_requested'
@@ -139,6 +145,8 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
 
   const attrs = item.attributes || {}
   const productUrl = attrs.product_url || attrs.image_url
+  const code = attrs.code || null
+  const codeTitle = code && codeTitleMap ? codeTitleMap[code] : null
 
   return (
     <div className={`bg-white rounded-xl border overflow-hidden transition-all hover:shadow-sm ${
@@ -152,6 +160,12 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
         {/* Header */}
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex-1 min-w-0">
+            {code && (
+              <span className="text-[9px] font-mono tracking-wider text-[var(--color-muted)] uppercase block mb-0.5">
+                {code}
+                {codeTitle && <span className="text-[8px] font-normal tracking-wider ml-1.5 opacity-70">{codeTitle}</span>}
+              </span>
+            )}
             <h3 className="text-[13px] font-medium leading-snug truncate">{item.selection_title}</h3>
             <span className="text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-light">
               {item.selection_kind?.replace('_', ' ')}

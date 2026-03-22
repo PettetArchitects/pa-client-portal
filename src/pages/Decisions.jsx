@@ -77,6 +77,7 @@ export default function Decisions({ projectId }) {
   const [roomMappings, setRoomMappings] = useState([])
   const [natspecMap, setNatspecMap] = useState({})
   const [subCriteriaMap, setSubCriteriaMap] = useState({}) // element_type → [{field_key, field_label, field_type, field_unit, display_order}]
+  const [codeTitleMap, setCodeTitleMap] = useState({}) // canonical_code → title (e.g. "LT1" → "Light Type 01")
   const [loading, setLoading] = useState(true)
   const [expandedGroups, setExpandedGroups] = useState(new Set())
   const [viewMode, setViewMode] = useState('schedule') // 'schedule', 'plan'
@@ -92,7 +93,7 @@ export default function Decisions({ projectId }) {
   }, [projectId])
 
   async function loadData() {
-    const [grpRes, selRes, roomRes, scRes] = await Promise.all([
+    const [grpRes, selRes, roomRes, scRes, codeRes] = await Promise.all([
       supabase.from('schedule_groups').select('*').eq('project_id', projectId).eq('visible_to_homeowner', true).order('display_order'),
       supabase.from('homeowner_selections_portal').select(`
         *,
@@ -103,11 +104,17 @@ export default function Decisions({ projectId }) {
       `).eq('project_id', projectId).eq('active', true),
       supabase.from('portal_selection_rooms').select('*').eq('project_id', projectId),
       supabase.from('sub_criteria_definitions').select('*').order('display_order'),
+      supabase.from('master_code_entries').select('canonical_code, title').eq('status', 'active'),
     ])
 
     setGroups(grpRes.data || [])
     setItems(selRes.data || [])
     setRoomMappings(roomRes.data || [])
+
+    // Build code title lookup: canonical_code → title (e.g. "LT1" → "Light Type 01")
+    const ctMap = {}
+    ;(codeRes.data || []).forEach(e => { ctMap[e.canonical_code] = e.title })
+    setCodeTitleMap(ctMap)
 
     // Build sub-criteria lookup: element_type → sorted fields array
     const scMap = {}
@@ -421,9 +428,10 @@ export default function Decisions({ projectId }) {
           isArchitect={isArchitect}
           onApproveItem={handleApproveItem}
           onRequestChange={handleRequestChange}
+          codeTitleMap={codeTitleMap}
         />
       ) : sortBy === 'boq' ? (
-        <BoQView groupedData={groupedData} natspecMap={natspecMap} />
+        <BoQView groupedData={groupedData} natspecMap={natspecMap} codeTitleMap={codeTitleMap} />
       ) : sortBy === 'component' ? (
         <ComponentGroupedView
           components={componentGroupedData}
@@ -433,6 +441,7 @@ export default function Decisions({ projectId }) {
           onRequestChange={handleRequestChange}
           natspecMap={natspecMap}
           subCriteriaMap={subCriteriaMap}
+          codeTitleMap={codeTitleMap}
         />
       ) : sortBy === 'room' ? (
         <RoomGroupedView
@@ -443,6 +452,7 @@ export default function Decisions({ projectId }) {
           onApproveRoom={handleApproveRoom}
           onRequestChange={handleRequestChange}
           natspecMap={natspecMap}
+          codeTitleMap={codeTitleMap}
         />
       ) : (
         <div className="space-y-3">
@@ -508,7 +518,7 @@ export default function Decisions({ projectId }) {
                 {/* Expanded items */}
                 {isExpanded && (
                   <div className="border-t border-white/30">
-                    <ScheduleView items={group.items} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} roomMappings={roomMappings} onApproveItem={handleApproveItem} onRequestChange={handleRequestChange} />
+                    <ScheduleView items={group.items} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} roomMappings={roomMappings} codeTitleMap={codeTitleMap} onApproveItem={handleApproveItem} onRequestChange={handleRequestChange} />
                   </div>
                 )}
               </div>
@@ -758,7 +768,7 @@ function buildComponentGroups(filteredItems, allItems) {
 }
 
 /* ── Room-grouped view ── */
-function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, onApproveRoom, onRequestChange, natspecMap }) {
+function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, onApproveRoom, onRequestChange, natspecMap, codeTitleMap }) {
   return (
     <div className="space-y-3">
       {rooms.map(room => {
@@ -842,6 +852,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
                           key={item.id}
                           item={item}
                           natspecMap={natspecMap}
+                          codeTitleMap={codeTitleMap}
                           onApprove={() => onApproveItem(item.id)}
                           onRequestChange={() => onRequestChange(item.id)}
                         />
@@ -871,7 +882,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
 }
 
 /* ── Component-grouped view: by parent assembly ── */
-function ComponentGroupedView({ components, expandedGroups, toggleGroup, onApproveItem, onRequestChange, natspecMap, subCriteriaMap }) {
+function ComponentGroupedView({ components, expandedGroups, toggleGroup, onApproveItem, onRequestChange, natspecMap, subCriteriaMap, codeTitleMap }) {
   return (
     <div className="space-y-3">
       {components.map(comp => {
@@ -924,7 +935,7 @@ function ComponentGroupedView({ components, expandedGroups, toggleGroup, onAppro
             {/* Expanded: all items in this IFC family */}
             {isExpanded && (
               <div className="border-t border-white/30">
-                <ScheduleView items={comp.children} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+                <ScheduleView items={comp.children} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} codeTitleMap={codeTitleMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
               </div>
             )}
           </div>
@@ -935,7 +946,7 @@ function ComponentGroupedView({ components, expandedGroups, toggleGroup, onAppro
 }
 
 /* ── Review view: card-based with approve/change actions ── */
-function ReviewView({ items, groupKey, hasPending, pendingCount, onApproveItem, onApproveGroup, onRequestChange }) {
+function ReviewView({ items, groupKey, hasPending, pendingCount, onApproveItem, onApproveGroup, onRequestChange, codeTitleMap }) {
   return (
     <div>
       <div className="p-4 space-y-2">
@@ -943,6 +954,7 @@ function ReviewView({ items, groupKey, hasPending, pendingCount, onApproveItem, 
           <SelectionCard
             key={item.id}
             item={item}
+            codeTitleMap={codeTitleMap}
             onApprove={() => onApproveItem(item.id)}
             onRequestChange={() => onRequestChange(item.id)}
           />
@@ -1070,7 +1082,7 @@ function getDominantElementType(items) {
 }
 
 /* ── Schedule view: proper tabular schedule with column headers ── */
-function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, onApproveItem, onRequestChange }) {
+function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, codeTitleMap, onApproveItem, onRequestChange }) {
   const tree = buildItemTree(items)
   const allItems = tree.flatMap(n => [n.item, ...n.children])
   const elementType = getDominantElementType(allItems)
@@ -1135,7 +1147,12 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, onAppro
             <div className={`grid gap-2 px-3 py-2.5 items-center text-[11px] border-b border-white/15 hover:bg-white/30 transition-colors ${node.children.length > 0 ? 'font-medium' : ''}`}
               style={{ gridTemplateColumns: colTemplate }}>
               {/* Code — leading column */}
-              <span className="text-[9px] font-mono tracking-wider text-[var(--color-text)] uppercase font-medium">{code || '\u2014'}</span>
+              <div className="min-w-0">
+                <span className="text-[9px] font-mono tracking-wider text-[var(--color-text)] uppercase font-medium block">{code || '\u2014'}</span>
+                {code && codeTitleMap && codeTitleMap[code] && (
+                  <span className="text-[7px] uppercase tracking-wider text-[var(--color-muted)] leading-tight block truncate">{codeTitleMap[code]}</span>
+                )}
+              </div>
               {/* Thumbnail */}
               <div>
                 {node.item.portal_image_url ? (
@@ -1204,7 +1221,12 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, onAppro
               return (
                 <div key={child.id} className="grid gap-2 px-3 py-1.5 items-center text-[10px] border-b border-white/10 hover:bg-white/20 transition-colors bg-white/5"
                   style={{ gridTemplateColumns: colTemplate }}>
-                  <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] uppercase">{cCode || ''}</span>
+                  <div className="min-w-0">
+                    <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] uppercase block">{cCode || ''}</span>
+                    {cCode && codeTitleMap && codeTitleMap[cCode] && (
+                      <span className="text-[6px] uppercase tracking-wider text-[var(--color-muted)] opacity-70 leading-tight block truncate">{codeTitleMap[cCode]}</span>
+                    )}
+                  </div>
                   {/* Child thumbnail */}
                   <div>
                     {child.portal_image_url ? (
@@ -1372,7 +1394,7 @@ function ItemRow({ item, natspecMap, subCriteriaMap, onApproveItem, onRequestCha
 }
 
 /* ── Compact child/component row — same grid logic, indented ── */
-function CompactChildRow({ item, natspecMap, subCriteriaMap, onApproveItem, onRequestChange }) {
+function CompactChildRow({ item, natspecMap, subCriteriaMap, codeTitleMap, onApproveItem, onRequestChange }) {
   const sel = item.project_selections || {}
   const attrs = sel.attributes || {}
   const st = STATUS_STYLES[item.approval_status] || STATUS_STYLES.not_applicable
@@ -1402,7 +1424,7 @@ function CompactChildRow({ item, natspecMap, subCriteriaMap, onApproveItem, onRe
         <div className="min-w-0">
           <span className="text-[8px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium block">{roleLabel}</span>
           <div className="font-medium leading-snug text-[var(--color-text)] text-[11px] break-words">{sel.title || item.selection_title}</div>
-          {code && <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] block">{code}</span>}
+          {code && <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] block">{code}{codeTitleMap && codeTitleMap[code] ? ` — ${codeTitleMap[code]}` : ''}</span>}
         </div>
         {/* Product */}
         <SpecCell label="Product" value={sel.model} />
@@ -1432,7 +1454,7 @@ function CompactChildRow({ item, natspecMap, subCriteriaMap, onApproveItem, onRe
 }
 
 /* ── Selection card: Programa-style visual item with product image ── */
-function SelectionCard({ item, natspecMap, onApprove, onRequestChange }) {
+function SelectionCard({ item, natspecMap, codeTitleMap, onApprove, onRequestChange }) {
   const sel = item.project_selections || {}
   const attrs = sel.attributes || {}
   const isPending = item.approval_status === 'pending'
@@ -1503,7 +1525,11 @@ function SelectionCard({ item, natspecMap, onApprove, onRequestChange }) {
       <div className="flex-1 min-w-0 py-0.5">
         {(() => { const { code, name } = parseCode(sel.title || item.selection_title, attrs); return (<>
           {code && (
-            <span className="text-[9px] font-mono tracking-wider text-[var(--color-muted)] uppercase block mb-0.5">{code}</span>
+            <span className="text-[9px] font-mono tracking-wider text-[var(--color-muted)] uppercase block mb-0.5">{code}
+              {codeTitleMap && codeTitleMap[code] && (
+                <span className="text-[8px] font-normal tracking-wider ml-1.5 opacity-70">{codeTitleMap[code]}</span>
+              )}
+            </span>
           )}
           {natspecCodes.length > 0 && (
             <span className="text-[8px] font-mono tracking-wider text-[var(--color-muted)] opacity-70 block mb-0.5">
@@ -1648,7 +1674,7 @@ function ColourDot({ colour }) {
 }
 
 /* ── BoQ View ── */
-function BoQView({ groupedData, natspecMap }) {
+function BoQView({ groupedData, natspecMap, codeTitleMap }) {
   // Calculate totals
   let grandLow = 0
   let grandHigh = 0
@@ -1717,7 +1743,10 @@ function BoQView({ groupedData, natspecMap }) {
                 <div key={item.id} className="grid gap-2 px-4 py-2.5 text-[11px] items-center"
                   style={{ gridTemplateColumns: '60px 1fr 120px 100px' }}>
                   <div>
-                    {code && <span className="font-mono text-[9px] text-[var(--color-muted)]">{code}</span>}
+                    {code && <span className="font-mono text-[9px] text-[var(--color-muted)] block">{code}</span>}
+                    {code && codeTitleMap && codeTitleMap[code] && (
+                      <span className="text-[7px] uppercase tracking-wider text-[var(--color-muted)] opacity-70 block truncate">{codeTitleMap[code]}</span>
+                    )}
                     {nsCodes.length > 0 && <span className="font-mono text-[8px] text-[var(--color-muted)] block opacity-70">{nsCodes[0]?.ref}</span>}
                   </div>
                   <div>
@@ -1749,7 +1778,7 @@ function formatK(n) {
 }
 
 /* ── Plan View ── */
-function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveItem, onRequestChange }) {
+function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveItem, onRequestChange, codeTitleMap }) {
   const [selectedRoom, setSelectedRoom] = useState(null)
 
   // Filter items by selected room
@@ -1772,7 +1801,7 @@ function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveIt
       {/* Room selection list */}
       {selectedRoom && roomItems.length > 0 && (
         <div className="mt-4">
-          <ScheduleView items={roomItems} natspecMap={{}} subCriteriaMap={{}} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+          <ScheduleView items={roomItems} natspecMap={{}} subCriteriaMap={{}} codeTitleMap={codeTitleMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
         </div>
       )}
 

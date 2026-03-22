@@ -22,12 +22,48 @@ const GROUP_LABELS = {
   thermal_envelope: 'Thermal Envelope',
 }
 
+// Uniformat top-level group labels
+const UNIFORMAT_GROUPS = {
+  A: 'Substructure',
+  B: 'Shell & Envelope',
+  C: 'Interiors',
+  D: 'Services',
+  E: 'Equipment & Furnishings',
+  F: 'Special Construction',
+  G: 'Site Work',
+}
+
+// LOD level human labels and colours
+const LOD_META = {
+  100: { label: 'LOD 100', sublabel: 'Conceptual', color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
+  200: { label: 'LOD 200', sublabel: 'Schematic', color: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
+  300: { label: 'LOD 300', sublabel: 'Design Dev.', color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
+  350: { label: 'LOD 350', sublabel: 'Coord. Docs', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  400: { label: 'LOD 400', sublabel: 'Fab. Ready', color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+  500: { label: 'LOD 500', sublabel: 'As-Built', color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
+}
+
+function lodBarWidth(lod) {
+  const levels = [100, 200, 300, 350, 400, 500]
+  const idx = levels.indexOf(lod)
+  if (idx < 0) return '0%'
+  return `${Math.round(((idx + 1) / levels.length) * 100)}%`
+}
+
+// Extract numeric stage code from project.stage string like "21 – Design Development"
+function extractStageCode(stageStr) {
+  if (!stageStr) return null
+  const match = stageStr.match(/^(\d+)/)
+  return match ? match[1] : null
+}
+
 export default function Overview({ projectId }) {
   const { project, isArchitect } = useProject()
   const [stats, setStats] = useState(null)
   const [groups, setGroups] = useState([])
   const [milestones, setMilestones] = useState([])
   const [payments, setPayments] = useState([])
+  const [lodGroups, setLodGroups] = useState([])
   const [loading, setLoading] = useState(true)
 
   const portalFeatures = project?.portal_features || { payments: true, decisions: true, documents: true, messages: true }
@@ -39,6 +75,8 @@ export default function Overview({ projectId }) {
   }, [projectId])
 
   async function loadDashboard() {
+    const stageCode = extractStageCode(project?.stage)
+
     const queries = [
       supabase.from('homeowner_selections_portal').select('approval_status, priority, schedule_group, portal_image_url').eq('project_id', projectId).eq('active', true),
       supabase.from('homeowner_document_shares').select('id', { count: 'exact' }).eq('project_id', projectId).eq('active', true),
@@ -52,8 +90,31 @@ export default function Overview({ projectId }) {
       )
     }
 
-    const results = await Promise.all(queries)
-    const [selRes, docRes, mileRes, msgRes] = results
+    // LOD targets for current stage + element definitions
+    let lodQuery = null
+    if (stageCode) {
+      lodQuery = Promise.all([
+        supabase
+          .from('lod_spec_service_element_targets')
+          .select('element_id, lod_target, required')
+          .eq('service_scope', 'project_stage')
+          .eq('service_code', stageCode)
+          .eq('required', true),
+        supabase
+          .from('lod_spec_elements')
+          .select('id, uniformat_code, system_component, section, breakdown_level')
+          .eq('is_heading', false)
+          .eq('section', 'ELEMENTS')
+          .lte('breakdown_level', 3),
+      ])
+    }
+
+    const [mainResults, lodResult] = await Promise.all([
+      Promise.all(queries),
+      lodQuery || Promise.resolve(null),
+    ])
+
+    const [selRes, docRes, mileRes, msgRes] = mainResults
 
     const selections = selRes.data || []
     const pending = selections.filter(s => s.approval_status === 'pending').length
@@ -83,7 +144,53 @@ export default function Overview({ projectId }) {
     })
     setGroups(groupList)
     setMilestones(mileRes.data || [])
-    if (results[4]) setPayments(results[4].data || [])
+    if (mainResults[4]) setPayments(mainResults[4].data || [])
+
+    // Process LOD data
+    if (lodResult) {
+      const [targetsRes, elementsRes] = lodResult
+      const targets = targetsRes.data || []
+      const elements = elementsRes.data || []
+
+      // Build element lookup map
+      const elementMap = {}
+      elements.forEach(e => { elementMap[e.id] = e })
+
+      // Join targets to elements
+      const joined = targets
+        .map(t => ({ ...t, element: elementMap[t.element_id] }))
+        .filter(t => t.element && t.element.uniformat_code && t.element.uniformat_code !== 'N/A')
+
+      // Group by Uniformat top-level letter
+      const gMap = {}
+      joined.forEach(item => {
+        const code = item.element.uniformat_code
+        const letter = code.match(/^([A-Z])/)?.[1]
+        if (!letter || !UNIFORMAT_GROUPS[letter]) return
+        if (!gMap[letter]) gMap[letter] = { items: [], minLod: Infinity, maxLod: 0 }
+        gMap[letter].items.push(item)
+        gMap[letter].minLod = Math.min(gMap[letter].minLod, item.lod_target)
+        gMap[letter].maxLod = Math.max(gMap[letter].maxLod, item.lod_target)
+      })
+
+      const lodGroupList = Object.entries(gMap)
+        .map(([letter, data]) => ({
+          letter,
+          label: UNIFORMAT_GROUPS[letter],
+          itemCount: data.items.length,
+          // Use the dominant (most common) LOD for display
+          lod: Math.round(
+            data.items.reduce((sum, i) => sum + i.lod_target, 0) / data.items.length
+          ),
+          minLod: data.minLod === Infinity ? 0 : data.minLod,
+          maxLod: data.maxLod,
+        }))
+        .filter(g => g.itemCount > 0)
+        .sort((a, b) => a.letter.localeCompare(b.letter))
+
+      setLodGroups(lodGroupList)
+    }
+
     setLoading(false)
   }
 
@@ -170,6 +277,70 @@ export default function Overview({ projectId }) {
           <p className="text-[10px] text-[var(--color-muted)] font-light mt-1">Conversations</p>
         </Link>
       </div>
+
+      {/* LOD Documentation Status */}
+      {lodGroups.length > 0 && (
+        <div className="glass-s p-5">
+          <div className="flex items-start justify-between mb-4 gap-2">
+            <div>
+              <h2 className="text-[14px] font-medium tracking-wide" style={{ color: 'var(--color-text)' }}>Documentation Status</h2>
+              {project?.stage && (
+                <p className="text-[10px] text-[var(--color-muted)] font-light mt-0.5">
+                  LOD targets for {project.stage}
+                </p>
+              )}
+            </div>
+            <span className="shrink-0 text-[9px] font-medium tracking-[1px] uppercase px-2 py-1 rounded bg-white/50 text-[var(--color-muted)] border border-white/40">
+              Level of Detail
+            </span>
+          </div>
+          <div className="space-y-3">
+            {lodGroups.map(g => {
+              const meta = LOD_META[g.lod] || LOD_META[300]
+              return (
+                <div key={g.letter} className="flex items-center gap-3">
+                  {/* Group label */}
+                  <div className="w-32 shrink-0">
+                    <span className="text-[12px] font-light truncate block" style={{ color: 'var(--color-text)' }}>
+                      {g.label}
+                    </span>
+                    <span className="text-[9px] tracking-[1px] uppercase text-[var(--color-muted)] font-light">
+                      {g.letter} — {g.itemCount} element{g.itemCount !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  {/* LOD bar */}
+                  <div className="flex-1 h-2 bg-white/40 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: lodBarWidth(g.lod),
+                        background: meta.color,
+                      }}
+                    />
+                  </div>
+                  {/* LOD badge */}
+                  <div
+                    className="shrink-0 text-right w-20"
+                    style={{ color: meta.color }}
+                  >
+                    <span className="text-[11px] font-medium block">{meta.label}</span>
+                    <span className="text-[9px] font-light block" style={{ color: 'var(--color-muted)' }}>{meta.sublabel}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          {/* LOD legend */}
+          <div className="mt-4 pt-3 border-t border-white/30 flex flex-wrap gap-x-4 gap-y-1">
+            {Object.entries(LOD_META).map(([lod, m]) => (
+              <span key={lod} className="flex items-center gap-1.5 text-[9px] text-[var(--color-muted)]">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: m.color }} />
+                {m.label} {m.sublabel}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {groups.length > 0 && (
         <div className="glass-s p-5">

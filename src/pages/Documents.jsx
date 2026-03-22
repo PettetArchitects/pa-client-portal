@@ -4,7 +4,8 @@ import { useProject } from '../hooks/useProject'
 import { useAuth } from '../hooks/useAuth'
 import {
   FileText, Eye, Clock, Search, Folder, ChevronDown, ChevronRight,
-  Package, Palette, Wrench, Grid3X3, ListChecks, Download, ExternalLink
+  Package, Palette, Wrench, Grid3X3, ListChecks, Download, ExternalLink,
+  Ruler, CheckCircle2, Circle, AlertCircle
 } from 'lucide-react'
 
 const KIND_ICONS = {
@@ -39,14 +40,35 @@ const DOC_TYPE_LABELS = {
   transmittal: 'Transmittal',
 }
 
+// Sheet code → human label mapping
+const SHEET_LABELS = {
+  A_61000: 'Floor & Slab Details',
+  A_71000A: 'Wall, Door & Window Details',
+  A_73000: 'Roof & Eave Details',
+  A_81000: 'Stair Details',
+  A_82000: 'Balustrade Details',
+  A_91000: 'Site & External Details',
+}
+
+// Derive priority badge from trigger_source stage number
+function getDetailPriority(triggerSource) {
+  if (!triggerSource) return null
+  const match = triggerSource.match(/stage:(\d+)/)
+  if (!match) return null
+  const stage = parseInt(match[1])
+  if (stage <= 23) return 'Tender Critical'
+  return 'Post-Tender'
+}
+
 export default function Documents({ projectId }) {
-  const { isArchitect } = useProject()
+  const { isArchitect, project } = useProject()
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('documents')
   const [docs, setDocs] = useState([])
   const [allProjectDocs, setAllProjectDocs] = useState([])
   const [scheduleGroups, setScheduleGroups] = useState([])
   const [selections, setSelections] = useState([])
+  const [details, setDetails] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [expandedGroups, setExpandedGroups] = useState(new Set())
@@ -92,13 +114,36 @@ export default function Documents({ projectId }) {
       )
     }
 
+    // Required details via project_detail_engine view (uses project_guid)
+    if (project?.project_guid) {
+      queries.push(
+        supabase
+          .from('project_detail_engine')
+          .select('id, junction_key, junction_name, sheet_code, condition_key, condition_name, detail_name, detail_number, drawing_ref, status, trigger_source, typical_location, assembly_label, primary_assembly, secondary_assembly')
+          .eq('project_guid', project.project_guid)
+          .order('sheet_code')
+      )
+    }
+
     const results = await Promise.all(queries)
     const [docRes, grpRes, selRes] = results
+    let archDocRes = null
+    let detailRes = null
+
+    if (isArchitect && project?.project_guid) {
+      archDocRes = results[3]
+      detailRes = results[4]
+    } else if (isArchitect) {
+      archDocRes = results[3]
+    } else if (project?.project_guid) {
+      detailRes = results[3]
+    }
 
     setDocs(docRes.data || [])
     setScheduleGroups(grpRes.data || [])
     setSelections(selRes.data || [])
-    if (results[3]) setAllProjectDocs(results[3].data || [])
+    if (archDocRes) setAllProjectDocs(archDocRes.data || [])
+    if (detailRes) setDetails(detailRes.data || [])
     setLoading(false)
   }
 
@@ -151,6 +196,25 @@ export default function Documents({ projectId }) {
       )
     : null
 
+  // Group details by sheet_code
+  const filteredDetails = details.filter(d => {
+    if (!search) return true
+    const text = [d.junction_name, d.condition_name, d.sheet_code, d.detail_name].join(' ').toLowerCase()
+    return text.includes(search.toLowerCase())
+  })
+
+  const groupedDetails = Object.entries(
+    filteredDetails.reduce((acc, d) => {
+      const key = d.sheet_code || 'Other'
+      if (!acc[key]) acc[key] = []
+      acc[key].push(d)
+      return acc
+    }, {})
+  ).sort(([a], [b]) => a.localeCompare(b))
+
+  const resolvedCount = details.filter(d => d.drawing_ref || d.detail_number).length
+  const pendingCount = details.length - resolvedCount
+
   const totalScheduleItems = selections.length
   const totalDocs = isArchitect ? allProjectDocs.length : docs.length
 
@@ -172,6 +236,7 @@ export default function Documents({ projectId }) {
           {[
             { key: 'documents', label: 'Documents', icon: FileText, count: totalDocs },
             { key: 'schedules', label: 'Schedules', icon: Grid3X3, count: totalScheduleItems },
+            { key: 'details', label: 'Req. Details', icon: Ruler, count: details.length },
           ].map(t => (
             <button
               key={t.key}
@@ -184,9 +249,7 @@ export default function Documents({ projectId }) {
             >
               <t.icon size={11} />
               {t.label}
-              <span className={`text-[9px] px-1 py-0.5 rounded ${
-                activeTab === t.key ? 'bg-white/40' : 'bg-white/40'
-              }`}>
+              <span className="text-[9px] px-1 py-0.5 rounded bg-white/40">
                 {t.count}
               </span>
             </button>
@@ -200,7 +263,11 @@ export default function Documents({ projectId }) {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder={activeTab === 'schedules' ? 'Search selections\u2026' : 'Search documents\u2026'}
+            placeholder={
+              activeTab === 'schedules' ? 'Search selections\u2026' :
+              activeTab === 'details' ? 'Search details\u2026' :
+              'Search documents\u2026'
+            }
             className="pl-7 pr-3 py-1.5 glass-t text-[11px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors w-48"
           />
         </div>
@@ -344,6 +411,158 @@ export default function Documents({ projectId }) {
               <ListChecks size={24} className="mx-auto text-[var(--color-border)] mb-3" />
               <p className="text-[13px] text-[var(--color-muted)] font-light">
                 {search ? 'No items match your search.' : 'No schedule data yet.'}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Required Details tab */}
+      {activeTab === 'details' && (
+        <div>
+          {/* Summary strip */}
+          {details.length > 0 && (
+            <div className="flex items-center gap-4 mb-4 px-4 py-3 glass-t rounded-lg">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 size={13} className="text-[var(--color-approved)]" />
+                <span className="text-[11px] font-medium text-[var(--color-approved)]">{resolvedCount} resolved</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Circle size={13} className="text-[var(--color-pending)]" />
+                <span className="text-[11px] font-medium text-[var(--color-pending)]">{pendingCount} pending</span>
+              </div>
+              <div className="flex-1 h-1.5 bg-white/50 rounded-full overflow-hidden ml-2">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: details.length > 0 ? `${Math.round((resolvedCount / details.length) * 100)}%` : '0%',
+                    background: 'var(--color-approved)',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Details grouped by sheet */}
+          <div className="space-y-3">
+            {groupedDetails.map(([sheetCode, items]) => {
+              const isExpanded = expandedGroups.has(`detail_${sheetCode}`)
+              const sheetLabel = SHEET_LABELS[sheetCode] || sheetCode?.replace(/_/g, ' ')
+              const sheetResolved = items.filter(d => d.drawing_ref || d.detail_number).length
+              return (
+                <div key={sheetCode} className="glass-t overflow-hidden">
+                  <button
+                    onClick={() => toggleGroup(`detail_${sheetCode}`)}
+                    aria-expanded={isExpanded}
+                    className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-7 h-7 rounded bg-white/60 flex items-center justify-center shrink-0">
+                        <Ruler size={12} style={{ color: 'var(--color-muted)' }} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-[13px] font-medium truncate" style={{ color: 'var(--color-text)' }}>
+                            {sheetLabel}
+                          </h2>
+                          <span className="text-[9px] font-mono text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded shrink-0">
+                            {sheetCode}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[var(--color-muted)] font-light mt-0.5">
+                          {sheetResolved}/{items.length} resolved
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 ml-3">
+                      <div className="w-16 h-1 bg-white/40 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.round((sheetResolved / items.length) * 100)}%`,
+                            background: sheetResolved === items.length ? 'var(--color-approved)' : 'var(--color-accent)',
+                          }}
+                        />
+                      </div>
+                      {isExpanded
+                        ? <ChevronDown size={14} style={{ color: 'var(--color-muted)' }} />
+                        : <ChevronRight size={14} style={{ color: 'var(--color-muted)' }} />}
+                    </div>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="border-t border-white/30 px-4 py-3 space-y-2">
+                      {items.map(detail => {
+                        const isResolved = !!(detail.drawing_ref || detail.detail_number)
+                        const priority = getDetailPriority(detail.trigger_source)
+                        return (
+                          <div
+                            key={detail.id}
+                            className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-white/10 hover:bg-white/30 transition-colors"
+                            style={{ borderColor: isResolved ? 'rgba(var(--color-approved-rgb, 34,197,94), 0.2)' : 'rgba(255,255,255,0.3)' }}
+                          >
+                            <div className="mt-0.5 shrink-0">
+                              {isResolved
+                                ? <CheckCircle2 size={14} className="text-[var(--color-approved)]" />
+                                : <Circle size={14} className="text-[var(--color-border)]" />
+                              }
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[12px] font-medium text-[var(--color-text)] truncate">
+                                  {detail.junction_name || detail.junction_key?.replace(/_/g, ' ')}
+                                </span>
+                                {detail.condition_name && (
+                                  <span className="text-[10px] text-[var(--color-muted)] font-light">— {detail.condition_name}</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                {priority && (
+                                  <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded tracking-wide ${
+                                    priority === 'Tender Critical'
+                                      ? 'bg-[var(--color-urgent)]/10 text-[var(--color-urgent)]'
+                                      : 'bg-white/40 text-[var(--color-muted)]'
+                                  }`}>
+                                    {priority}
+                                  </span>
+                                )}
+                                {detail.assembly_label && (
+                                  <span className="text-[10px] text-[var(--color-muted)] font-light">{detail.assembly_label}</span>
+                                )}
+                                {isResolved && detail.detail_number && (
+                                  <span className="text-[10px] font-mono text-[var(--color-accent)] bg-[var(--color-accent)]/5 px-1.5 py-0.5 rounded">
+                                    {detail.detail_number}
+                                  </span>
+                                )}
+                                {isResolved && detail.drawing_ref && (
+                                  <span className="text-[10px] text-[var(--color-muted)] font-light">{detail.drawing_ref}</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="shrink-0">
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+                                isResolved
+                                  ? 'bg-[var(--color-approved)]/10 text-[var(--color-approved)]'
+                                  : 'bg-white/40 text-[var(--color-muted)]'
+                              }`}>
+                                {isResolved ? 'Drawn' : 'Pending'}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {details.length === 0 && (
+            <div className="text-center py-20 glass-t">
+              <Ruler size={24} className="mx-auto text-[var(--color-border)] mb-3" />
+              <p className="text-[13px] text-[var(--color-muted)] font-light">
+                {search ? 'No details match your search.' : 'No required details registered yet.'}
               </p>
             </div>
           )}

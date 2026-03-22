@@ -28,6 +28,9 @@ export default function ImageManager() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [groupFilter, setGroupFilter] = useState('all')
+  const [kindFilter, setKindFilter] = useState('all')
+  const [elementFilter, setElementFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [viewMode, setViewMode] = useState(VIEW_MODES.grid)
   const [brokenUrls, setBrokenUrls] = useState(new Set())
   const [selectedItem, setSelectedItem] = useState(null)
@@ -46,7 +49,7 @@ export default function ImageManager() {
     const [selRes, grpRes] = await Promise.all([
       supabase
         .from('homeowner_selections_portal')
-        .select(`*, project_selections:project_selection_id (id, title, selection_kind, manufacturer_name, supplier_name, model, spec_reference, notes, attributes)`)
+        .select(`*, project_selections:project_selection_id (id, title, selection_kind, element_type, manufacturer_name, supplier_name, model, spec_reference, notes, attributes)`)
         .eq('project_id', projectId)
         .eq('active', true),
       supabase
@@ -92,17 +95,27 @@ export default function ImageManager() {
     }
   })
 
+  /* ── Derived Filter Options ── */
+  const kindOptions = [...new Set(selections.map(s => s.project_selections?.selection_kind).filter(Boolean))].sort()
+  const elementOptions = [...new Set(selections.map(s => s.project_selections?.element_type).filter(Boolean))].sort()
+  const approvalOptions = [...new Set(selections.map(s => s.approval_status).filter(Boolean))].sort()
+
+  const activeFilterCount = [groupFilter, kindFilter, elementFilter, statusFilter].filter(f => f !== 'all').length
+
   /* ── Filtering ── */
   const filteredSelections = selections.filter(s => {
+    const sel = s.project_selections || {}
     // Search filter
     if (search) {
-      const sel = s.project_selections || {}
-      const text = [sel.title, sel.manufacturer_name, sel.model, s.schedule_group, s.portal_image_url].join(' ').toLowerCase()
+      const text = [sel.title, sel.manufacturer_name, sel.model, sel.element_type, s.schedule_group, s.portal_image_url].join(' ').toLowerCase()
       if (!text.includes(search.toLowerCase())) return false
     }
-    // Group filter
+    // Dimension filters
     if (groupFilter !== 'all' && s.schedule_group !== groupFilter) return false
-    // Status filter
+    if (kindFilter !== 'all' && sel.selection_kind !== kindFilter) return false
+    if (elementFilter !== 'all' && sel.element_type !== elementFilter) return false
+    if (statusFilter !== 'all' && s.approval_status !== statusFilter) return false
+    // Image status filter
     if (filter === 'missing') return !s.portal_image_url
     if (filter === 'broken') return s.portal_image_url && brokenUrls.has(s.portal_image_url)
     if (filter === 'linked') return s.portal_image_url && !brokenUrls.has(s.portal_image_url)
@@ -298,16 +311,45 @@ export default function ImageManager() {
         {/* Divider */}
         <div className="w-px h-5 bg-[var(--color-border)]" />
 
-        {/* Group Filter */}
-        {groupFilter !== 'all' && (
-          <button
-            onClick={() => setGroupFilter('all')}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-white/50"
-            style={{ color: 'var(--color-text)' }}
-          >
-            {groups.find(g => g.group_key === groupFilter)?.group_name || groupFilter}
-            <X size={10} />
-          </button>
+        {/* Dimension Filters */}
+        <FilterDropdown
+          label="Group"
+          value={groupFilter}
+          options={groups.map(g => ({ key: g.group_key, label: g.group_name }))}
+          onChange={setGroupFilter}
+        />
+        <FilterDropdown
+          label="Kind"
+          value={kindFilter}
+          options={kindOptions.map(k => ({ key: k, label: k.replace(/_/g, ' ') }))}
+          onChange={setKindFilter}
+        />
+        <FilterDropdown
+          label="Element"
+          value={elementFilter}
+          options={elementOptions.map(e => ({ key: e, label: e.replace(/_/g, ' ') }))}
+          onChange={setElementFilter}
+        />
+        <FilterDropdown
+          label="Status"
+          value={statusFilter}
+          options={approvalOptions.map(a => ({ key: a, label: a.replace(/_/g, ' ') }))}
+          onChange={setStatusFilter}
+        />
+
+        {/* Active filter pills */}
+        {activeFilterCount > 0 && (
+          <>
+            <div className="w-px h-5 bg-[var(--color-border)]" />
+            <button
+              onClick={() => { setGroupFilter('all'); setKindFilter('all'); setElementFilter('all'); setStatusFilter('all') }}
+              className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium hover:bg-white/40 transition-colors"
+              style={{ color: 'var(--color-urgent)' }}
+            >
+              Clear {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''}
+              <X size={10} />
+            </button>
+          </>
         )}
 
         {/* View Toggle */}
@@ -366,7 +408,7 @@ export default function ImageManager() {
         <div className="glass-s text-center py-16">
           <Image size={24} style={{ color: 'var(--color-border)', margin: '0 auto 12px' }} />
           <p className="text-[13px] font-light" style={{ color: 'var(--color-muted)' }}>
-            {search || filter !== 'all' ? 'No selections match the current filters.' : 'No selections found.'}
+            {search || filter !== 'all' || activeFilterCount > 0 ? 'No selections match the current filters.' : 'No selections found.'}
           </p>
         </div>
       )}
@@ -399,6 +441,66 @@ function StatCard({ label, value, color }) {
       <div className="text-[10px] uppercase tracking-[1px] mt-0.5" style={{ color: 'var(--color-muted)' }}>
         {label}
       </div>
+    </div>
+  )
+}
+
+
+/* ── Filter Dropdown ── */
+function FilterDropdown({ label, value, options, onChange }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function close(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+
+  const activeLabel = value === 'all' ? label : options.find(o => o.key === value)?.label || value.replace(/_/g, ' ')
+  const isActive = value !== 'all'
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+          isActive ? 'bg-white/50' : 'hover:bg-white/30'
+        }`}
+        style={{ color: isActive ? 'var(--color-text)' : 'var(--color-muted)' }}
+      >
+        <Filter size={10} />
+        <span className="max-w-[100px] truncate">{activeLabel}</span>
+        <ChevronDown size={10} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-1 min-w-[160px] max-h-[240px] overflow-y-auto rounded-lg shadow-lg border border-[var(--color-border)] z-40"
+             style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+          <button
+            onClick={() => { onChange('all'); setOpen(false) }}
+            className={`w-full text-left px-3 py-2 text-[11px] transition-colors ${
+              value === 'all' ? 'bg-white/60 font-medium' : 'hover:bg-white/40'
+            }`}
+            style={{ color: 'var(--color-text)' }}
+          >
+            All {label}s
+          </button>
+          {options.map(o => (
+            <button
+              key={o.key}
+              onClick={() => { onChange(o.key); setOpen(false) }}
+              className={`w-full text-left px-3 py-2 text-[11px] transition-colors capitalize ${
+                value === o.key ? 'bg-white/60 font-medium' : 'hover:bg-white/40'
+              }`}
+              style={{ color: 'var(--color-text)' }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -464,8 +566,15 @@ function ImageCard({ item, isBroken, onImageError, onClick }) {
         <div className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--color-muted)' }}>
           {sel.manufacturer_name || sel.selection_kind?.replace(/_/g, ' ') || '—'}
         </div>
-        <div className="text-[9px] mt-1 truncate" style={{ color: 'var(--color-muted)' }}>
-          {item.schedule_group?.replace(/_/g, ' ')}
+        <div className="flex items-center gap-1 mt-1 flex-wrap">
+          {sel.element_type && (
+            <span className="text-[8px] px-1 py-0.5 rounded bg-white/40 capitalize" style={{ color: 'var(--color-muted)' }}>
+              {sel.element_type.replace(/_/g, ' ')}
+            </span>
+          )}
+          <span className="text-[8px] px-1 py-0.5 rounded bg-white/40 capitalize" style={{ color: 'var(--color-muted)' }}>
+            {item.schedule_group?.replace(/_/g, ' ')}
+          </span>
         </div>
       </div>
     </button>
@@ -519,8 +628,20 @@ function ImageRow({ item, isBroken, onImageError, onClick }) {
         </div>
       </div>
 
+      {/* Tags */}
+      <div className="flex items-center gap-1 shrink-0">
+        {sel.element_type && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/40 capitalize" style={{ color: 'var(--color-muted)' }}>
+            {sel.element_type.replace(/_/g, ' ')}
+          </span>
+        )}
+        <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/40 capitalize" style={{ color: 'var(--color-muted)' }}>
+          {sel.selection_kind?.replace(/_/g, ' ')}
+        </span>
+      </div>
+
       {/* Group */}
-      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/40 shrink-0"
+      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/40 shrink-0 capitalize"
             style={{ color: 'var(--color-muted)' }}>
         {item.schedule_group?.replace(/_/g, ' ')}
       </span>

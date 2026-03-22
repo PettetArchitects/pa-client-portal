@@ -317,72 +317,108 @@ export default function Documents({ projectId }) {
                 </button>
 
                 {isExpanded && (
-                  <div className="border-t border-white/30 px-4 py-3 space-y-2">
-                    {group.items.map(item => {
-                      const Icon = KIND_ICONS[item.selection_kind] || Package
+                  <div className="border-t border-white/30 px-4 py-3 space-y-1">
+                    {(() => {
+                      // Build parent→child hierarchy for visual nesting
+                      const parents = group.items.filter(i => !i.is_component)
+                      const componentMap = new Map()
+                      // Map child selection_ids to their portal items
+                      const childSelMap = new Map()
+                      group.items.forEach(i => { if (i.is_component) childSelMap.set(i.selection_id, i) })
+                      // Link parents to their child portal items via components array
+                      parents.forEach(p => {
+                        const kids = (p.components || [])
+                          .map(c => childSelMap.get(c.id))
+                          .filter(Boolean)
+                        if (kids.length) componentMap.set(p.portal_id, kids)
+                      })
+                      // Collect orphan components (not linked to any parent in this group)
+                      const linkedChildIds = new Set()
+                      for (const kids of componentMap.values()) kids.forEach(k => linkedChildIds.add(k.portal_id))
+                      const orphans = group.items.filter(i => i.is_component && !linkedChildIds.has(i.portal_id))
+
+                      const renderRow = (item, isChild = false) => {
+                        const Icon = KIND_ICONS[item.selection_kind] || Package
+                        return (
+                          <div key={item.portal_id}
+                            className={`grid gap-3 py-3.5 text-[12px] rounded-lg border transition-colors items-start ${
+                              isChild
+                                ? 'border-white/20 bg-white/5 hover:bg-white/30 ml-6 pl-4 pr-4 border-l-2 border-l-[var(--color-border)]'
+                                : 'border-white/30 bg-white/10 hover:bg-white/40 px-4'
+                            }`}
+                            style={{ gridTemplateColumns: isChild ? '48px 48px 2fr 2.5fr 1.5fr 80px' : '60px 48px 2fr 2.5fr 1.5fr 80px' }}>
+                            {/* CODE */}
+                            <div>
+                              {isChild ? (
+                                <span className="text-[10px] text-[var(--color-muted)] tracking-tight leading-none">{item.component_role?.replace(/_/g, ' ') || '\u2014'}</span>
+                              ) : item.code ? (
+                                <span className="font-semibold text-[13px] text-[var(--color-text)] tracking-tight leading-none">{item.code}</span>
+                              ) : (
+                                <span className="text-[10px] text-[var(--color-border)]">{'\u2014'}</span>
+                              )}
+                              {!isChild && item.selection_kind && (
+                                <span className="block text-[8px] text-[var(--color-muted)] mt-1 uppercase tracking-wider">{item.selection_kind.replace(/_/g, ' ')}</span>
+                              )}
+                            </div>
+                            {/* IMAGE */}
+                            <div>
+                              {item.portal_image_url ? (
+                                <img src={item.portal_image_url} alt="" style={{
+                                  width: isChild ? 36 : 48, height: isChild ? 36 : 48, borderRadius: 8, objectFit: 'cover',
+                                  border: '1px solid rgba(0,0,0,0.06)',
+                                }} loading="lazy"
+                                onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = `<div style="width:${isChild ? 36 : 48}px;height:${isChild ? 36 : 48}px;border-radius:8px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>` }}
+                                />
+                              ) : (
+                                <div style={{
+                                  width: isChild ? 36 : 48, height: isChild ? 36 : 48, borderRadius: 8,
+                                  background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                  <Icon size={isChild ? 12 : 16} style={{ color: 'var(--color-border)' }} />
+                                </div>
+                              )}
+                            </div>
+                            {/* ITEM NAME */}
+                            <div>
+                              <div className={`leading-snug text-[var(--color-text)] ${isChild ? 'text-[11px]' : 'font-medium'}`}>{item.title || '\u2014'}</div>
+                            </div>
+                            {/* BRAND / PRODUCT */}
+                            <div className="text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
+                              {item.manufacturer_name && <span className={`text-[var(--color-text)] ${isChild ? '' : 'font-medium'}`}>{item.manufacturer_name}</span>}
+                              {item.manufacturer_name && item.model && <br />}
+                              <span className="text-[var(--color-muted)]">{item.model || (!item.manufacturer_name && '\u2014')}</span>
+                            </div>
+                            {/* COLOUR */}
+                            <div className="text-[var(--color-text)] text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
+                              {item.colour || <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
+                            </div>
+                            {/* STATUS */}
+                            <div>
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+                                item.approval_status === 'locked' ? 'bg-[var(--color-confirmed)]/10 text-[var(--color-confirmed)]' :
+                                item.approval_status === 'proposed' ? 'bg-[var(--color-pending)]/10 text-[var(--color-pending)]' :
+                                'bg-white/40 text-[var(--color-muted)]'
+                              }`}>
+                                {STATUS_LABELS[item.approval_status] || item.approval_status || '\u2014'}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      }
+
                       return (
-                        <div key={item.portal_id} className="grid gap-3 px-4 py-3.5 text-[12px] rounded-lg border border-white/30 bg-white/10 hover:bg-white/40 transition-colors items-start"
-                          style={{ gridTemplateColumns: '60px 48px 2fr 2.5fr 1.5fr 80px' }}>
-                          {/* CODE — leading column, the cross-reference key */}
-                          <div>
-                            {item.code ? (
-                              <span className="font-semibold text-[13px] text-[var(--color-text)] tracking-tight leading-none">{item.code}</span>
-                            ) : (
-                              <span className="text-[10px] text-[var(--color-border)]">{'\u2014'}</span>
-                            )}
-                            {item.selection_kind && (
-                              <span className="block text-[8px] text-[var(--color-muted)] mt-1 uppercase tracking-wider">{item.selection_kind.replace(/_/g, ' ')}</span>
-                            )}
-                          </div>
-                          {/* IMAGE */}
-                          <div>
-                            {item.portal_image_url ? (
-                              <img src={item.portal_image_url} alt="" style={{
-                                width: 48, height: 48, borderRadius: 8, objectFit: 'cover',
-                                border: '1px solid rgba(0,0,0,0.06)',
-                              }} loading="lazy"
-                              onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>' }}
-                              />
-                            ) : (
-                              <div style={{
-                                width: 48, height: 48, borderRadius: 8,
-                                background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              }}>
-                                <Icon size={16} style={{ color: 'var(--color-border)' }} />
-                              </div>
-                            )}
-                          </div>
-                          {/* ITEM NAME */}
-                          <div>
-                            <div className="font-medium leading-snug text-[var(--color-text)]">{item.title || '\u2014'}</div>
-                            {item.is_component && item.component_role && (
-                              <span className="text-[9px] text-[var(--color-muted)] mt-0.5 inline-block">{item.component_role.replace(/_/g, ' ')}</span>
-                            )}
-                          </div>
-                          {/* BRAND / PRODUCT */}
-                          <div className="text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
-                            {item.manufacturer_name && <span className="font-medium text-[var(--color-text)]">{item.manufacturer_name}</span>}
-                            {item.manufacturer_name && item.model && <br />}
-                            <span className="text-[var(--color-muted)]">{item.model || (!item.manufacturer_name && '\u2014')}</span>
-                          </div>
-                          {/* COLOUR */}
-                          <div className="text-[var(--color-text)] text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
-                            {item.colour || <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
-                          </div>
-                          {/* STATUS */}
-                          <div>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded ${
-                              item.approval_status === 'locked' ? 'bg-[var(--color-confirmed)]/10 text-[var(--color-confirmed)]' :
-                              item.approval_status === 'proposed' ? 'bg-[var(--color-pending)]/10 text-[var(--color-pending)]' :
-                              'bg-white/40 text-[var(--color-muted)]'
-                            }`}>
-                              {STATUS_LABELS[item.approval_status] || item.approval_status || '\u2014'}
-                            </span>
-                          </div>
-                        </div>
+                        <>
+                          {parents.map(parent => (
+                            <div key={parent.portal_id} className="space-y-1">
+                              {renderRow(parent, false)}
+                              {(componentMap.get(parent.portal_id) || []).map(child => renderRow(child, true))}
+                            </div>
+                          ))}
+                          {orphans.map(item => renderRow(item, true))}
+                        </>
                       )
-                    })}
+                    })()}
                   </div>
                 )}
               </div>

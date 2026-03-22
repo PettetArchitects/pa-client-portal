@@ -27,8 +27,13 @@ function ProtectedApp() {
   const { user, loading: authLoading } = useAuth()
   const { project, loading: projLoading } = useProject()
   const [minTimePassed, setMinTimePassed] = useState(false)
-  const [satelliteReady, setSatelliteReady] = useState(false)
   const timerStarted = useRef(false)
+
+  // If no image needs preloading, start as ready
+  const hasImageToLoad = project
+    ? !!(project.satellite_image_url || (project.latitude && project.longitude))
+    : false
+  const [satelliteReady, setSatelliteReady] = useState(!hasImageToLoad)
 
   // Start the 3-second minimum timer on first mount
   useEffect(() => {
@@ -44,12 +49,8 @@ function ProtectedApp() {
     const storedUrl = project.satellite_image_url
     const hasCoords = project.latitude && project.longitude
 
-    if (!storedUrl && !hasCoords) {
-      setSatelliteReady(true)
-      return
-    }
+    if (!storedUrl && !hasCoords) return
 
-    // Try stored image first (fast, already in Supabase storage)
     const primaryUrl = storedUrl || null
     const lat = parseFloat(project.latitude)
     const lng = parseFloat(project.longitude)
@@ -60,7 +61,7 @@ function ProtectedApp() {
       : null
 
     const url = primaryUrl || esriUrl
-    if (!url) { setSatelliteReady(true); return }
+    if (!url) return
 
     const img = new Image()
     img.onload = () => setSatelliteReady(true)

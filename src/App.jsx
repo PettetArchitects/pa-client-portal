@@ -105,23 +105,23 @@ function ProtectedApp() {
   const baseName = project.display_name || project.name || 'Your Project'
   const pname = project.project_code ? `${project.project_code} \u2014 ${baseName}` : baseName
 
+  const pageFallback = <div className="max-w-4xl animate-pulse p-6"><div className="h-8 w-64 bg-white/40 rounded mb-4" /><div className="h-3 w-48 bg-white/40 rounded mb-8" /></div>
+
   return (
-    <Suspense fallback={<div className="max-w-4xl animate-pulse p-6"><div className="h-8 w-64 bg-white/40 rounded mb-4" /><div className="h-3 w-48 bg-white/40 rounded mb-8" /></div>}>
-      <Routes>
-        <Route element={<Shell projectName={pname} />}>
-          <Route index element={<Overview projectId={pid} />} />
-          <Route path="selections" element={<Decisions projectId={pid} />} />
-          <Route path="documents" element={<Documents projectId={pid} />} />
-          <Route path="timeline" element={<Timeline projectId={pid} />} />
-          <Route path="messages" element={<Messages projectId={pid} />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="data" element={<ProjectData projectId={pid} />} />
-          <Route path="decisions" element={<DecisionMap />} />
-          <Route path="admin" element={<Admin />} />
-          <Route path="images" element={<ImageManager />} />
-        </Route>
-      </Routes>
-    </Suspense>
+    <Routes>
+      <Route element={<Shell projectName={pname} />}>
+        <Route index element={<Overview projectId={pid} />} />
+        <Route path="selections" element={<Suspense fallback={pageFallback}><Decisions projectId={pid} /></Suspense>} />
+        <Route path="documents" element={<Suspense fallback={pageFallback}><Documents projectId={pid} /></Suspense>} />
+        <Route path="timeline" element={<Suspense fallback={pageFallback}><Timeline projectId={pid} /></Suspense>} />
+        <Route path="messages" element={<Suspense fallback={pageFallback}><Messages projectId={pid} /></Suspense>} />
+        <Route path="profile" element={<Suspense fallback={pageFallback}><Profile /></Suspense>} />
+        <Route path="data" element={<Suspense fallback={pageFallback}><ProjectData projectId={pid} /></Suspense>} />
+        <Route path="decisions" element={<Suspense fallback={pageFallback}><DecisionMap /></Suspense>} />
+        <Route path="admin" element={<Suspense fallback={pageFallback}><Admin /></Suspense>} />
+        <Route path="images" element={<Suspense fallback={pageFallback}><ImageManager /></Suspense>} />
+      </Route>
+    </Routes>
   )
 }
 

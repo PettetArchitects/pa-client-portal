@@ -420,10 +420,13 @@ export function CodeHierarchyView({ items, codeHierarchyMap, codeTitleMap, selec
       const info = codeHierarchyMap[topAssembly]
       assemblyMap[topAssembly] = { code: topAssembly, title: info?.title || topAssembly, items: [] }
     }
-    assemblyMap[topAssembly].items.push({ item, code })
+    // Skip items whose own code IS the assembly — they are the assembly header, not a child
+    if (code !== topAssembly) {
+      assemblyMap[topAssembly].items.push({ item, code })
+    }
   })
 
-  const assemblyGroups = Object.values(assemblyMap)
+  const assemblyGroups = Object.values(assemblyMap).sort((a, b) => a.code.localeCompare(b.code))
   assemblyGroups.forEach(g =>
     g.items.sort((a, b) => roleIndex(a.code) - roleIndex(b.code))
   )
@@ -437,26 +440,46 @@ export function CodeHierarchyView({ items, codeHierarchyMap, codeTitleMap, selec
           <div className="pt-2 border-t border-white/30 mb-4">
             <div className="flex items-baseline justify-between py-2 px-1">
               <div>
-                <span className="text-[9px] font-mono tracking-[1.5px] text-[var(--color-muted)] uppercase block mb-0.5">
-                  {group.code}
-                  <span className="ml-2 text-[8px] tracking-wide opacity-50 normal-case font-sans">Assembly</span>
-                </span>
-                <h2 className="text-[13px] font-medium">{group.title}</h2>
+                <h2 className="text-[13px] font-medium">
+                  {group.title}
+                  <span className="ml-2 text-[11px] font-mono text-[var(--color-muted)] font-normal tracking-wider">({group.code})</span>
+                </h2>
               </div>
-              <span className="text-[12px] text-[var(--color-muted)]">{group.items.length} items</span>
+              {group.items.length > 0 && (
+                <span className="text-[11px] text-[var(--color-muted)]">{group.items.length} {group.items.length === 1 ? 'item' : 'items'}</span>
+              )}
             </div>
           </div>
           <div className="space-y-2 px-1">
-            {group.items.map(({ item }) => (
-              <SelectionCard
-                key={item.id}
-                item={item}
-                natspecMap={natspecMap}
-                codeTitleMap={codeTitleMap}
-                onApprove={() => onApproveItem(item.id)}
-                onRequestChange={() => onRequestChange(item.id)}
-              />
-            ))}
+            {group.items.map(({ item, code }) => {
+              const role = codeHierarchyMap[code]?.role
+              const roleText = role && role !== 'product' ? (ROLE_LABELS[role] || role) : null
+              const codeTitle = codeHierarchyMap[code]?.title || null
+              return (
+                <div key={item.id}>
+                  {(roleText || codeTitle) && (
+                    <div className="flex items-center gap-2 mb-1 ml-1">
+                      <span className="text-[8px] font-mono tracking-[1.2px] uppercase text-[var(--color-muted)] opacity-60">{code}</span>
+                      {codeTitle && <span className="text-[9px] text-[var(--color-muted)] opacity-70">{codeTitle}</span>}
+                      {roleText && (
+                        <span className="text-[8px] tracking-[1px] uppercase px-1.5 py-0.5 rounded" style={{
+                          background: 'rgba(255,255,255,0.4)',
+                          border: '1px solid rgba(0,0,0,0.06)',
+                          color: 'var(--color-muted)',
+                        }}>{roleText}</span>
+                      )}
+                    </div>
+                  )}
+                  <SelectionCard
+                    item={item}
+                    natspecMap={natspecMap}
+                    codeTitleMap={codeTitleMap}
+                    onApprove={() => onApproveItem(item.id)}
+                    onRequestChange={() => onRequestChange(item.id)}
+                  />
+                </div>
+              )
+            })}
           </div>
         </section>
       ))}

@@ -52,7 +52,7 @@ export default function Decisions({ projectId }) {
       supabase.from('portal_selection_rooms').select('*').eq('project_id', projectId),
       supabase.from('sub_criteria_definitions').select('*').order('display_order'),
       supabase.from('master_code_entries').select('id, canonical_code, title, component_role, parent_code_id').eq('status', 'active'),
-      supabase.from('project_selection_code_links').select('project_selection_id, entry_id'),
+      supabase.from('project_selection_code_links').select('project_selection_id, entry_id, is_primary'),
     ])
 
     setGroups(grpRes.data || [])
@@ -68,8 +68,18 @@ export default function Decisions({ projectId }) {
     })
     setCodeTitleMap(ctMap)
 
+    // Build selectionCodeMap preferring is_primary links, then falling back to any link
     const selCodeMap = {}
-    ;(linkRes.data || []).forEach(link => {
+    const allLinks = linkRes.data || []
+    // First pass: primary links only
+    allLinks.forEach(link => {
+      if (link.is_primary) {
+        const canonical = codeIdToCode[link.entry_id]
+        if (canonical) selCodeMap[link.project_selection_id] = canonical
+      }
+    })
+    // Second pass: fill gaps for selections with no primary link
+    allLinks.forEach(link => {
       if (!selCodeMap[link.project_selection_id]) {
         const canonical = codeIdToCode[link.entry_id]
         if (canonical) selCodeMap[link.project_selection_id] = canonical

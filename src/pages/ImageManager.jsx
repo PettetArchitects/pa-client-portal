@@ -29,7 +29,6 @@ export default function ImageManager() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
-  const [groupFilter, setGroupFilter] = useState('all')
   const [kindFilter, setKindFilter] = useState('all')
   const [elementFilter, setElementFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -52,7 +51,7 @@ export default function ImageManager() {
     const [selRes, grpRes, sheetRes, elemRes] = await Promise.all([
       supabase
         .from('homeowner_selections_portal')
-        .select(`*, project_selections:project_selection_id (id, title, selection_kind, element_type, manufacturer_name, supplier_name, model, spec_reference, notes, attributes)`)
+        .select(`*, project_selections:project_selection_id (id, title, selection_kind, element_type, manufacturer_name, supplier_name, model, spec_reference, notes, attributes, parent_selection_id, is_component, component_role, component_order)`)
         .eq('project_id', projectId)
         .eq('active', true),
       supabase
@@ -96,20 +95,41 @@ export default function ImageManager() {
     return { total, withImage, missing, broken, healthy, coveragePct }
   })()
 
-  /* ── Group Stats ── */
-  const groupStats = groups.map(g => {
-    const items = selections.filter(s => s.schedule_group === g.group_key)
+  /* ── Sheet Stats (coverage by schedule output definition) ── */
+  const sheetStats = scheduleSheets.map(sh => {
+    const items = selections.filter(s => sh.element_types?.includes(s.project_selections?.element_type))
     const withImg = items.filter(s => s.portal_image_url).length
     const broken = items.filter(s => s.portal_image_url && brokenUrls.has(s.portal_image_url)).length
     return {
-      ...g,
+      ...sh,
       total: items.length,
       withImage: withImg,
       missing: items.length - withImg,
       broken,
       coveragePct: items.length > 0 ? Math.round((withImg / items.length) * 100) : 0,
     }
-  })
+  }).filter(sh => sh.total > 0)
+
+  /* ── Parent-Child Family Map ── */
+  const parentMap = (() => {
+    // Map project_selection_id → portal item for parent lookup
+    const byPsId = {}
+    selections.forEach(s => { if (s.project_selection_id) byPsId[s.project_selection_id] = s })
+    // Build parent → children grouping
+    const families = {}
+    selections.forEach(s => {
+      const sel = s.project_selections || {}
+      if (sel.is_component && sel.parent_selection_id) {
+        if (!families[sel.parent_selection_id]) families[sel.parent_selection_id] = []
+        families[sel.parent_selection_id].push(s)
+      }
+    })
+    // Sort children by component_order
+    Object.values(families).forEach(kids => kids.sort((a, b) =>
+      (a.project_selections?.component_order || 0) - (b.project_selections?.component_order || 0)
+    ))
+    return { byPsId, families }
+  })()
 
   /* ── Derived Filter Options (canonical labels from Supabase) ── */
   const kindOptions = [...new Set(selections.map(s => s.project_selections?.selection_kind).filter(Boolean))].sort()
@@ -122,7 +142,7 @@ export default function ImageManager() {
   // Helper: find which schedule sheet(s) an element_type belongs to
   const getSheetForElement = (et) => scheduleSheets.find(sh => sh.element_types?.includes(et))
 
-  const activeFilterCount = [groupFilter, kindFilter, elementFilter, statusFilter, sheetFilter].filter(f => f !== 'all').length
+  const activeFilterCount = [kindFilter, elementFilter, statusFilter, sheetFilter].filter(f => f !== 'all').length
 
   /* ── Filtering ── */
   const filteredSelections = selections.filter(s => {
@@ -133,7 +153,6 @@ export default function ImageManager() {
       if (!text.includes(search.toLowerCase())) return false
     }
     // Dimension filters
-    if (groupFilter !== 'all' && s.schedule_group !== groupFilter) return false
     if (kindFilter !== 'all' && sel.selection_kind !== kindFilter) return false
     if (elementFilter !== 'all' && sel.element_type !== elementFilter) return false
     if (statusFilter !== 'all' && s.approval_status !== statusFilter) return false
@@ -241,41 +260,49 @@ export default function ImageManager() {
                }} />
         </div>
 
-        {/* Group Breakdown */}
+        {/* Schedule Output Breakdown */}
         <div className="space-y-1.5">
-          {groupStats.map(g => (
+          {sheetStats.map(sh => (
             <button
-              key={g.group_key}
-              onClick={() => setGroupFilter(groupFilter === g.group_key ? 'all' : g.group_key)}
+              key={sh.output_code}
+              onClick={() => setSheetFilter(sheetFilter === sh.output_code ? 'all' : sh.output_code)}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left ${
-                groupFilter === g.group_key ? 'bg-white/50' : 'hover:bg-white/30'
+                sheetFilter === sh.output_code ? 'bg-white/50' : 'hover:bg-white/30'
               }`}
             >
               <div className="flex-1 min-w-0">
-                <span className="text-[12px] font-medium" style={{ color: 'var(--color-text)' }}>
-                  {g.group_name}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-medium" style={{ color: 'var(--color-text)' }}>
+                    {sh.output_title}
+                  </span>
+                  <span className="text-[9px] px-1 py-0.5 rounded bg-white/40" style={{ color: 'var(--color-muted)' }}>
+                    {sh.output_code}
+                  </span>
+                </div>
               </div>
               <div className="flex items-center gap-2">
-                {g.missing > 0 && (
+                <span className="text-[10px] tabular-nums" style={{ color: 'var(--color-muted)' }}>
+                  {sh.withImage}/{sh.total}
+                </span>
+                {sh.missing > 0 && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: 'var(--color-urgent)', background: 'rgba(107, 45, 10, 0.08)' }}>
-                    {g.missing} missing
+                    {sh.missing} missing
                   </span>
                 )}
-                {g.broken > 0 && (
+                {sh.broken > 0 && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: 'var(--color-change)', background: 'rgba(90, 32, 16, 0.08)' }}>
-                    {g.broken} broken
+                    {sh.broken} broken
                   </span>
                 )}
                 <span className="text-[11px] font-medium tabular-nums w-10 text-right"
-                      style={{ color: g.coveragePct === 100 ? 'var(--color-approved)' : 'var(--color-pending)' }}>
-                  {g.coveragePct}%
+                      style={{ color: sh.coveragePct === 100 ? 'var(--color-approved)' : 'var(--color-pending)' }}>
+                  {sh.coveragePct}%
                 </span>
                 <div className="w-16 h-1.5 rounded-full bg-white/40 overflow-hidden">
                   <div className="h-full rounded-full"
                        style={{
-                         width: `${g.coveragePct}%`,
-                         background: g.coveragePct === 100 ? 'var(--color-approved)' : 'var(--color-pending)',
+                         width: `${sh.coveragePct}%`,
+                         background: sh.coveragePct === 100 ? 'var(--color-approved)' : 'var(--color-pending)',
                        }} />
                 </div>
               </div>
@@ -339,12 +366,6 @@ export default function ImageManager() {
 
         {/* Dimension Filters */}
         <FilterDropdown
-          label="Group"
-          value={groupFilter}
-          options={groups.map(g => ({ key: g.group_key, label: g.group_name }))}
-          onChange={setGroupFilter}
-        />
-        <FilterDropdown
           label="Schedule"
           value={sheetFilter}
           options={scheduleSheets.map(sh => ({ key: sh.output_code, label: sh.output_title }))}
@@ -374,7 +395,7 @@ export default function ImageManager() {
           <>
             <div className="w-px h-5 bg-[var(--color-border)]" />
             <button
-              onClick={() => { setGroupFilter('all'); setKindFilter('all'); setElementFilter('all'); setStatusFilter('all'); setSheetFilter('all') }}
+              onClick={() => { setKindFilter('all'); setElementFilter('all'); setStatusFilter('all'); setSheetFilter('all') }}
               className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium hover:bg-white/40 transition-colors"
               style={{ color: 'var(--color-urgent)' }}
             >
@@ -411,27 +432,44 @@ export default function ImageManager() {
       {/* ── Image Grid / List ── */}
       {viewMode === VIEW_MODES.grid ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {filteredSelections.map(item => (
-            <ImageCard
-              key={item.id}
-              item={item}
-              isBroken={brokenUrls.has(item.portal_image_url)}
-              onImageError={handleImageError}
-              onClick={() => { setSelectedItem(item); setEditUrl(item.portal_image_url || '') }}
-            />
-          ))}
+          {filteredSelections.map(item => {
+            const sel = item.project_selections || {}
+            const parentPortalItem = sel.parent_selection_id ? parentMap.byPsId[sel.parent_selection_id] : null
+            const parentTitle = parentPortalItem?.project_selections?.title
+            return (
+              <ImageCard
+                key={item.id}
+                item={item}
+                isBroken={brokenUrls.has(item.portal_image_url)}
+                onImageError={handleImageError}
+                onClick={() => { setSelectedItem(item); setEditUrl(item.portal_image_url || '') }}
+                parentTitle={sel.is_component ? parentTitle : null}
+                getElementLabel={getElementLabel}
+                getSheetForElement={getSheetForElement}
+              />
+            )
+          })}
         </div>
       ) : (
         <div className="space-y-1.5">
-          {filteredSelections.map(item => (
-            <ImageRow
-              key={item.id}
-              item={item}
-              isBroken={brokenUrls.has(item.portal_image_url)}
-              onImageError={handleImageError}
-              onClick={() => { setSelectedItem(item); setEditUrl(item.portal_image_url || '') }}
-            />
-          ))}
+          {filteredSelections.map(item => {
+            const sel = item.project_selections || {}
+            const parentPortalItem = sel.parent_selection_id ? parentMap.byPsId[sel.parent_selection_id] : null
+            const parentTitle = parentPortalItem?.project_selections?.title
+            return (
+              <ImageRow
+                key={item.id}
+                item={item}
+                isBroken={brokenUrls.has(item.portal_image_url)}
+                onImageError={handleImageError}
+                onClick={() => { setSelectedItem(item); setEditUrl(item.portal_image_url || '') }}
+                parentTitle={sel.is_component ? parentTitle : null}
+                isChild={sel.is_component}
+                getElementLabel={getElementLabel}
+                getSheetForElement={getSheetForElement}
+              />
+            )
+          })}
         </div>
       )}
 
@@ -539,12 +577,13 @@ function FilterDropdown({ label, value, options, onChange }) {
 
 
 /* ── Grid Card ── */
-function ImageCard({ item, isBroken, onImageError, onClick }) {
+function ImageCard({ item, isBroken, onImageError, onClick, parentTitle, getElementLabel, getSheetForElement }) {
   const sel = item.project_selections || {}
   const hasImage = !!item.portal_image_url
   const statusColor = !hasImage ? 'var(--color-urgent)' :
                       isBroken ? 'var(--color-change)' :
                       'var(--color-approved)'
+  const sheet = getSheetForElement?.(sel.element_type)
 
   return (
     <button
@@ -584,6 +623,15 @@ function ImageCard({ item, isBroken, onImageError, onClick }) {
                 style={{ background: statusColor }} />
         </div>
 
+        {/* Component badge */}
+        {sel.is_component && (
+          <div className="absolute top-2 left-2">
+            <span className="text-[8px] px-1 py-0.5 rounded bg-white/70" style={{ color: 'var(--color-muted)' }}>
+              {sel.component_role?.replace(/_/g, ' ')}
+            </span>
+          </div>
+        )}
+
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-white/0 group-hover:bg-white/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
           <Eye size={16} style={{ color: 'var(--color-text)' }} />
@@ -592,6 +640,11 @@ function ImageCard({ item, isBroken, onImageError, onClick }) {
 
       {/* Info */}
       <div className="p-2.5">
+        {parentTitle && (
+          <div className="text-[9px] truncate mb-0.5" style={{ color: 'var(--color-pending)' }}>
+            ↳ {parentTitle}
+          </div>
+        )}
         <div className="text-[12px] font-medium leading-snug truncate" style={{ color: 'var(--color-text)' }}>
           {sel.title || '—'}
         </div>
@@ -601,12 +654,14 @@ function ImageCard({ item, isBroken, onImageError, onClick }) {
         <div className="flex items-center gap-1 mt-1 flex-wrap">
           {sel.element_type && (
             <span className="text-[8px] px-1 py-0.5 rounded bg-white/40" style={{ color: 'var(--color-muted)' }}>
-              {elementLabels[sel.element_type] || sel.element_type?.replace(/_/g, ' ')}
+              {getElementLabel?.(sel.element_type) || sel.element_type?.replace(/_/g, ' ')}
             </span>
           )}
-          <span className="text-[8px] px-1 py-0.5 rounded bg-white/40" style={{ color: 'var(--color-muted)' }}>
-            {item.schedule_group?.replace(/_/g, ' ')}
-          </span>
+          {sheet && (
+            <span className="text-[8px] px-1 py-0.5 rounded bg-white/40" style={{ color: 'var(--color-muted)' }}>
+              {sheet.output_code}
+            </span>
+          )}
         </div>
       </div>
     </button>
@@ -615,17 +670,18 @@ function ImageCard({ item, isBroken, onImageError, onClick }) {
 
 
 /* ── List Row ── */
-function ImageRow({ item, isBroken, onImageError, onClick }) {
+function ImageRow({ item, isBroken, onImageError, onClick, parentTitle, isChild, getElementLabel, getSheetForElement }) {
   const sel = item.project_selections || {}
   const hasImage = !!item.portal_image_url
   const statusColor = !hasImage ? 'var(--color-urgent)' :
                       isBroken ? 'var(--color-change)' :
                       'var(--color-approved)'
+  const sheet = getSheetForElement?.(sel.element_type)
 
   return (
     <button
       onClick={onClick}
-      className="glass-t glass-t-hover w-full text-left flex items-center gap-3 px-3 py-2.5 transition-all"
+      className={`glass-t glass-t-hover w-full text-left flex items-center gap-3 px-3 py-2.5 transition-all ${isChild ? 'ml-6' : ''}`}
     >
       {/* Thumbnail */}
       <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-white/30">
@@ -652,8 +708,16 @@ function ImageRow({ item, isBroken, onImageError, onClick }) {
 
       {/* Title & Details */}
       <div className="flex-1 min-w-0">
-        <div className="text-[12px] font-medium truncate" style={{ color: 'var(--color-text)' }}>
-          {sel.title || '—'}
+        <div className="flex items-center gap-1.5">
+          {isChild && <span className="text-[10px]" style={{ color: 'var(--color-muted)' }}>↳</span>}
+          <span className="text-[12px] font-medium truncate" style={{ color: 'var(--color-text)' }}>
+            {sel.title || '—'}
+          </span>
+          {sel.component_role && (
+            <span className="text-[9px] px-1 py-0.5 rounded bg-white/30 shrink-0" style={{ color: 'var(--color-muted)' }}>
+              {sel.component_role.replace(/_/g, ' ')}
+            </span>
+          )}
         </div>
         <div className="text-[10px] truncate" style={{ color: 'var(--color-muted)' }}>
           {[sel.manufacturer_name, sel.model].filter(Boolean).join(' — ') || '—'}
@@ -664,19 +728,15 @@ function ImageRow({ item, isBroken, onImageError, onClick }) {
       <div className="flex items-center gap-1 shrink-0">
         {sel.element_type && (
           <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/40" style={{ color: 'var(--color-muted)' }}>
-            {elementLabels[sel.element_type] || sel.element_type?.replace(/_/g, ' ')}
+            {getElementLabel?.(sel.element_type) || sel.element_type?.replace(/_/g, ' ')}
           </span>
         )}
-        <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/40 capitalize" style={{ color: 'var(--color-muted)' }}>
-          {sel.selection_kind?.replace(/_/g, ' ')}
-        </span>
+        {sheet && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/40" style={{ color: 'var(--color-muted)' }}>
+            {sheet.output_code}
+          </span>
+        )}
       </div>
-
-      {/* Group */}
-      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/40 shrink-0 capitalize"
-            style={{ color: 'var(--color-muted)' }}>
-        {item.schedule_group?.replace(/_/g, ' ')}
-      </span>
 
       {/* Status Label */}
       <span className="text-[10px] w-14 text-right shrink-0" style={{ color: statusColor }}>

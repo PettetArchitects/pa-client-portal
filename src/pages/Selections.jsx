@@ -4,11 +4,24 @@ import { Check, ArrowUpRight, MessageSquare, Filter } from 'lucide-react'
 
 const FILTERS = ['all', 'pending', 'approved', 'confirmed']
 
+const ROLE_ORDER = ['finish', 'colour', 'hardware', 'accessory', 'product']
+
+const ROLE_LABELS = {
+  assembly:  'Assembly',
+  finish:    'Finish',
+  colour:    'Colour',
+  hardware:  'Hardware',
+  accessory: 'Accessory',
+  product:   'Product',
+}
+
 export default function Selections({ projectId }) {
   const [groups, setGroups] = useState([])
   const [items, setItems] = useState([])
   const [codeTitleMap, setCodeTitleMap] = useState({})
+  const [codeHierarchyMap, setCodeHierarchyMap] = useState({})
   const [filter, setFilter] = useState('all')
+  const [viewMode, setViewMode] = useState('group') // 'group' | 'code'
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -20,13 +33,35 @@ export default function Selections({ projectId }) {
     const [grpRes, selRes, codeRes] = await Promise.all([
       supabase.from('schedule_groups').select('*').eq('project_id', projectId).order('display_order'),
       supabase.from('v_client_selection_schedule').select('*').eq('project_id', projectId),
-      supabase.from('master_code_entries').select('canonical_code, title').eq('status', 'active'),
+      supabase.from('master_code_entries')
+        .select('id, canonical_code, title, component_role, parent_code_id')
+        .eq('status', 'active'),
     ])
     setGroups(grpRes.data || [])
     setItems(selRes.data || [])
+
+    const codes = codeRes.data || []
+
+    // canonical_code → title (backward-compat flat map — unchanged)
     const ctMap = {}
-    ;(codeRes.data || []).forEach(e => { ctMap[e.canonical_code] = e.title })
+    codes.forEach(c => { ctMap[c.canonical_code] = c.title })
     setCodeTitleMap(ctMap)
+
+    // id → canonical_code lookup
+    const codeIdToCode = {}
+    codes.forEach(c => { codeIdToCode[c.id] = c.canonical_code })
+
+    // canonical_code → { role, parent_canonical_code, title }
+    const hierarchyMap = {}
+    codes.forEach(c => {
+      hierarchyMap[c.canonical_code] = {
+        role: c.component_role || 'product',
+        parent_canonical_code: c.parent_code_id ? codeIdToCode[c.parent_code_id] : null,
+        title: c.title,
+      }
+    })
+    setCodeHierarchyMap(hierarchyMap)
+
     setLoading(false)
   }
 
@@ -83,6 +118,30 @@ export default function Selections({ projectId }) {
               : 'All selections confirmed'}
           </p>
         </div>
+
+        {/* View mode toggle */}
+        <div className="flex items-center gap-1 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg p-0.5 self-start mt-1">
+          <button
+            onClick={() => setViewMode('group')}
+            className={`px-3 py-1 rounded-md text-[11px] tracking-wide transition-all ${
+              viewMode === 'group'
+                ? 'bg-white text-[var(--color-text)] shadow-sm font-medium'
+                : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
+            }`}
+          >
+            By Group
+          </button>
+          <button
+            onClick={() => setViewMode('code')}
+            className={`px-3 py-1 rounded-md text-[11px] tracking-wide transition-all ${
+              viewMode === 'code'
+                ? 'bg-white text-[var(--color-text)] shadow-sm font-medium'
+                : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
+            }`}
+          >
+            By Code
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -103,31 +162,161 @@ export default function Selections({ projectId }) {
         ))}
       </div>
 
-      {/* Groups */}
-      <div className="space-y-10">
-        {groupedItems.map(group => (
-          <section key={group.id}>
-            <div className="flex items-baseline justify-between pb-3 border-b border-[var(--color-accent)] mb-5">
-              <h2 className="text-[15px] font-normal tracking-wide">{group.group_name}</h2>
+      {/* Views */}
+      {viewMode === 'group' ? (
+        <>
+          <div className="space-y-10">
+            {groupedItems.map(group => (
+              <section key={group.id}>
+                <div className="flex items-baseline justify-between pb-3 border-b border-[var(--color-accent)] mb-5">
+                  <h2 className="text-[15px] font-normal tracking-wide">{group.group_name}</h2>
+                  <span className="text-[12px] text-[var(--color-muted)]">{group.items.length} items</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {group.items.map(item => (
+                    <SelectionCard
+                      key={item.portal_entry_id}
+                      item={item}
+                      codeTitleMap={codeTitleMap}
+                      onApprove={() => handleApprove(item.portal_entry_id)}
+                      onRequestChange={() => handleRequestChange(item.portal_entry_id)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+
+          {groupedItems.length === 0 && (
+            <div className="text-center py-20">
+              <Filter size={24} className="mx-auto text-[var(--color-border)] mb-3" />
+              <p className="text-[13px] text-[var(--color-muted)] font-light">No items match this filter.</p>
+            </div>
+          )}
+        </>
+      ) : (
+        <CodeHierarchyView
+          items={filtered}
+          codeHierarchyMap={codeHierarchyMap}
+          codeTitleMap={codeTitleMap}
+          onApprove={handleApprove}
+          onRequestChange={handleRequestChange}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ── Code Hierarchy View ──────────────────────────────────────────────────── */
+
+function CodeHierarchyView({ items, codeHierarchyMap, codeTitleMap, onApprove, onRequestChange }) {
+  // Sort items within a group by role order (finish → colour → hardware → accessory → product)
+  const sortByRole = (a, b) => {
+    const aRole = codeHierarchyMap[a.attributes?.code]?.role || 'product'
+    const bRole = codeHierarchyMap[b.attributes?.code]?.role || 'product'
+    const ai = ROLE_ORDER.indexOf(aRole)
+    const bi = ROLE_ORDER.indexOf(bRole)
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+  }
+
+  // Build assembly groups keyed by assembly canonical_code
+  const assemblyMap = {}
+  const generalItems = []
+
+  items.forEach(item => {
+    const code = item.attributes?.code || null
+    if (!code) {
+      generalItems.push(item)
+      return
+    }
+    const codeInfo = codeHierarchyMap[code]
+    if (!codeInfo) {
+      generalItems.push(item)
+      return
+    }
+
+    if (codeInfo.role === 'assembly' && !codeInfo.parent_canonical_code) {
+      // Item is directly coded as an assembly
+      if (!assemblyMap[code]) {
+        assemblyMap[code] = { code, title: codeInfo.title || code, items: [] }
+      }
+      assemblyMap[code].items.push(item)
+    } else if (codeInfo.parent_canonical_code) {
+      const parentCode = codeInfo.parent_canonical_code
+      if (!assemblyMap[parentCode]) {
+        const parentInfo = codeHierarchyMap[parentCode]
+        assemblyMap[parentCode] = { code: parentCode, title: parentInfo?.title || parentCode, items: [] }
+      }
+      assemblyMap[parentCode].items.push(item)
+    } else {
+      // Non-assembly, no parent → General
+      generalItems.push(item)
+    }
+  })
+
+  const assemblyGroups = Object.values(assemblyMap)
+  assemblyGroups.forEach(g => g.items.sort(sortByRole))
+
+  const hasContent = assemblyGroups.length > 0 || generalItems.length > 0
+
+  return (
+    <div className="space-y-10">
+      {assemblyGroups.map(group => (
+        <section key={group.code}>
+          {/* Assembly header — hairline separator above, bolder title */}
+          <div className="pt-2 border-t border-[var(--color-border)] mb-5">
+            <div className="flex items-baseline justify-between pb-3">
+              <div>
+                <span className="text-[9px] font-mono tracking-[1.5px] text-[var(--color-muted)] uppercase block mb-0.5">
+                  {group.code}
+                  <span className="ml-2 text-[8px] tracking-wide opacity-50 normal-case font-sans">Assembly</span>
+                </span>
+                <h2 className="text-[14px] font-medium tracking-wide">{group.title}</h2>
+              </div>
               <span className="text-[12px] text-[var(--color-muted)]">{group.items.length} items</span>
             </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {group.items.map(item => (
-                <SelectionCard
-                  key={item.portal_entry_id}
-                  item={item}
-                  codeTitleMap={codeTitleMap}
-                  onApprove={() => handleApprove(item.portal_entry_id)}
-                  onRequestChange={() => handleRequestChange(item.portal_entry_id)}
-                />
-              ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {group.items.map(item => (
+              <SelectionCard
+                key={item.portal_entry_id}
+                item={item}
+                codeTitleMap={codeTitleMap}
+                codeHierarchyMap={codeHierarchyMap}
+                onApprove={() => onApprove(item.portal_entry_id)}
+                onRequestChange={() => onRequestChange(item.portal_entry_id)}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+
+      {generalItems.length > 0 && (
+        <section>
+          <div className="pt-2 border-t border-[var(--color-border)] mb-5">
+            <div className="flex items-baseline justify-between pb-3">
+              <h2 className="text-[14px] font-normal tracking-wide text-[var(--color-muted)]">General</h2>
+              <span className="text-[12px] text-[var(--color-muted)]">{generalItems.length} items</span>
             </div>
-          </section>
-        ))}
-      </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {generalItems.map(item => (
+              <SelectionCard
+                key={item.portal_entry_id}
+                item={item}
+                codeTitleMap={codeTitleMap}
+                codeHierarchyMap={codeHierarchyMap}
+                onApprove={() => onApprove(item.portal_entry_id)}
+                onRequestChange={() => onRequestChange(item.portal_entry_id)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
-      {groupedItems.length === 0 && (
+      {!hasContent && (
         <div className="text-center py-20">
           <Filter size={24} className="mx-auto text-[var(--color-border)] mb-3" />
           <p className="text-[13px] text-[var(--color-muted)] font-light">No items match this filter.</p>
@@ -137,7 +326,9 @@ export default function Selections({ projectId }) {
   )
 }
 
-function SelectionCard({ item, codeTitleMap, onApprove, onRequestChange }) {
+/* ── Selection Card ───────────────────────────────────────────────────────── */
+
+function SelectionCard({ item, codeTitleMap, codeHierarchyMap, onApprove, onRequestChange }) {
   const isPending = item.approval_status === 'pending'
   const isApproved = item.approval_status === 'approved'
   const isChangeReq = item.approval_status === 'change_requested'
@@ -147,6 +338,10 @@ function SelectionCard({ item, codeTitleMap, onApprove, onRequestChange }) {
   const productUrl = attrs.product_url || attrs.image_url
   const code = attrs.code || null
   const codeTitle = code && codeTitleMap ? codeTitleMap[code] : null
+
+  // Role label — only present when codeHierarchyMap is provided (code view); null in flat group view
+  const codeInfo = code && codeHierarchyMap ? codeHierarchyMap[code] : null
+  const roleLabel = codeInfo?.role ? (ROLE_LABELS[codeInfo.role] || codeInfo.role) : null
 
   return (
     <div className={`bg-white rounded-xl border overflow-hidden transition-all hover:shadow-sm ${
@@ -164,6 +359,11 @@ function SelectionCard({ item, codeTitleMap, onApprove, onRequestChange }) {
               <span className="text-[9px] font-mono tracking-wider text-[var(--color-muted)] uppercase block mb-0.5">
                 {code}
                 {codeTitle && <span className="text-[8px] font-normal tracking-wider ml-1.5 opacity-70">{codeTitle}</span>}
+                {roleLabel && (
+                  <span className="text-[8px] font-sans normal-case tracking-wide ml-2 opacity-50 text-[var(--color-muted)]">
+                    · {roleLabel}
+                  </span>
+                )}
               </span>
             )}
             <h3 className="text-[13px] font-medium leading-snug truncate">{item.selection_title}</h3>

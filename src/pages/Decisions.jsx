@@ -78,6 +78,7 @@ export default function Decisions({ projectId }) {
   const [natspecMap, setNatspecMap] = useState({})
   const [subCriteriaMap, setSubCriteriaMap] = useState({}) // element_type → [{field_key, field_label, field_type, field_unit, display_order}]
   const [codeTitleMap, setCodeTitleMap] = useState({}) // canonical_code → title (e.g. "LT1" → "Light Type 01")
+  const [selectionCodeMap, setSelectionCodeMap] = useState({}) // project_selection_id → canonical_code (from link table)
   const [loading, setLoading] = useState(true)
   const [expandedGroups, setExpandedGroups] = useState(new Set())
   const [viewMode, setViewMode] = useState('schedule') // 'schedule', 'plan'
@@ -93,7 +94,7 @@ export default function Decisions({ projectId }) {
   }, [projectId])
 
   async function loadData() {
-    const [grpRes, selRes, roomRes, scRes, codeRes] = await Promise.all([
+    const [grpRes, selRes, roomRes, scRes, codeRes, linkRes] = await Promise.all([
       supabase.from('schedule_groups').select('*').eq('project_id', projectId).eq('visible_to_homeowner', true).order('display_order'),
       supabase.from('homeowner_selections_portal').select(`
         *,
@@ -104,7 +105,8 @@ export default function Decisions({ projectId }) {
       `).eq('project_id', projectId).eq('active', true),
       supabase.from('portal_selection_rooms').select('*').eq('project_id', projectId),
       supabase.from('sub_criteria_definitions').select('*').order('display_order'),
-      supabase.from('master_code_entries').select('canonical_code, title').eq('status', 'active'),
+      supabase.from('master_code_entries').select('id, canonical_code, title').eq('status', 'active'),
+      supabase.from('project_selection_code_links').select('project_selection_id, entry_id'),
     ])
 
     setGroups(grpRes.data || [])
@@ -113,8 +115,23 @@ export default function Decisions({ projectId }) {
 
     // Build code title lookup: canonical_code → title (e.g. "LT1" → "Light Type 01")
     const ctMap = {}
-    ;(codeRes.data || []).forEach(e => { ctMap[e.canonical_code] = e.title })
+    const codeIdToCode = {}
+    ;(codeRes.data || []).forEach(e => {
+      ctMap[e.canonical_code] = e.title
+      codeIdToCode[e.id] = e.canonical_code
+    })
     setCodeTitleMap(ctMap)
+
+    // Build selection_id → canonical_code from link table (covers child-coded items
+    // whose code is not in attributes.code — e.g. FT1-ACC, ROF1-DP, etc.)
+    const scMap = {}
+    ;(linkRes.data || []).forEach(link => {
+      if (!scMap[link.project_selection_id]) {
+        const canonical = codeIdToCode[link.entry_id]
+        if (canonical) scMap[link.project_selection_id] = canonical
+      }
+    })
+    setSelectionCodeMap(scMap)
 
     // Build sub-criteria lookup: element_type → sorted fields array
     const scMap = {}
@@ -429,6 +446,7 @@ export default function Decisions({ projectId }) {
           onApproveItem={handleApproveItem}
           onRequestChange={handleRequestChange}
           codeTitleMap={codeTitleMap}
+          selectionCodeMap={selectionCodeMap}
         />
       ) : sortBy === 'boq' ? (
         <BoQView groupedData={groupedData} natspecMap={natspecMap} codeTitleMap={codeTitleMap} />
@@ -442,6 +460,7 @@ export default function Decisions({ projectId }) {
           natspecMap={natspecMap}
           subCriteriaMap={subCriteriaMap}
           codeTitleMap={codeTitleMap}
+          selectionCodeMap={selectionCodeMap}
         />
       ) : sortBy === 'room' ? (
         <RoomGroupedView
@@ -518,7 +537,7 @@ export default function Decisions({ projectId }) {
                 {/* Expanded items */}
                 {isExpanded && (
                   <div className="border-t border-white/30">
-                    <ScheduleView items={group.items} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} roomMappings={roomMappings} codeTitleMap={codeTitleMap} onApproveItem={handleApproveItem} onRequestChange={handleRequestChange} />
+                    <ScheduleView items={group.items} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} roomMappings={roomMappings} codeTitleMap={codeTitleMap} selectionCodeMap={selectionCodeMap} onApproveItem={handleApproveItem} onRequestChange={handleRequestChange} />
                   </div>
                 )}
               </div>
@@ -882,7 +901,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
 }
 
 /* ── Component-grouped view: by parent assembly ── */
-function ComponentGroupedView({ components, expandedGroups, toggleGroup, onApproveItem, onRequestChange, natspecMap, subCriteriaMap, codeTitleMap }) {
+function ComponentGroupedView({ components, expandedGroups, toggleGroup, onApproveItem, onRequestChange, natspecMap, subCriteriaMap, codeTitleMap, selectionCodeMap }) {
   return (
     <div className="space-y-3">
       {components.map(comp => {
@@ -935,7 +954,7 @@ function ComponentGroupedView({ components, expandedGroups, toggleGroup, onAppro
             {/* Expanded: all items in this IFC family */}
             {isExpanded && (
               <div className="border-t border-white/30">
-                <ScheduleView items={comp.children} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} codeTitleMap={codeTitleMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+                <ScheduleView items={comp.children} natspecMap={natspecMap} subCriteriaMap={subCriteriaMap} codeTitleMap={codeTitleMap} selectionCodeMap={selectionCodeMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
               </div>
             )}
           </div>
@@ -1082,7 +1101,7 @@ function getDominantElementType(items) {
 }
 
 /* ── Schedule view: proper tabular schedule with column headers ── */
-function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, codeTitleMap, onApproveItem, onRequestChange }) {
+function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, codeTitleMap, selectionCodeMap, onApproveItem, onRequestChange }) {
   const tree = buildItemTree(items)
   const allItems = tree.flatMap(n => [n.item, ...n.children])
   const elementType = getDominantElementType(allItems)
@@ -1125,7 +1144,8 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, codeTit
         const sel = node.item.project_selections || {}
         const attrs = sel.attributes || {}
         const st = STATUS_STYLES[node.item.approval_status] || STATUS_STYLES.not_applicable
-        const { code, name } = parseCode(sel.title || node.item.selection_title, attrs)
+        const { code: rawCode, name } = parseCode(sel.title || node.item.selection_title, attrs)
+        const code = rawCode || (selectionCodeMap && selectionCodeMap[node.item.project_selection_id]) || null
         const natspecCodes = (natspecMap && natspecMap[node.item.project_selection_id]) || []
         const isPending = node.item.approval_status === 'pending'
         const isChangeReq = node.item.approval_status === 'change_requested'
@@ -1213,7 +1233,8 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, codeTit
               const cIsPending = child.approval_status === 'pending'
               const cIsChange = child.approval_status === 'change_requested'
               const cColValues = cols.map(col => cAttrs[col.key] || null)
-              const { code: cCode } = parseCode(cSel.title || child.selection_title, cAttrs)
+              const { code: cCodeRaw } = parseCode(cSel.title || child.selection_title, cAttrs)
+              const cCode = cCodeRaw || (selectionCodeMap && selectionCodeMap[child.project_selection_id]) || null
               // Child room: own mapping first, fall back to parent's rooms
               const cRooms = roomLookup[child.project_selection_id] || itemRooms
               const cRoomLabels = cRooms.map(k => ROOM_CONFIG[k]?.label || k.replace(/_/g, ' ')).join(', ')
@@ -1778,7 +1799,7 @@ function formatK(n) {
 }
 
 /* ── Plan View ── */
-function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveItem, onRequestChange, codeTitleMap }) {
+function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveItem, onRequestChange, codeTitleMap, selectionCodeMap }) {
   const [selectedRoom, setSelectedRoom] = useState(null)
 
   // Filter items by selected room
@@ -1801,7 +1822,7 @@ function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveIt
       {/* Room selection list */}
       {selectedRoom && roomItems.length > 0 && (
         <div className="mt-4">
-          <ScheduleView items={roomItems} natspecMap={{}} subCriteriaMap={{}} codeTitleMap={codeTitleMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
+          <ScheduleView items={roomItems} natspecMap={{}} subCriteriaMap={{}} codeTitleMap={codeTitleMap} selectionCodeMap={selectionCodeMap} onApproveItem={onApproveItem} onRequestChange={onRequestChange} />
         </div>
       )}
 

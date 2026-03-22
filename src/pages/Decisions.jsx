@@ -6,7 +6,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import {
   Check, ChevronDown, ChevronRight, MessageSquare, ArrowUpRight,
   ThumbsUp, Eye, EyeOff, Package, Palette, Wrench, AlertCircle,
-  Home, Grid3X3, FileDown, SlidersHorizontal, Search,
+  Home, Grid3X3, FileDown, SlidersHorizontal, Search, Hash,
   List, Map, BarChart3, Layers,
 } from 'lucide-react'
 import { GROUP_ICONS, ROOM_ICONS } from '../components/SketchIcons'
@@ -64,6 +64,25 @@ const ELEMENT_LABELS = {
   hardware: 'Hardware', door: 'Doors', window: 'Windows', product: 'Products',
   finish: 'Finishes', trim: 'Trim', services: 'Services', mechanical: 'Mechanical',
   exterior: 'Exterior', general: 'General', other: 'Other',
+}
+
+/* ── Code hierarchy helpers ── */
+// Sort order for children within an assembly group (role → index)
+const HIERARCHY_ROLE_ORDER = ['finish', 'colour', 'hardware', 'accessory', 'product']
+
+// Walk up codeHierarchyMap to find the root assembly (no parent).
+// Guards against circular refs. Returns null if code isn't in the map.
+function getTopLevelAssemblyCode(code, codeHierarchyMap) {
+  let current = code
+  const seen = new Set()
+  while (current && !seen.has(current)) {
+    seen.add(current)
+    const info = codeHierarchyMap[current]
+    if (!info) return null
+    if (!info.parent_canonical_code) return current
+    current = info.parent_canonical_code
+  }
+  return null // circular reference guard
 }
 
 export default function Decisions({ projectId }) {
@@ -316,7 +335,7 @@ export default function Decisions({ projectId }) {
     )
   }
 
-  const viewTitle = viewMode === 'plan' ? 'Floor Plan' : sortBy === 'boq' ? 'Bill of Quantities' : sortBy === 'room' ? 'By Room' : sortBy === 'component' ? 'By Component' : 'Selections'
+  const viewTitle = viewMode === 'plan' ? 'Floor Plan' : sortBy === 'boq' ? 'Bill of Quantities' : sortBy === 'room' ? 'By Room' : sortBy === 'component' ? 'By Component' : sortBy === 'code' ? 'By Code' : 'Selections'
 
   return (
     <div className="max-w-4xl">
@@ -370,6 +389,7 @@ export default function Decisions({ projectId }) {
               { key: 'room', label: 'Room', icon: Home },
               { key: 'component', label: 'Component', icon: Layers },
               { key: 'boq', label: 'BoQ', icon: BarChart3 },
+              { key: 'code', label: 'Code', icon: Hash },
             ].map(s => (
               <button
                 key={s.key}
@@ -490,6 +510,16 @@ export default function Decisions({ projectId }) {
           natspecMap={natspecMap}
           codeTitleMap={codeTitleMap}
         />
+      ) : sortBy === 'code' ? (
+        <CodeHierarchyView
+          items={filteredItems}
+          codeHierarchyMap={codeHierarchyMap}
+          codeTitleMap={codeTitleMap}
+          selectionCodeMap={selectionCodeMap}
+          natspecMap={natspecMap}
+          onApproveItem={handleApproveItem}
+          onRequestChange={handleRequestChange}
+        />
       ) : (
         <div className="space-y-3">
           {groupedData.map(group => {
@@ -563,7 +593,7 @@ export default function Decisions({ projectId }) {
         </div>
       )}
 
-      {((sortBy === 'group' && groupedData.length === 0) || (sortBy === 'room' && roomGroupedData.length === 0) || (sortBy === 'component' && componentGroupedData.length === 0) || (sortBy === 'boq' && groupedData.length === 0)) && (
+      {((sortBy === 'group' && groupedData.length === 0) || (sortBy === 'room' && roomGroupedData.length === 0) || (sortBy === 'component' && componentGroupedData.length === 0) || (sortBy === 'boq' && groupedData.length === 0) || (sortBy === 'code' && filteredItems.length === 0)) && (
         <div className="text-center py-20 glass-t rounded-xl border border-white/40">
           <Package size={24} className="mx-auto text-[var(--color-border)] mb-3" />
           <p className="text-[13px] text-[var(--color-text)] font-light">
@@ -977,6 +1007,110 @@ function ComponentGroupedView({ components, expandedGroups, toggleGroup, onAppro
           </div>
         )
       })}
+    </div>
+  )
+}
+
+/* ── Code hierarchy view: assemblies as section headers, children sorted by role ── */
+function CodeHierarchyView({ items, codeHierarchyMap, codeTitleMap, selectionCodeMap, natspecMap, onApproveItem, onRequestChange }) {
+  // Resolve canonical code: link table first, then attrs.code fallback
+  const resolveCode = (item) =>
+    selectionCodeMap[item.project_selection_id] ||
+    item.project_selections?.attributes?.code ||
+    null
+
+  // Sort index by role within a group
+  const roleIndex = (code) => {
+    const role = codeHierarchyMap[code]?.role || 'product'
+    const i = HIERARCHY_ROLE_ORDER.indexOf(role)
+    return i === -1 ? 99 : i
+  }
+
+  // Group items under their top-level assembly
+  const assemblyMap = {}   // topAssemblyCode → { code, title, items[] }
+  const generalItems = []  // items with no code or no assembly in the hierarchy map
+
+  items.forEach(item => {
+    const code = resolveCode(item)
+    if (!code) { generalItems.push(item); return }
+    const topAssembly = getTopLevelAssemblyCode(code, codeHierarchyMap)
+    if (!topAssembly) { generalItems.push(item); return }
+    if (!assemblyMap[topAssembly]) {
+      const info = codeHierarchyMap[topAssembly]
+      assemblyMap[topAssembly] = { code: topAssembly, title: info?.title || topAssembly, items: [] }
+    }
+    assemblyMap[topAssembly].items.push({ item, code })
+  })
+
+  // Sort children within each assembly group by role order
+  const assemblyGroups = Object.values(assemblyMap)
+  assemblyGroups.forEach(g =>
+    g.items.sort((a, b) => roleIndex(a.code) - roleIndex(b.code))
+  )
+
+  const hasContent = assemblyGroups.length > 0 || generalItems.length > 0
+
+  return (
+    <div className="space-y-6">
+      {assemblyGroups.map(group => (
+        <section key={group.code}>
+          {/* Assembly header */}
+          <div className="pt-2 border-t border-white/30 mb-4">
+            <div className="flex items-baseline justify-between py-2 px-1">
+              <div>
+                <span className="text-[9px] font-mono tracking-[1.5px] text-[var(--color-muted)] uppercase block mb-0.5">
+                  {group.code}
+                  <span className="ml-2 text-[8px] tracking-wide opacity-50 normal-case font-sans">Assembly</span>
+                </span>
+                <h2 className="text-[13px] font-medium">{group.title}</h2>
+              </div>
+              <span className="text-[12px] text-[var(--color-muted)]">{group.items.length} items</span>
+            </div>
+          </div>
+          <div className="space-y-2 px-1">
+            {group.items.map(({ item }) => (
+              <SelectionCard
+                key={item.id}
+                item={item}
+                natspecMap={natspecMap}
+                codeTitleMap={codeTitleMap}
+                onApprove={() => onApproveItem(item.id)}
+                onRequestChange={() => onRequestChange(item.id)}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+
+      {generalItems.length > 0 && (
+        <section>
+          <div className="pt-2 border-t border-white/30 mb-4">
+            <div className="flex items-baseline justify-between py-2 px-1">
+              <h2 className="text-[13px] font-normal text-[var(--color-muted)]">General</h2>
+              <span className="text-[12px] text-[var(--color-muted)]">{generalItems.length} items</span>
+            </div>
+          </div>
+          <div className="space-y-2 px-1">
+            {generalItems.map(item => (
+              <SelectionCard
+                key={item.id}
+                item={item}
+                natspecMap={natspecMap}
+                codeTitleMap={codeTitleMap}
+                onApprove={() => onApproveItem(item.id)}
+                onRequestChange={() => onRequestChange(item.id)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {!hasContent && (
+        <div className="text-center py-20 glass-t rounded-xl border border-white/40">
+          <Package size={24} className="mx-auto text-[var(--color-border)] mb-3" />
+          <p className="text-[13px] text-[var(--color-text)] font-light">No items match this filter.</p>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { Send, Paperclip } from 'lucide-react'
+import { Send } from 'lucide-react'
 
 export default function Messages({ projectId }) {
   const { user } = useAuth()

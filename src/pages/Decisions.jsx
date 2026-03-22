@@ -1197,6 +1197,9 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, onAppro
               const cIsChange = child.approval_status === 'change_requested'
               const cColValues = cols.map(col => cAttrs[col.key] || null)
               const { code: cCode } = parseCode(cSel.title || child.selection_title, cAttrs)
+              // Child room: own mapping first, fall back to parent's rooms
+              const cRooms = roomLookup[child.project_selection_id] || itemRooms
+              const cRoomLabels = cRooms.map(k => ROOM_CONFIG[k]?.label || k.replace(/_/g, ' ')).join(', ')
 
               return (
                 <div key={child.id} className="grid gap-2 px-3 py-1.5 items-center text-[10px] border-b border-white/10 hover:bg-white/20 transition-colors bg-white/5"
@@ -1217,7 +1220,7 @@ function ScheduleView({ items, natspecMap, subCriteriaMap, roomMappings, onAppro
                     <span className="text-[7px] tracking-[0.8px] uppercase text-[var(--color-muted)] font-medium block">{cRole}</span>
                     <div className="break-words text-[var(--color-text)]">{cSel.title || child.selection_title}</div>
                   </div>
-                  <span className="text-[10px] text-[var(--color-muted)]">{'\u2014'}</span>
+                  <span className="text-[10px] text-[var(--color-muted)] capitalize">{cRoomLabels || '\u2014'}</span>
                   <span className="text-[var(--color-text)] break-words">{cSel.model || '\u2014'}</span>
                   <span className="text-[var(--color-muted)] break-words">{cSel.manufacturer_name || '\u2014'}</span>
                   {cColValues.map((val, i) => (

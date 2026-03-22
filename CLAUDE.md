@@ -187,17 +187,108 @@ VITE_SUPABASE_ANON_KEY=<supabase anon key>
 - SPA rewrites: all routes → `index.html`
 - Build info: git commit hash + timestamp injected via `vite.config.js`, shown in sidebar footer
 
-## Key Supabase Tables
+## Supabase Data Model
 
-- `projects` — project master data
-- `homeowner_project_access` — user-project access mapping + levels
-- `practice_public_profile` — firm metadata (logo, accreditations)
-- `project_selections` — full selection records (kind, manufacturer, model, attributes)
-- `homeowner_selections_portal` — client-visible selections view
-- `portal_selection_rooms` — room-to-selection mappings
-- `schedule_groups` — selection groupings
-- `master_code_entries` — code hierarchy (construction specs)
-- `project_selection_code_links` — selection ↔ code links
+### Data Relationship Map
+
+```
+projects
+├── homeowner_project_access        — user ↔ project access (access_level)
+├── project_services                — stage lifecycle (stage_code, status, dates)
+│   └── stage_gate_items            — milestones per stage
+├── project_decisions               — decision records
+│   └── decision_nodes              — question templates
+│       └── decision_node_dependencies — dependency graph (depends_on_node_key, dependency_kind)
+├── project_documents               — master document records
+│   └── homeowner_document_shares   — shared with clients
+├── project_risk_flags              — risk indicators
+├── project_selections              — full selection records (kind, manufacturer, model, attributes)
+│   └── homeowner_selections_portal — client-visible view (approval_status, priority, schedule_group)
+│       └── portal_selection_rooms  — room-to-selection mappings
+│   └── project_selection_code_links → master_code_entries (is_primary flag)
+│   └── project_selection_natspec_links → natspec_sections (section_ref, section_title)
+├── schedule_groups                 — selection grouping/categorisation
+│   └── schedule_output_definitions — schedule sheet definitions + element types
+│       └── sub_criteria_definitions — sub-criteria fields per element
+├── homeowner_messages              — real-time messaging (has realtime subscription)
+├── progress_payment_schedule       — payment milestones (homeowner-visible)
+├── lod_spec_service_element_targets — LOD targets per service stage
+├── lod_spec_elements               — element definitions (uniformat codes)
+└── project_consultant_briefs → consultant_disciplines — consultant scope
+
+users (auth.users)
+├── homeowner_profiles              — full_name, phone, notification preferences
+└── practice_public_profile         — firm branding, logo, accreditations
+```
+
+### Tables by Domain
+
+**Core:**
+`projects`, `homeowner_project_access`, `practice_public_profile`, `homeowner_profiles`
+
+**Selections & Decisions:**
+`project_selections`, `homeowner_selections_portal`, `portal_selection_rooms`, `schedule_groups`, `schedule_output_definitions`, `sub_criteria_definitions`, `project_decisions`, `decision_nodes`, `decision_node_dependencies`
+
+**Codes & Specs:**
+`master_code_entries`, `project_selection_code_links`, `project_selection_natspec_links`, `natspec_sections`
+
+**Documents & Timeline:**
+`project_documents`, `homeowner_document_shares`, `project_services`, `stage_gate_items`, `progress_payment_schedule`
+
+**Other:**
+`homeowner_messages`, `project_risk_flags`, `project_consultant_briefs`, `consultant_disciplines`, `lod_spec_elements`, `lod_spec_service_element_targets`, `v_project_team` (view)
+
+### RPC Functions
+
+| Function | Called from | Purpose |
+|----------|-----------|---------|
+| `get_project_decisions_with_nodes` | Timeline.jsx | Decisions joined with node details in single call |
+| `sync_portal_selections` | ProjectData.jsx | Reconcile portal selections with underlying data |
+
+### Edge Functions
+
+Edge function base URL is constructed from `VITE_SUPABASE_URL + '/functions/v1'`. Used in Documents.jsx for server-side operations.
+
+### Realtime Subscriptions
+
+Messages page subscribes to `postgres_changes` on `homeowner_messages`:
+```js
+supabase
+  .channel('messages-' + projectId)
+  .on('postgres_changes', {
+    event: 'INSERT', schema: 'public',
+    table: 'homeowner_messages',
+    filter: `project_id=eq.${projectId}`,
+  }, callback)
+  .subscribe()
+```
+Always clean up with `.removeChannel()` in the `useEffect` return.
+
+### Common Query Patterns
+
+**Nested foreign-key selects** (Supabase PostgREST joins):
+```js
+// Join through foreign key — colon syntax
+supabase.from('homeowner_selections_portal')
+  .select('*, project_selections:project_selection_id (id, title, ...)')
+  .eq('project_id', projectId)
+
+// Inner join with !inner
+supabase.from('decision_nodes')
+  .select('node_key, ..., project_decisions!inner(decision_status, ...)')
+```
+
+**Filters used:** `.eq()`, `.in()`, `.lte()`, `.order()`, `.single()`, `{ count: 'exact' }`
+
+**Mutations:** `.insert()`, `.update()` — always destructure `{ error }` and handle.
+
+### Supabase Query Conventions
+
+1. Always destructure `{ data, error }` and check `error` before using `data`
+2. Use `.single()` only when exactly one row is expected (profiles, practice)
+3. Prefer nested selects over separate queries when data is related
+4. For counts without data, use `.select('id', { count: 'exact', head: true })`
+5. Clean up realtime channels in `useEffect` return functions
 
 ## Commit Convention
 

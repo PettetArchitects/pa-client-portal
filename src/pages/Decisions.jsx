@@ -124,14 +124,14 @@ export default function Decisions({ projectId }) {
 
     // Build selection_id → canonical_code from link table (covers child-coded items
     // whose code is not in attributes.code — e.g. FT1-ACC, ROF1-DP, etc.)
-    const scMap = {}
+    const selCodeMap = {}
     ;(linkRes.data || []).forEach(link => {
-      if (!scMap[link.project_selection_id]) {
+      if (!selCodeMap[link.project_selection_id]) {
         const canonical = codeIdToCode[link.entry_id]
-        if (canonical) scMap[link.project_selection_id] = canonical
+        if (canonical) selCodeMap[link.project_selection_id] = canonical
       }
     })
-    setSelectionCodeMap(scMap)
+    setSelectionCodeMap(selCodeMap)
 
     // Build sub-criteria lookup: element_type → sorted fields array
     const scMap = {}

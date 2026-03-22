@@ -5,8 +5,65 @@ import { useAuth } from '../hooks/useAuth'
 import {
   FileText, Eye, Clock, Search, Folder, ChevronDown, ChevronRight,
   Package, Palette, Wrench, Grid3X3, ListChecks, Download, ExternalLink,
-  ArrowLeft, X
+  ArrowLeft, X, BookOpen, PenTool, ClipboardList, FileBarChart, FolderOpen
 } from 'lucide-react'
+
+/* ══════════════════════════════════════════════════════════════════════
+ * MASTER DOCUMENT PRECEDENCE RULE
+ * ──────────────────────────────────────────────────────────────────────
+ * Standard contractual hierarchy: specification governs drawings (AS 4000 cl 2.2).
+ * Written intent takes precedence over graphic representation.
+ * This constant drives the UX — sections render in this order.
+ * ══════════════════════════════════════════════════════════════════════ */
+const DOCUMENT_PRECEDENCE = [
+  {
+    tier: 1,
+    key: 'specifications',
+    label: 'Specifications',
+    description: 'Written intent — highest precedence',
+    icon: BookOpen,
+    docTypes: ['specification'],
+  },
+  {
+    tier: 2,
+    key: 'drawings',
+    label: 'Drawings',
+    description: 'Graphic record, subordinate to specification',
+    icon: PenTool,
+    docTypes: ['drawing_set', 'tender_drawing_detail_matrix'],
+  },
+  {
+    tier: 3,
+    key: 'schedules',
+    label: 'Schedules',
+    description: 'Selections derived from specs, cross-referenced to drawings',
+    icon: Grid3X3,
+    docTypes: ['schedule'],
+    includesSelections: true,
+  },
+  {
+    tier: 4,
+    key: 'reports',
+    label: 'Reports',
+    description: 'Supporting technical evidence',
+    icon: FileBarChart,
+    docTypes: ['geotechnical_report', 'consultant_report'],
+  },
+  {
+    tier: 5,
+    key: 'administrative',
+    label: 'Administrative',
+    description: 'Contract administration — registers, transmittals, QA',
+    icon: FolderOpen,
+    docTypes: ['tender_document_register', 'tender_delivery_work_plan', 'tender_pack_qa_run_summary', 'transmittal', 'presentation'],
+  },
+]
+
+/* Map every doc_type to its precedence tier key for fast lookup */
+const DOC_TYPE_TO_TIER = {}
+DOCUMENT_PRECEDENCE.forEach(tier => {
+  tier.docTypes.forEach(dt => { DOC_TYPE_TO_TIER[dt] = tier.key })
+})
 
 const KIND_ICONS = {
   product: Package,
@@ -85,12 +142,12 @@ const SUPABASE_FN_URL = (import.meta.env.VITE_SUPABASE_URL || 'https://mmfhjlpsu
 export default function Documents({ projectId }) {
   const { isArchitect } = useProject()
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('documents')
   const [docs, setDocs] = useState([])
   const [allProjectDocs, setAllProjectDocs] = useState([])
   const [scheduleData, setScheduleData] = useState({ groups: [], meta: { total: 0, confirmed: 0, approved: 0, to_review: 0 } })
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [expandedTiers, setExpandedTiers] = useState(new Set(['specifications', 'drawings', 'schedules']))
   const [expandedGroups, setExpandedGroups] = useState(new Set())
   const [selectedDoc, setSelectedDoc] = useState(null)
 
@@ -107,7 +164,6 @@ export default function Documents({ projectId }) {
         .eq('project_id', projectId)
         .eq('active', true)
         .order('shared_at', { ascending: false }),
-      // Selections now come from the portal-selections edge function
       fetch(`${SUPABASE_FN_URL}/portal-selections?project_id=${encodeURIComponent(projectId)}`)
         .then(r => r.json())
         .catch(() => ({ groups: [], meta: { total: 0, confirmed: 0, approved: 0, to_review: 0 } })),
@@ -140,12 +196,18 @@ export default function Documents({ projectId }) {
   }
 
   function openDocument(doc) {
-    // For architect view, doc is the project_documents row directly
-    // For client view, doc is the share row with project_documents nested
     const pd = isArchitect ? doc : doc.project_documents
     if (!pd) return
     setSelectedDoc({ ...pd, shareId: doc.id, shareNote: doc.share_note })
     if (!isArchitect && !doc.viewed_at) markViewed(doc.id)
+  }
+
+  function toggleTier(key) {
+    setExpandedTiers(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
   }
 
   function toggleGroup(key) {
@@ -156,10 +218,30 @@ export default function Documents({ projectId }) {
     })
   }
 
-  // Filter schedule data from edge function by search term
+  /* ── Classify documents into precedence tiers ── */
+  const documentList = isArchitect ? allProjectDocs : docs
+  const q = search.toLowerCase()
+
+  function classifyDocs() {
+    const tierDocs = {}
+    DOCUMENT_PRECEDENCE.forEach(t => { tierDocs[t.key] = [] })
+
+    documentList.forEach(d => {
+      const docType = isArchitect ? d.doc_type : (d.project_documents?.doc_type || '')
+      const title = isArchitect ? d.title : (d.project_documents?.title || '')
+      if (q && ![title, docType].join(' ').toLowerCase().includes(q)) return
+      const tierKey = DOC_TYPE_TO_TIER[docType] || 'administrative'
+      tierDocs[tierKey].push(d)
+    })
+
+    return tierDocs
+  }
+
+  const tierDocs = classifyDocs()
+
+  /* ── Schedule data filtered by search ── */
   const groupedSchedule = (scheduleData.groups || []).map(g => {
-    if (!search) return g
-    const q = search.toLowerCase()
+    if (!q) return g
     const items = g.items.filter(item => {
       const text = [item.code, item.title, item.manufacturer_name, item.model, item.colour, item.schedule_group].filter(Boolean).join(' ').toLowerCase()
       return text.includes(q)
@@ -167,27 +249,14 @@ export default function Documents({ projectId }) {
     return { ...g, items, item_count: items.length }
   }).filter(g => g.items.length > 0)
 
-  const documentList = isArchitect ? allProjectDocs : docs
-  const filteredDocs = documentList.filter(d => {
-    if (!search) return true
-    const title = isArchitect ? d.title : (d.project_documents?.title || '')
-    const docType = isArchitect ? d.doc_type : (d.project_documents?.doc_type || '')
-    return [title, docType].join(' ').toLowerCase().includes(search.toLowerCase())
-  })
-
-  const groupedDocs = isArchitect
-    ? Object.entries(
-        filteredDocs.reduce((acc, d) => {
-          const group = d.hierarchy_group || 'Other'
-          if (!acc[group]) acc[group] = []
-          acc[group].push(d)
-          return acc
-        }, {})
-      )
-    : null
-
   const totalScheduleItems = scheduleData.meta?.total || 0
-  const totalDocs = isArchitect ? allProjectDocs.length : docs.length
+
+  /* ── Counts per tier ── */
+  function getTierCount(tier) {
+    const docCount = tierDocs[tier.key]?.length || 0
+    if (tier.includesSelections) return docCount + totalScheduleItems
+    return docCount
+  }
 
   // ── Document viewer ──
   if (selectedDoc) {
@@ -206,236 +275,276 @@ export default function Documents({ projectId }) {
 
   return (
     <div className="max-w-4xl">
-      {/* Tab bar */}
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <div className="flex gap-1 backdrop-blur-xl bg-white/40 rounded-lg p-0.5 border border-white/40">
-          {[
-            { key: 'documents', label: 'Documents', icon: FileText, count: totalDocs },
-            { key: 'schedules', label: 'Schedules', icon: Grid3X3, count: totalScheduleItems },
-          ].map(t => (
-            <button
-              key={t.key}
-              onClick={() => { setActiveTab(t.key); setSearch('') }}
-              className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5 ${
-                activeTab === t.key
-                  ? 'bg-[var(--color-accent)] text-white'
-                  : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
-              }`}
-            >
-              <t.icon size={11} />
-              {t.label}
-              <span className={`text-[9px] px-1 py-0.5 rounded ${
-                activeTab === t.key ? 'bg-white/40' : 'bg-white/40'
-              }`}>
-                {t.count}
-              </span>
-            </button>
-          ))}
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <FileText size={22} style={{ color: 'var(--color-muted)' }} />
+          <div>
+            <h1 className="text-[18px] font-medium" style={{ color: 'var(--color-text)' }}>
+              Documents
+            </h1>
+            <p className="text-[11px] font-light mt-0.5" style={{ color: 'var(--color-muted)' }}>
+              Ordered by contractual precedence
+            </p>
+          </div>
         </div>
 
         <div className="relative">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-muted)]" />
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-muted)' }} />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder={activeTab === 'schedules' ? 'Search selections\u2026' : 'Search documents\u2026'}
-            className="pl-7 pr-3 py-1.5 rounded-lg border border-white/40 backdrop-blur-xl bg-white/40 text-[11px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors w-48"
+            placeholder="Search all documents…"
+            className="pl-7 pr-3 py-1.5 rounded-lg glass-t text-[11px] font-light focus:outline-none transition-colors w-48"
+            style={{ color: 'var(--color-text)' }}
           />
         </div>
       </div>
 
-      {/* Documents tab */}
-      {activeTab === 'documents' && (
-        <div>
-          {isArchitect && groupedDocs ? (
-            <div className="space-y-4">
-              {groupedDocs.map(([group, items]) => (
-                <div key={group}>
-                  <h3 className="text-[10px] tracking-[2px] uppercase text-[var(--color-muted)] font-medium mb-2 px-1">
-                    {group.replace(/_/g, ' ')}
-                  </h3>
-                  <div className="space-y-2">
-                    {items.map(doc => (
-                      <ArchitectDocRow key={doc.id} doc={doc} onClick={() => openDocument(doc)} />
-                    ))}
+      {/* Precedence sections */}
+      <div className="space-y-3">
+        {DOCUMENT_PRECEDENCE.map(tier => {
+          const isExpanded = expandedTiers.has(tier.key)
+          const count = getTierCount(tier)
+          const hasDocs = tierDocs[tier.key]?.length > 0
+          const hasSchedules = tier.includesSelections && groupedSchedule.length > 0
+          const hasContent = hasDocs || hasSchedules
+          const TierIcon = tier.icon
+
+          return (
+            <div key={tier.key} className="glass-s overflow-hidden">
+              {/* Tier header */}
+              <button
+                onClick={() => toggleTier(tier.key)}
+                className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-white/50 flex items-center justify-center shrink-0">
+                    <TierIcon size={16} style={{ color: 'var(--color-muted)' }} />
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div>
-              {filteredDocs.map(doc => (
-                <div key={doc.id} className="mb-2">
-                  <ClientDocRow doc={doc} onClick={() => openDocument(doc)} />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {filteredDocs.length === 0 && (
-            <div className="text-center py-20 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
-              <FileText size={24} className="mx-auto text-[var(--color-border)] mb-3" />
-              <p className="text-sm text-[var(--color-muted)] font-light">
-                {search ? 'No documents match your search.' : 'No documents shared yet.'}
-              </p>
-              {!isArchitect && (
-                <p className="text-xs text-[var(--color-muted)] font-light mt-1">
-                  Documents will appear here when your architect shares them.
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Schedules tab */}
-      {activeTab === 'schedules' && (
-        <div className="space-y-3">
-          {groupedSchedule.map(group => {
-            const isExpanded = expandedGroups.has(group.group_key)
-            return (
-              <div key={group.group_key} className="backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 overflow-hidden">
-                <button
-                  onClick={() => toggleGroup(group.group_key)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
-                >
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-medium">{group.group_name}</h2>
-                      <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded">
-                        {group.items.length}
+                      <h2 className="text-[14px] font-medium" style={{ color: 'var(--color-text)' }}>
+                        {tier.label}
+                      </h2>
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-white/50"
+                            style={{ color: 'var(--color-muted)' }}>
+                        {count}
+                      </span>
+                      <span className="text-[9px] uppercase tracking-[1.5px] font-medium px-1.5 py-0.5 rounded bg-white/30"
+                            style={{ color: 'var(--color-muted)' }}>
+                        Tier {tier.tier}
                       </span>
                     </div>
-                    <p className="text-[11px] text-[var(--color-muted)] font-light mt-0.5">{group.description}</p>
+                    <p className="text-[11px] font-light mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                      {tier.description}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {isExpanded
-                      ? <ChevronDown size={14} className="text-[var(--color-muted)]" />
-                      : <ChevronRight size={14} className="text-[var(--color-muted)]" />}
-                  </div>
-                </button>
+                </div>
+                <div className="shrink-0">
+                  {isExpanded
+                    ? <ChevronDown size={14} style={{ color: 'var(--color-muted)' }} />
+                    : <ChevronRight size={14} style={{ color: 'var(--color-muted)' }} />}
+                </div>
+              </button>
 
-                {isExpanded && (
-                  <div className="border-t border-white/30 px-4 py-3 space-y-1">
-                    {(() => {
-                      // Build parent→child hierarchy for visual nesting
-                      const parents = group.items.filter(i => !i.is_component)
-                      const componentMap = new Map()
-                      // Map child selection_ids to their portal items
-                      const childSelMap = new Map()
-                      group.items.forEach(i => { if (i.is_component) childSelMap.set(i.selection_id, i) })
-                      // Link parents to their child portal items via components array
-                      parents.forEach(p => {
-                        const kids = (p.components || [])
-                          .map(c => childSelMap.get(c.id))
-                          .filter(Boolean)
-                        if (kids.length) componentMap.set(p.portal_id, kids)
-                      })
-                      // Collect orphan components (not linked to any parent in this group)
-                      const linkedChildIds = new Set()
-                      for (const kids of componentMap.values()) kids.forEach(k => linkedChildIds.add(k.portal_id))
-                      const orphans = group.items.filter(i => i.is_component && !linkedChildIds.has(i.portal_id))
+              {/* Tier content */}
+              {isExpanded && (
+                <div className="border-t border-white/30 px-5 py-4">
+                  {!hasContent && (
+                    <p className="text-[12px] font-light py-4 text-center" style={{ color: 'var(--color-muted)' }}>
+                      No {tier.label.toLowerCase()} shared yet.
+                    </p>
+                  )}
 
-                      const renderRow = (item, isChild = false) => {
-                        const Icon = KIND_ICONS[item.selection_kind] || Package
+                  {/* Document rows for this tier */}
+                  {hasDocs && (
+                    <div className="space-y-2 mb-3">
+                      {tierDocs[tier.key].map(doc => (
+                        isArchitect
+                          ? <ArchitectDocRow key={doc.id} doc={doc} onClick={() => openDocument(doc)} />
+                          : <ClientDocRow key={doc.id} doc={doc} onClick={() => openDocument(doc)} />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Schedule selections (only in the Schedules tier) */}
+                  {tier.includesSelections && hasSchedules && (
+                    <div className="space-y-2">
+                      {hasDocs && (
+                        <div className="border-t border-white/20 my-3" />
+                      )}
+                      <p className="text-[10px] uppercase tracking-[2px] font-medium mb-2 px-1"
+                         style={{ color: 'var(--color-muted)' }}>
+                        Selections
+                      </p>
+                      {groupedSchedule.map(group => {
+                        const isGroupExpanded = expandedGroups.has(group.group_key)
                         return (
-                          <div key={item.portal_id}
-                            className={`grid gap-3 py-3.5 text-[12px] rounded-lg border transition-colors items-start ${
-                              isChild
-                                ? 'border-white/20 bg-white/5 hover:bg-white/30 ml-6 pl-4 pr-4 border-l-2 border-l-[var(--color-border)]'
-                                : 'border-white/30 bg-white/10 hover:bg-white/40 px-4'
-                            }`}
-                            style={{ gridTemplateColumns: isChild ? '48px 48px 2fr 2.5fr 1.5fr 80px' : '60px 48px 2fr 2.5fr 1.5fr 80px' }}>
-                            {/* CODE */}
-                            <div>
-                              {isChild ? (
-                                <span className="text-[10px] text-[var(--color-muted)] tracking-tight leading-none">{item.component_role?.replace(/_/g, ' ') || '\u2014'}</span>
-                              ) : item.code ? (
-                                <span className="font-semibold text-[13px] text-[var(--color-text)] tracking-tight leading-none">{item.code}</span>
-                              ) : (
-                                <span className="text-[10px] text-[var(--color-border)]">{'\u2014'}</span>
-                              )}
-                              {!isChild && item.selection_kind && (
-                                <span className="block text-[8px] text-[var(--color-muted)] mt-1 uppercase tracking-wider">{item.selection_kind.replace(/_/g, ' ')}</span>
-                              )}
-                            </div>
-                            {/* IMAGE */}
-                            <div>
-                              {item.portal_image_url ? (
-                                <img src={item.portal_image_url} alt="" style={{
-                                  width: isChild ? 36 : 48, height: isChild ? 36 : 48, borderRadius: 8, objectFit: 'cover',
-                                  border: '1px solid rgba(0,0,0,0.06)',
-                                }} loading="lazy"
-                                onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = `<div style="width:${isChild ? 36 : 48}px;height:${isChild ? 36 : 48}px;border-radius:8px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>` }}
-                                />
-                              ) : (
-                                <div style={{
-                                  width: isChild ? 36 : 48, height: isChild ? 36 : 48, borderRadius: 8,
-                                  background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                }}>
-                                  <Icon size={isChild ? 12 : 16} style={{ color: 'var(--color-border)' }} />
+                          <div key={group.group_key} className="glass-t overflow-hidden">
+                            <button
+                              onClick={() => toggleGroup(group.group_key)}
+                              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/40 transition-colors"
+                            >
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="text-[13px] font-medium" style={{ color: 'var(--color-text)' }}>
+                                    {group.group_name}
+                                  </h3>
+                                  <span className="text-[10px] bg-white/50 px-1.5 py-0.5 rounded"
+                                        style={{ color: 'var(--color-muted)' }}>
+                                    {group.items.length}
+                                  </span>
                                 </div>
-                              )}
-                            </div>
-                            {/* ITEM NAME */}
-                            <div>
-                              <div className={`leading-snug text-[var(--color-text)] ${isChild ? 'text-[11px]' : 'font-medium'}`}>{item.title || '\u2014'}</div>
-                            </div>
-                            {/* BRAND / PRODUCT */}
-                            <div className="text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
-                              {item.manufacturer_name && <span className={`text-[var(--color-text)] ${isChild ? '' : 'font-medium'}`}>{item.manufacturer_name}</span>}
-                              {item.manufacturer_name && item.model && <br />}
-                              <span className="text-[var(--color-muted)]">{item.model || (!item.manufacturer_name && '\u2014')}</span>
-                            </div>
-                            {/* COLOUR */}
-                            <div className="text-[var(--color-text)] text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
-                              {item.colour || <span className="text-[var(--color-muted)]">{'\u2014'}</span>}
-                            </div>
-                            {/* STATUS */}
-                            <div>
-                              <span className={`text-[9px] px-1.5 py-0.5 rounded ${
-                                item.approval_status === 'locked' ? 'bg-[var(--color-confirmed)]/10 text-[var(--color-confirmed)]' :
-                                item.approval_status === 'proposed' ? 'bg-[var(--color-pending)]/10 text-[var(--color-pending)]' :
-                                'bg-white/40 text-[var(--color-muted)]'
-                              }`}>
-                                {STATUS_LABELS[item.approval_status] || item.approval_status || '\u2014'}
-                              </span>
-                            </div>
+                                <p className="text-[11px] font-light mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                                  {group.description}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {isGroupExpanded
+                                  ? <ChevronDown size={12} style={{ color: 'var(--color-muted)' }} />
+                                  : <ChevronRight size={12} style={{ color: 'var(--color-muted)' }} />}
+                              </div>
+                            </button>
+
+                            {isGroupExpanded && (
+                              <div className="border-t border-white/20 px-4 py-3 space-y-1">
+                                {renderScheduleItems(group)}
+                              </div>
+                            )}
                           </div>
                         )
-                      }
+                      })}
+                    </div>
+                  )}
 
-                      return (
-                        <>
-                          {parents.map(parent => (
-                            <div key={parent.portal_id} className="space-y-1">
-                              {renderRow(parent, false)}
-                              {(componentMap.get(parent.portal_id) || []).map(child => renderRow(child, true))}
-                            </div>
-                          ))}
-                          {orphans.map(item => renderRow(item, true))}
-                        </>
-                      )
-                    })()}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+                  {/* Empty state for selections when no schedule docs but tier is schedules */}
+                  {tier.includesSelections && !hasSchedules && !hasDocs && null /* already handled by !hasContent above */}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
-          {groupedSchedule.length === 0 && (
-            <div className="text-center py-20 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
-              <ListChecks size={24} className="mx-auto text-[var(--color-border)] mb-3" />
-              <p className="text-sm text-[var(--color-muted)] font-light">
-                {search ? 'No items match your search.' : 'No schedule data yet.'}
-              </p>
+/* ── Schedule items renderer ── */
+function renderScheduleItems(group) {
+  const parents = group.items.filter(i => !i.is_component)
+  const childSelMap = new Map()
+  group.items.forEach(i => { if (i.is_component) childSelMap.set(i.selection_id, i) })
+  const componentMap = new Map()
+  parents.forEach(p => {
+    const kids = (p.components || [])
+      .map(c => childSelMap.get(c.id))
+      .filter(Boolean)
+    if (kids.length) componentMap.set(p.portal_id, kids)
+  })
+  const linkedChildIds = new Set()
+  for (const kids of componentMap.values()) kids.forEach(k => linkedChildIds.add(k.portal_id))
+  const orphans = group.items.filter(i => i.is_component && !linkedChildIds.has(i.portal_id))
+
+  const renderRow = (item, isChild = false) => {
+    const Icon = KIND_ICONS[item.selection_kind] || Package
+    return (
+      <div key={item.portal_id}
+        className={`grid gap-3 py-3.5 text-[12px] rounded-lg border transition-colors items-start ${
+          isChild
+            ? 'border-white/10 bg-white/[0.03] hover:bg-white/10 ml-6 pl-4 pr-4 border-l-2 border-l-[var(--color-border)]/40'
+            : 'border-white/40 bg-white/20 hover:bg-white/35 px-4 shadow-sm'
+        }`}
+        style={{ gridTemplateColumns: isChild ? '48px 48px 2fr 2.5fr 1.5fr 80px' : '60px 48px 2fr 2.5fr 1.5fr 80px' }}>
+        {/* CODE */}
+        <div>
+          {isChild ? (
+            <span className="text-[9px] tracking-tight leading-none uppercase" style={{ color: 'var(--color-muted)' }}>
+              {item.component_role?.replace(/_/g, ' ') || '\u2014'}
+            </span>
+          ) : item.code ? (
+            <span className="inline-block font-semibold text-[11px] tracking-tight leading-none px-2 py-1 rounded-full border bg-white/20 whitespace-nowrap"
+                  style={{ color: 'var(--color-text)', borderColor: 'rgba(26,26,26,0.3)' }}>
+              {item.code}
+            </span>
+          ) : (
+            <span className="text-[10px]" style={{ color: 'var(--color-border)' }}>{'\u2014'}</span>
+          )}
+          {!isChild && (item.code_title || item.selection_kind) && (
+            <span className="block text-[8px] mt-1 uppercase tracking-wider leading-tight" style={{ color: 'var(--color-muted)' }}>
+              {item.code_title || item.selection_kind?.replace(/_/g, ' ')}
+            </span>
+          )}
+        </div>
+        {/* IMAGE */}
+        <div>
+          {item.portal_image_url ? (
+            <img src={item.portal_image_url} alt="" style={{
+              width: isChild ? 36 : 48, height: isChild ? 36 : 48, borderRadius: 8, objectFit: 'cover',
+              border: '1px solid rgba(0,0,0,0.06)',
+            }} loading="lazy"
+            onError={e => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = `<div style="width:${isChild ? 36 : 48}px;height:${isChild ? 36 : 48}px;border-radius:8px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04)"></div>` }}
+            />
+          ) : (
+            <div style={{
+              width: isChild ? 36 : 48, height: isChild ? 36 : 48, borderRadius: 8,
+              background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.04)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Icon size={isChild ? 12 : 16} style={{ color: 'var(--color-border)' }} />
             </div>
           )}
         </div>
-      )}
-    </div>
+        {/* ITEM NAME */}
+        <div>
+          <div className={`leading-snug ${isChild ? 'text-[11px]' : 'font-medium'}`}
+               style={{ color: 'var(--color-text)' }}>
+            {item.title || '\u2014'}
+          </div>
+        </div>
+        {/* BRAND / PRODUCT */}
+        <div className="text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>
+          {item.manufacturer_name && (
+            <span className={isChild ? '' : 'font-medium'} style={{ color: 'var(--color-text)' }}>
+              {item.manufacturer_name}
+            </span>
+          )}
+          {item.manufacturer_name && item.model && <br />}
+          <span style={{ color: 'var(--color-muted)' }}>{item.model || (!item.manufacturer_name && '\u2014')}</span>
+        </div>
+        {/* COLOUR */}
+        <div className="text-[11px] leading-relaxed" style={{ color: 'var(--color-text)', wordBreak: 'break-word' }}>
+          {item.colour || <span style={{ color: 'var(--color-muted)' }}>{'\u2014'}</span>}
+        </div>
+        {/* STATUS */}
+        <div>
+          <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+            item.approval_status === 'locked' ? 'bg-[var(--color-approved)]/10' :
+            item.approval_status === 'proposed' ? 'bg-[var(--color-pending)]/10' :
+            'bg-white/40'
+          }`} style={{
+            color: item.approval_status === 'locked' ? 'var(--color-approved)' :
+                   item.approval_status === 'proposed' ? 'var(--color-pending)' :
+                   'var(--color-muted)'
+          }}>
+            {STATUS_LABELS[item.approval_status] || item.approval_status || '\u2014'}
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {parents.map(parent => (
+        <div key={parent.portal_id} className="space-y-1">
+          {renderRow(parent, false)}
+          {(componentMap.get(parent.portal_id) || []).map(child => renderRow(child, true))}
+        </div>
+      ))}
+      {orphans.map(item => renderRow(item, true))}
+    </>
   )
 }
 
@@ -451,22 +560,23 @@ function DocumentViewer({ doc, onBack }) {
       <div className="flex items-center gap-3 mb-4">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg backdrop-blur-xl bg-white/40 border border-white/40 text-[11px] font-medium text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/60 transition-all"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass-t text-[11px] font-medium hover:bg-white/60 transition-all"
+          style={{ color: 'var(--color-muted)' }}
         >
           <ArrowLeft size={12} />
           Documents
         </button>
         <div className="flex-1" />
-        <span className="text-[10px] text-[var(--color-muted)] bg-white/30 px-2 py-0.5 rounded">
+        <span className="text-[10px] bg-white/30 px-2 py-0.5 rounded" style={{ color: 'var(--color-muted)' }}>
           {DOC_TYPE_LABELS[doc.doc_type] || doc.doc_type?.replace(/_/g, ' ') || 'Document'}
         </span>
         {doc.version && (
-          <span className="text-[10px] text-[var(--color-muted)]">{doc.version}</span>
+          <span className="text-[10px]" style={{ color: 'var(--color-muted)' }}>{doc.version}</span>
         )}
       </div>
 
       {/* Document content panel */}
-      <div className="backdrop-blur-xl bg-white/70 rounded-2xl border border-white/50 shadow-sm overflow-hidden">
+      <div className="glass rounded-2xl shadow-sm overflow-hidden">
         {hasContent ? (
           <div className="doc-viewer-content p-8 md:p-10 lg:p-12">
             <div dangerouslySetInnerHTML={{ __html: doc.content_html }} />
@@ -476,12 +586,14 @@ function DocumentViewer({ doc, onBack }) {
           <div className="p-8 md:p-10">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 rounded-xl bg-white/60 flex items-center justify-center">
-                <FileText size={24} strokeWidth={1.2} className="text-[var(--color-muted)]" />
+                <FileText size={24} strokeWidth={1.2} style={{ color: 'var(--color-muted)' }} />
               </div>
               <div>
-                <h1 className="text-lg font-medium text-[var(--color-text)]">{doc.title || 'Untitled Document'}</h1>
+                <h1 className="text-[15px] font-medium" style={{ color: 'var(--color-text)' }}>
+                  {doc.title || 'Untitled Document'}
+                </h1>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded">
+                  <span className="text-[10px] bg-white/50 px-1.5 py-0.5 rounded" style={{ color: 'var(--color-muted)' }}>
                     {DOC_TYPE_LABELS[doc.doc_type] || doc.doc_type?.replace(/_/g, ' ')}
                   </span>
                   <span className="text-[10px] font-medium" style={{
@@ -491,34 +603,34 @@ function DocumentViewer({ doc, onBack }) {
                   }}>
                     {doc.status?.replace(/_/g, ' ')}
                   </span>
-                  {doc.version && <span className="text-[10px] text-[var(--color-muted)]">{doc.version}</span>}
+                  {doc.version && <span className="text-[10px]" style={{ color: 'var(--color-muted)' }}>{doc.version}</span>}
                 </div>
               </div>
             </div>
 
             {doc.stage && (
               <div className="mb-4 px-4 py-3 rounded-lg bg-white/40 border border-white/30">
-                <span className="text-[10px] text-[var(--color-muted)] uppercase tracking-wider font-medium">Stage</span>
-                <p className="text-sm text-[var(--color-text)] mt-0.5">{doc.stage}</p>
+                <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: 'var(--color-muted)' }}>Stage</span>
+                <p className="text-[14px] mt-0.5" style={{ color: 'var(--color-text)' }}>{doc.stage}</p>
               </div>
             )}
 
             {doc.notes && (
               <div className="mb-4">
-                <span className="text-[10px] text-[var(--color-muted)] uppercase tracking-wider font-medium">Summary</span>
-                <p className="text-sm text-[var(--color-text)] mt-1 leading-relaxed font-light">{doc.notes}</p>
+                <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: 'var(--color-muted)' }}>Summary</span>
+                <p className="text-[14px] mt-1 leading-relaxed font-light" style={{ color: 'var(--color-text)' }}>{doc.notes}</p>
               </div>
             )}
 
             {doc.shareNote && (
-              <div className="mb-4 px-4 py-3 rounded-lg bg-[var(--color-pending)]/5 border-l-2 border-[var(--color-pending)]">
-                <span className="text-[10px] text-[var(--color-muted)] uppercase tracking-wider font-medium">Architect Note</span>
-                <p className="text-sm text-[var(--color-text)] mt-1 font-light italic">{doc.shareNote}</p>
+              <div className="mb-4 px-4 py-3 rounded-lg border-l-2" style={{ background: 'rgba(107,79,0,0.05)', borderColor: 'var(--color-pending)' }}>
+                <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: 'var(--color-muted)' }}>Architect Note</span>
+                <p className="text-[14px] mt-1 font-light italic" style={{ color: 'var(--color-text)' }}>{doc.shareNote}</p>
               </div>
             )}
 
             <div className="mt-8 pt-4 border-t border-white/30">
-              <p className="text-[11px] text-[var(--color-muted)] font-light">
+              <p className="text-[11px] font-light" style={{ color: 'var(--color-muted)' }}>
                 Full document content is being prepared. Contact your architect for the complete document.
               </p>
             </div>
@@ -544,29 +656,30 @@ function ArchitectDocRow({ doc, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-white/50 border border-white/40 hover:bg-white/70 hover:shadow-sm transition-all cursor-pointer group"
+      className="w-full text-left flex items-center gap-4 p-4 rounded-xl glass-t glass-t-hover hover:shadow-sm transition-all cursor-pointer group"
     >
       <div className="w-9 h-9 rounded-lg bg-white/60 flex items-center justify-center shrink-0 group-hover:bg-white/80 transition-colors">
-        <FileText size={16} strokeWidth={1.5} className="text-[var(--color-muted)]" />
+        <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--color-muted)' }} />
       </div>
 
       <div className="flex-1 min-w-0">
-        <h3 className="text-sm font-normal truncate text-[var(--color-text)]">{doc.title}</h3>
+        <h3 className="text-[14px] font-normal truncate" style={{ color: 'var(--color-text)' }}>{doc.title}</h3>
         <div className="flex items-center gap-3 mt-0.5">
-          <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded">{typeLabel}</span>
+          <span className="text-[10px] bg-white/50 px-1.5 py-0.5 rounded" style={{ color: 'var(--color-muted)' }}>{typeLabel}</span>
           <span className="text-[10px] font-medium" style={{ color: statusColor }}>
             {doc.status?.replace(/_/g, ' ')}
           </span>
-          {doc.version && <span className="text-[10px] text-[var(--color-muted)] font-light">{doc.version}</span>}
-          {doc.file_size_bytes && <span className="text-[10px] text-[var(--color-muted)] font-light">{formatSize(doc.file_size_bytes)}</span>}
+          {doc.version && <span className="text-[10px] font-light" style={{ color: 'var(--color-muted)' }}>{doc.version}</span>}
+          {doc.file_size_bytes && <span className="text-[10px] font-light" style={{ color: 'var(--color-muted)' }}>{formatSize(doc.file_size_bytes)}</span>}
         </div>
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
-        <span className="text-[10px] text-[var(--color-muted)] bg-white/40 px-2 py-0.5 rounded">
+        <span className="text-[10px] bg-white/40 px-2 py-0.5 rounded" style={{ color: 'var(--color-muted)' }}>
           {doc.stage}
         </span>
-        <div className="w-7 h-7 rounded-md flex items-center justify-center text-[var(--color-muted)] group-hover:text-[var(--color-accent)] transition-colors">
+        <div className="w-7 h-7 rounded-md flex items-center justify-center group-hover:text-[var(--color-accent)] transition-colors"
+             style={{ color: 'var(--color-muted)' }}>
           <Eye size={13} />
         </div>
       </div>
@@ -583,37 +696,39 @@ function ClientDocRow({ doc, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-white/40 border transition-all hover:shadow-sm hover:bg-white/60 cursor-pointer group ${
-        isNew ? 'border-[var(--color-pending)]/40 border-l-[3px]' : 'border-white/40'
+      className={`w-full text-left flex items-center gap-4 p-4 rounded-xl glass-t glass-t-hover transition-all hover:shadow-sm cursor-pointer group ${
+        isNew ? 'glass-pending border-l-[3px]' : ''
       }`}
     >
       <div className="w-9 h-9 rounded-lg bg-white/50 flex items-center justify-center shrink-0 group-hover:bg-white/70 transition-colors">
-        <FileText size={16} strokeWidth={1.5} className="text-[var(--color-muted)]" />
+        <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--color-muted)' }} />
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-normal truncate">{pd.title || 'Untitled'}</h3>
+          <h3 className="text-[14px] font-normal truncate" style={{ color: 'var(--color-text)' }}>{pd.title || 'Untitled'}</h3>
           {isNew && (
-            <span className="text-[9px] font-medium tracking-wider uppercase px-1.5 py-0.5 rounded bg-[var(--color-pending)]/10 text-[var(--color-pending)]">
+            <span className="text-[9px] font-medium tracking-wider uppercase px-1.5 py-0.5 rounded"
+                  style={{ background: 'rgba(107,79,0,0.1)', color: 'var(--color-pending)' }}>
               New
             </span>
           )}
         </div>
         <div className="flex items-center gap-3 mt-0.5">
-          {typeLabel && <span className="text-[10px] text-[var(--color-muted)] bg-white/40 px-1.5 py-0.5 rounded">{typeLabel}</span>}
-          {pd.version && <span className="text-xs text-[var(--color-muted)] font-light">{pd.version}</span>}
-          {pd.file_size_bytes && <span className="text-xs text-[var(--color-muted)] font-light">{formatSize(pd.file_size_bytes)}</span>}
-          <span className="text-xs text-[var(--color-muted)] font-light flex items-center gap-1">
+          {typeLabel && <span className="text-[10px] bg-white/40 px-1.5 py-0.5 rounded" style={{ color: 'var(--color-muted)' }}>{typeLabel}</span>}
+          {pd.version && <span className="text-[12px] font-light" style={{ color: 'var(--color-muted)' }}>{pd.version}</span>}
+          {pd.file_size_bytes && <span className="text-[12px] font-light" style={{ color: 'var(--color-muted)' }}>{formatSize(pd.file_size_bytes)}</span>}
+          <span className="text-[12px] font-light flex items-center gap-1" style={{ color: 'var(--color-muted)' }}>
             <Clock size={10} /> {formatDate(doc.shared_at)}
           </span>
         </div>
         {doc.share_note && (
-          <p className="text-xs text-[var(--color-muted)] font-light mt-1 italic">{doc.share_note}</p>
+          <p className="text-[12px] font-light mt-1 italic" style={{ color: 'var(--color-muted)' }}>{doc.share_note}</p>
         )}
       </div>
 
-      <div className="w-7 h-7 rounded-md flex items-center justify-center text-[var(--color-muted)] group-hover:text-[var(--color-accent)] transition-colors shrink-0">
+      <div className="w-7 h-7 rounded-md flex items-center justify-center group-hover:text-[var(--color-accent)] transition-colors shrink-0"
+           style={{ color: 'var(--color-muted)' }}>
         <Eye size={14} />
       </div>
     </button>

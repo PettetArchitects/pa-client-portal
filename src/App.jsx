@@ -10,8 +10,8 @@ import Overview from './pages/Overview'
 import LogoAnimation from './components/LogoAnimation'
 import { ToastProvider } from './components/Toast'
 
+import Decisions from './pages/decisions'
 // Lazy-loaded pages: split into separate chunks for faster initial load
-const Decisions = lazy(() => import('./pages/decisions'))
 const Documents = lazy(() => import('./pages/Documents'))
 const Timeline = lazy(() => import('./pages/Timeline'))
 const Messages = lazy(() => import('./pages/Messages'))
@@ -130,7 +130,7 @@ function ProtectedApp() {
     <Routes>
       <Route element={<Shell projectName={pname} />}>
         <Route index element={<Overview projectId={pid} />} />
-        <Route path="selections" element={<PageErrorBoundary><Suspense fallback={pageFallback}><Decisions projectId={pid} /></Suspense></PageErrorBoundary>} />
+        <Route path="selections" element={<PageErrorBoundary><Decisions projectId={pid} /></PageErrorBoundary>} />
         <Route path="documents" element={<PageErrorBoundary><Suspense fallback={pageFallback}><Documents projectId={pid} /></Suspense></PageErrorBoundary>} />
         <Route path="timeline" element={<PageErrorBoundary><Suspense fallback={pageFallback}><Timeline projectId={pid} /></Suspense></PageErrorBoundary>} />
         <Route path="messages" element={<PageErrorBoundary><Suspense fallback={pageFallback}><Messages projectId={pid} /></Suspense></PageErrorBoundary>} />

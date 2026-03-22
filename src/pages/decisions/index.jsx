@@ -39,11 +39,6 @@ export default function Decisions({ projectId }) {
   const [sortBy, setSortBy] = useState('group')
   const [showFilter, setShowFilter] = useState(false)
 
-  useEffect(() => {
-    if (!projectId) return
-    loadData()
-  }, [projectId])
-
   async function loadData() {
     const [grpRes, selRes, roomRes, scRes, codeRes, linkRes] = await Promise.all([
       supabase.from('schedule_groups').select('*').eq('project_id', projectId).eq('visible_to_homeowner', true).order('display_order'),
@@ -131,18 +126,15 @@ export default function Decisions({ projectId }) {
     if (pendingGroups.size > 0) setExpandedGroups(pendingGroups)
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (projectId) loadData() }, [projectId])
+
   async function handleApproveItem(itemId) {
     await supabase.from('homeowner_selections_portal')
       .update({ approval_status: 'approved', approved_at: new Date().toISOString() })
       .eq('id', itemId)
     setItems(prev => prev.map(i => i.id === itemId ? { ...i, approval_status: 'approved' } : i))
     addToast('Selection approved.', 'success')
-  }
-
-  async function handleApproveGroup(groupKey) {
-    const groupPending = items.filter(i => i.schedule_group === groupKey && i.approval_status === 'pending')
-    if (groupPending.length === 0) return
-    setConfirmBulk({ open: true, type: 'group', key: groupKey, count: groupPending.length })
   }
 
   async function handleApproveRoom(roomKey) {

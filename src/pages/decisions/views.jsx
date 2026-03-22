@@ -496,8 +496,18 @@ export function CodeHierarchyView({ items, codeHierarchyMap, codeTitleMap, selec
 
 /* ── BoQ View ── */
 export function BoQView({ groupedData, natspecMap, codeTitleMap }) {
-  let grandLow = 0
-  let grandHigh = 0
+  // Pre-compute group and grand totals before render
+  const groupTotals = groupedData.map(group => {
+    let low = 0, high = 0
+    group.items.forEach(item => {
+      const attrs = item.project_selections?.attributes || {}
+      low += parseFloat(attrs.cost_low) || 0
+      high += parseFloat(attrs.cost_high) || 0
+    })
+    return { low, high }
+  })
+  const grandLow = groupTotals.reduce((sum, g) => sum + g.low, 0)
+  const grandHigh = groupTotals.reduce((sum, g) => sum + g.high, 0)
 
   return (
     <div className="space-y-3">
@@ -509,16 +519,8 @@ export function BoQView({ groupedData, natspecMap, codeTitleMap }) {
           </div>
         </div>
         <div className="space-y-1">
-          {groupedData.map(group => {
-            let groupLow = 0
-            let groupHigh = 0
-            group.items.forEach(item => {
-              const attrs = item.project_selections?.attributes || {}
-              groupLow += parseFloat(attrs.cost_low) || 0
-              groupHigh += parseFloat(attrs.cost_high) || 0
-            })
-            grandLow += groupLow
-            grandHigh += groupHigh
+          {groupedData.map((group, idx) => {
+            const { low: groupLow, high: groupHigh } = groupTotals[idx]
             return (
               <div key={group.group_key} className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/30 transition-colors">
                 <div className="flex items-center gap-2">
@@ -540,7 +542,7 @@ export function BoQView({ groupedData, natspecMap, codeTitleMap }) {
         <div className="border-t border-[var(--color-border)] mt-3 pt-3 flex justify-between items-baseline">
           <span className="text-[12px] font-medium">Total estimated range</span>
           <span className="text-[14px] font-medium font-mono">
-            ${formatK(grandLow)} \u2013 ${formatK(grandHigh)}
+            {'$'}{formatK(grandLow)} {'\u2013'} {'$'}{formatK(grandHigh)}
           </span>
         </div>
       </div>

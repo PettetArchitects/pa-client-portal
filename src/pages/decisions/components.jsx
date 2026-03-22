@@ -3,11 +3,11 @@ import {
   Check, MessageSquare, ArrowUpRight, Package, Palette, Wrench, AlertCircle,
 } from 'lucide-react'
 import {
-  STATUS_STYLES, ROLE_LABELS, ROOM_CONFIG,
+  STATUS_STYLES, ROLE_LABELS,
   parseCode, getColourBackground, formatDimensions,
 } from './constants'
 
-export const KIND_ICONS = {
+const KIND_ICONS = {
   product: Package,
   finish: Palette,
   material: Palette,
@@ -361,7 +361,7 @@ export function ItemRow({ item, natspecMap, subCriteriaMap, onApproveItem, onReq
 }
 
 /* ── Compact child/component row ── */
-export function CompactChildRow({ item, natspecMap, subCriteriaMap, codeTitleMap, onApproveItem, onRequestChange }) {
+export function CompactChildRow({ item, subCriteriaMap, codeTitleMap, onApproveItem }) {
   const sel = item.project_selections || {}
   const attrs = sel.attributes || {}
   const st = STATUS_STYLES[item.approval_status] || STATUS_STYLES.not_applicable

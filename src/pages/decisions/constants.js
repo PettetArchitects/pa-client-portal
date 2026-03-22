@@ -99,7 +99,7 @@ export function getTopLevelAssemblyCode(code, codeHierarchyMap) {
 export function parseCode(title, attrs) {
   const sysCode = attrs?.code || null
   if (!title) return { code: sysCode, name: title }
-  const m = title.match(/^([A-Z][A-Z0-9]*(?:\.[0-9]+)?)\s*[—–\-]\s*(.+)$/i)
+  const m = title.match(/^([A-Z][A-Z0-9]*(?:\.[0-9]+)?)\s*[—–-]\s*(.+)$/i)
   if (m) return { code: sysCode || m[1], name: m[2] }
   const j = title.match(/^Joinery\s+(J\d+(?:\.\d+)?)\s*$/i)
   if (j) return { code: sysCode || j[1], name: 'Joinery' }

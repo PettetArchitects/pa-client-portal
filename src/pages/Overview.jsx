@@ -117,17 +117,22 @@ export default function Overview({ projectId }) {
     const [selRes, docRes, mileRes, msgRes] = mainResults
 
     const selections = selRes.data || []
-    const pending = selections.filter(s => s.approval_status === 'pending').length
-    const approved = selections.filter(s => s.approval_status === 'approved').length
+    // Exclude not_applicable from actionable totals
+    const actionable = selections.filter(s => s.approval_status !== 'not_applicable')
+    const approved = actionable.filter(s => s.approval_status === 'approved').length
+    const confirmed = actionable.filter(s => s.approval_status === 'architect_confirmed').length
+    const pending = actionable.filter(s => s.approval_status === 'pending').length
     const urgent = selections.filter(s => s.priority === 'urgent').length
 
-    // Build schedule group breakdown
+    // Build schedule group breakdown (exclude not_applicable from totals)
     const groupMap = {}
     selections.forEach(s => {
+      if (s.approval_status === 'not_applicable') return
       const g = s.schedule_group || 'other'
-      if (!groupMap[g]) groupMap[g] = { total: 0, approved: 0, pending: 0 }
+      if (!groupMap[g]) groupMap[g] = { total: 0, approved: 0, confirmed: 0, pending: 0 }
       groupMap[g].total++
       if (s.approval_status === 'approved') groupMap[g].approved++
+      if (s.approval_status === 'architect_confirmed') groupMap[g].confirmed++
       if (s.approval_status === 'pending') groupMap[g].pending++
     })
     const groupList = Object.entries(groupMap)
@@ -135,8 +140,9 @@ export default function Overview({ projectId }) {
       .sort((a, b) => b.pending - a.pending)
 
     setStats({
-      totalSelections: selections.length,
+      totalSelections: actionable.length,
       approvedSelections: approved,
+      confirmedSelections: confirmed,
       pendingApproval: pending,
       urgentItems: urgent,
       documents: docRes.count || 0,
@@ -207,7 +213,10 @@ export default function Overview({ projectId }) {
   const certifiedAmount = payments.filter(p => p.claim_status === 'certified' || p.claim_status === 'released').reduce((sum, p) => sum + (Number(p.certified_amount || p.amount_inc_gst) || 0), 0)
   const claimedAmount = payments.filter(p => p.claim_status === 'claimed').reduce((sum, p) => sum + (Number(p.claimed_amount || p.amount_inc_gst) || 0), 0)
 
-  const selectionPct = stats.totalSelections > 0 ? Math.round((stats.approvedSelections / stats.totalSelections) * 100) : 0
+  const decidedCount = (stats.approvedSelections || 0) + (stats.confirmedSelections || 0)
+  const selectionPct = stats.totalSelections > 0 ? Math.round((decidedCount / stats.totalSelections) * 100) : 0
+  const approvedPct = stats.totalSelections > 0 ? Math.round((stats.approvedSelections / stats.totalSelections) * 100) : 0
+  const confirmedPct = stats.totalSelections > 0 ? Math.round((stats.confirmedSelections / stats.totalSelections) * 100) : 0
 
   return (
     <div className="relative max-w-3xl space-y-6">
@@ -254,9 +263,9 @@ export default function Overview({ projectId }) {
             <div className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center"><CheckSquare size={13} strokeWidth={1.5} className="text-[var(--color-muted)]" /></div>
             <ChevronRight size={12} className="text-[var(--color-border)] group-hover:text-[var(--color-muted)] transition-colors" />
           </div>
-          <p className="text-[18px] font-light" style={{ color: 'var(--color-text)' }}>{stats.pendingApproval}</p>
-          <p className="text-[10px] font-medium tracking-[1px] uppercase text-[var(--color-muted)] mt-0.5">Pending Decisions</p>
-          <p className="text-[10px] text-[var(--color-muted)] font-light mt-1">{stats.approvedSelections} of {stats.totalSelections} confirmed</p>
+          <p className="text-[18px] font-light" style={{ color: 'var(--color-text)' }}>{stats.confirmedSelections + stats.approvedSelections}</p>
+          <p className="text-[10px] font-medium tracking-[1px] uppercase text-[var(--color-muted)] mt-0.5">Selections Made</p>
+          <p className="text-[10px] text-[var(--color-muted)] font-light mt-1">{stats.pendingApproval} of {stats.totalSelections} still to decide</p>
         </Link>
         <Link to="/documents" className="group glass-t glass-t-hover p-4 transition-all">
           <div className="flex items-center justify-between mb-2">
@@ -348,25 +357,55 @@ export default function Overview({ projectId }) {
             <h2 className="text-[14px] font-medium tracking-wide" style={{ color: 'var(--color-text)' }}>Selection Progress</h2>
             <Link to="/selections" className="text-[10px] font-medium tracking-[1px] uppercase text-[var(--color-accent)] hover:underline flex items-center gap-1">View all <ArrowRight size={10} /></Link>
           </div>
+          {/* Overall selection bar — segmented */}
           <div className="mb-5">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[12px] text-[var(--color-muted)]">{stats.approvedSelections} confirmed of {stats.totalSelections}</span>
+              <span className="text-[12px] text-[var(--color-muted)]">{decidedCount} of {stats.totalSelections} decided</span>
               <span className="text-[12px] font-medium text-[var(--color-accent)]">{selectionPct}%</span>
             </div>
-            <div className="h-2.5 bg-white/60 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${selectionPct}%`, background: selectionPct > 50 ? 'var(--color-approved)' : 'var(--color-accent)' }} />
+            <div className="h-2.5 bg-white/60 rounded-full overflow-hidden flex">
+              {approvedPct > 0 && (
+                <div
+                  className="h-full bg-[var(--color-approved)] transition-all duration-700"
+                  style={{ width: `${approvedPct}%` }}
+                  title={`${stats.approvedSelections} client approved`}
+                />
+              )}
+              <div
+                className="h-full bg-[var(--color-accent)] transition-all duration-700"
+                style={{ width: `${confirmedPct}%` }}
+                title={`${stats.confirmedSelections} architect selected`}
+              />
+            </div>
+            <div className="flex gap-4 mt-1.5">
+              <span className="flex items-center gap-1.5 text-[10px] text-[var(--color-muted)]">
+                <span className="w-2 h-2 rounded-full bg-[var(--color-approved)]" /> Client approved
+              </span>
+              <span className="flex items-center gap-1.5 text-[10px] text-[var(--color-muted)]">
+                <span className="w-2 h-2 rounded-full bg-[var(--color-accent)]" /> Architect selected
+              </span>
+              <span className="flex items-center gap-1.5 text-[10px] text-[var(--color-muted)]">
+                <span className="w-2 h-2 rounded-full bg-white/60 border border-[var(--color-border)]" /> Pending
+              </span>
             </div>
           </div>
+          {/* Category breakdown */}
           <div className="space-y-2.5">
             {groups.map(g => {
-              const pct = g.total > 0 ? Math.round((g.approved / g.total) * 100) : 0
+              const approvedCatPct = g.total > 0 ? Math.round((g.approved / g.total) * 100) : 0
+              const confirmedCatPct = g.total > 0 ? Math.round((g.confirmed / g.total) * 100) : 0
               return (
                 <div key={g.key} className="flex items-center gap-3">
                   <span className="text-[12px] font-light w-36 shrink-0 truncate capitalize" style={{ color: 'var(--color-text)' }}>{g.label}</span>
-                  <div className="flex-1 h-1.5 bg-white/50 rounded-full overflow-hidden">
-                    <div className="h-full bg-[var(--color-accent)] rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                  <div className="flex-1 h-1.5 bg-white/50 rounded-full overflow-hidden flex">
+                    {approvedCatPct > 0 && (
+                      <div className="h-full bg-[var(--color-approved)] transition-all duration-500" style={{ width: `${approvedCatPct}%` }} />
+                    )}
+                    {confirmedCatPct > 0 && (
+                      <div className="h-full bg-[var(--color-accent)] transition-all duration-500" style={{ width: `${confirmedCatPct}%` }} />
+                    )}
                   </div>
-                  <span className="text-[10px] text-[var(--color-muted)] w-14 text-right shrink-0">{g.approved}/{g.total}</span>
+                  <span className="text-[10px] text-[var(--color-muted)] w-14 text-right shrink-0">{g.approved + g.confirmed}/{g.total}</span>
                 </div>
               )
             })}

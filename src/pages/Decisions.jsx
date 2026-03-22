@@ -48,7 +48,7 @@ const ROOM_CONFIG = {
   alfresco:    { label: 'Alfresco',    order: 13, emoji: '' },
   garage:      { label: 'Garage',      order: 14, emoji: '' },
   exterior:    { label: 'Exterior',    order: 20, emoji: '' },
-  whole_house: { label: 'Whole House', order: 99, emoji: '' },
+  building:    { label: 'Building',   order: 90, emoji: '' },
 }
 
 const ELEMENT_ORDER = {

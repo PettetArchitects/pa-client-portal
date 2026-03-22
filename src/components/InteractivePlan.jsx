@@ -72,7 +72,7 @@ export default function InteractivePlan({ roomMappings, items, onSelectRoom, sel
           {isArchitect && (
             <button
               onClick={() => setDebug(d => !d)}
-              className={`px-2 py-1 rounded text-[9px] font-mono transition-colors ${debug ? 'bg-red-500/20 text-red-600' : 'text-[var(--color-muted)] hover:bg-white/40'}`}
+              className={`px-2 py-1 rounded text-[9px] font-mono transition-colors ${debug ? 'bg-[var(--color-urgent)]/20 text-[var(--color-urgent)]' : 'text-[var(--color-muted)] hover:bg-white/40'}`}
             >
               {debug ? 'ZONES ON' : 'debug'}
             </button>

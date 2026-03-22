@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useProject } from '../hooks/useProject'
+import { useToast } from '../components/Toast'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import {
   Check, ChevronDown, ChevronRight, MessageSquare, ArrowUpRight,
   ThumbsUp, Eye, EyeOff, Package, Palette, Wrench, AlertCircle,
@@ -66,6 +68,10 @@ const ELEMENT_LABELS = {
 
 export default function Decisions({ projectId }) {
   const { isArchitect } = useProject()
+  const { addToast } = useToast()
+  const [changeModal, setChangeModal] = useState({ open: false, itemId: null })
+  const [changeNote, setChangeNote] = useState('')
+  const [confirmBulk, setConfirmBulk] = useState({ open: false, type: null, key: null, count: 0 })
   const [groups, setGroups] = useState([])
   const [items, setItems] = useState([])
   const [roomMappings, setRoomMappings] = useState([])
@@ -151,29 +157,37 @@ export default function Decisions({ projectId }) {
       .update({ approval_status: 'approved', approved_at: new Date().toISOString() })
       .eq('id', itemId)
     setItems(prev => prev.map(i => i.id === itemId ? { ...i, approval_status: 'approved' } : i))
+    addToast('Selection approved.', 'success')
   }
 
   async function handleApproveGroup(groupKey) {
     const groupPending = items.filter(i => i.schedule_group === groupKey && i.approval_status === 'pending')
-    const ids = groupPending.map(i => i.id)
-    if (ids.length === 0) return
-    await supabase.from('homeowner_selections_portal')
-      .update({ approval_status: 'approved', approved_at: new Date().toISOString() })
-      .in('id', ids)
-    setItems(prev => prev.map(i =>
-      ids.includes(i.id) ? { ...i, approval_status: 'approved' } : i
-    ))
+    if (groupPending.length === 0) return
+    setConfirmBulk({ open: true, type: 'group', key: groupKey, count: groupPending.length })
   }
 
   async function handleApproveRoom(roomKey) {
-    // Find all pending items in this room
     const roomSelIds = new Set(
       roomMappings.filter(m => m.room_key === roomKey).map(m => m.project_selection_id)
     )
     const pending = items.filter(i =>
       roomSelIds.has(i.project_selection_id) && i.approval_status === 'pending'
     )
-    const ids = pending.map(i => i.id)
+    if (pending.length === 0) return
+    setConfirmBulk({ open: true, type: 'room', key: roomKey, count: pending.length })
+  }
+
+  async function executeBulkApprove() {
+    const { type, key } = confirmBulk
+    let ids = []
+    if (type === 'group') {
+      ids = items.filter(i => i.schedule_group === key && i.approval_status === 'pending').map(i => i.id)
+    } else if (type === 'room') {
+      const roomSelIds = new Set(
+        roomMappings.filter(m => m.room_key === key).map(m => m.project_selection_id)
+      )
+      ids = items.filter(i => roomSelIds.has(i.project_selection_id) && i.approval_status === 'pending').map(i => i.id)
+    }
     if (ids.length === 0) return
     await supabase.from('homeowner_selections_portal')
       .update({ approval_status: 'approved', approved_at: new Date().toISOString() })
@@ -181,17 +195,27 @@ export default function Decisions({ projectId }) {
     setItems(prev => prev.map(i =>
       ids.includes(i.id) ? { ...i, approval_status: 'approved' } : i
     ))
+    setConfirmBulk({ open: false, type: null, key: null, count: 0 })
+    addToast(`${ids.length} selection${ids.length !== 1 ? 's' : ''} approved.`, 'success')
   }
 
   async function handleRequestChange(itemId) {
-    const note = prompt('What would you like changed? Your note will be sent to Sean.')
-    if (!note) return
+    setChangeModal({ open: true, itemId })
+    setChangeNote('')
+  }
+
+  async function submitChangeRequest() {
+    if (!changeNote.trim()) return
+    const { itemId } = changeModal
     await supabase.from('homeowner_selections_portal')
-      .update({ approval_status: 'change_requested', approval_note: note })
+      .update({ approval_status: 'change_requested', approval_note: changeNote.trim() })
       .eq('id', itemId)
     setItems(prev => prev.map(i =>
-      i.id === itemId ? { ...i, approval_status: 'change_requested', approval_note: note } : i
+      i.id === itemId ? { ...i, approval_status: 'change_requested', approval_note: changeNote.trim() } : i
     ))
+    setChangeModal({ open: false, itemId: null })
+    setChangeNote('')
+    addToast('Change request sent to your architect.', 'success')
   }
 
   function toggleGroup(key) {
@@ -325,6 +349,7 @@ export default function Decisions({ projectId }) {
           <div className="relative">
             <button
               onClick={() => setShowFilter(f => !f)}
+              aria-expanded={showFilter}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] transition-colors ${
                 filter !== 'all' ? 'text-[var(--color-text)] bg-white/40' : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/40'
               }`}
@@ -432,6 +457,7 @@ export default function Decisions({ projectId }) {
                 {/* Group header */}
                 <button
                   onClick={() => toggleGroup(group.group_key)}
+                  aria-expanded={isExpanded}
                   className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
                 >
                   <div className="flex items-start gap-3">
@@ -499,6 +525,51 @@ export default function Decisions({ projectId }) {
           </p>
         </div>
       )}
+
+      {/* Change Request Modal */}
+      {changeModal.open && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+             onClick={() => setChangeModal({ open: false, itemId: null })}>
+          <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }} />
+          <div className="relative glass rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="text-[15px] font-medium mb-2" style={{ color: 'var(--color-text)' }}>Request a Change</h2>
+            <p className="text-[13px] font-light mb-4" style={{ color: 'var(--color-muted)' }}>
+              Describe what you'd like changed — your note will be sent to Sean.
+            </p>
+            <textarea
+              value={changeNote}
+              onChange={e => setChangeNote(e.target.value)}
+              placeholder="e.g. I'd prefer a warmer colour for the kitchen splashback..."
+              rows={4}
+              className="w-full bg-white/40 border border-[var(--color-border)] rounded-lg px-3 py-2 text-[13px] font-light focus:outline-none focus:border-[var(--color-accent)] resize-none"
+              style={{ color: 'var(--color-text)' }}
+              autoFocus
+            />
+            <div className="flex justify-end gap-3 mt-4">
+              <button onClick={() => setChangeModal({ open: false, itemId: null })}
+                className="text-[12px] font-medium px-4 py-2 rounded-lg" style={{ color: 'var(--color-muted)' }}>
+                Cancel
+              </button>
+              <button onClick={submitChangeRequest} disabled={!changeNote.trim()}
+                className="text-[12px] font-medium px-4 py-2 rounded-lg text-white disabled:opacity-40"
+                style={{ background: 'var(--color-change)' }}>
+                Send Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Approval Confirmation */}
+      <ConfirmDialog
+        open={confirmBulk.open}
+        title={`Approve ${confirmBulk.count} selection${confirmBulk.count !== 1 ? 's' : ''}?`}
+        message="This will mark all pending items in this group as approved. You can still request changes on individual items later."
+        confirmLabel="Approve All"
+        confirmColor="var(--color-approved)"
+        onConfirm={executeBulkApprove}
+        onCancel={() => setConfirmBulk({ open: false, type: null, key: null, count: 0 })}
+      />
     </div>
   )
 }
@@ -701,6 +772,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
             {/* Room header */}
             <button
               onClick={() => toggleGroup(room.roomKey)}
+              aria-expanded={isExpanded}
               className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
             >
               <div className="flex items-start gap-3">
@@ -813,6 +885,7 @@ function ComponentGroupedView({ components, expandedGroups, toggleGroup, onAppro
             {/* IFC family header */}
             <button
               onClick={() => toggleGroup(comp.parentId)}
+              aria-expanded={isExpanded}
               className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
             >
               <div className="flex items-start gap-3">

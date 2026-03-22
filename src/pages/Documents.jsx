@@ -261,6 +261,7 @@ export default function Documents({ projectId }) {
               <div key={group.group_key} className="glass-t overflow-hidden">
                 <button
                   onClick={() => toggleGroup(group.group_key)}
+                  aria-expanded={isExpanded}
                   className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
                 >
                   <div>
@@ -322,7 +323,7 @@ export default function Documents({ projectId }) {
                           </div>
                           <div>
                             <span className={`text-[9px] px-1.5 py-0.5 rounded ${
-                              item.approval_status === 'locked' ? 'bg-[var(--color-confirmed)]/10 text-[var(--color-confirmed)]' :
+                              item.approval_status === 'locked' ? 'bg-[var(--color-approved)]/10 text-[var(--color-approved)]' :
                               item.approval_status === 'proposed' ? 'bg-[var(--color-pending)]/10 text-[var(--color-pending)]' :
                               'bg-white/40 text-[var(--color-muted)]'
                             }`}>

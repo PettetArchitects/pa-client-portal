@@ -172,7 +172,7 @@ export default function Overview({ projectId }) {
       </div>
 
       {groups.length > 0 && (
-        <div className="glass-t p-5">
+        <div className="glass-s p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[14px] font-medium tracking-wide" style={{ color: 'var(--color-text)' }}>Selection Progress</h2>
             <Link to="/selections" className="text-[10px] font-medium tracking-[1px] uppercase text-[var(--color-accent)] hover:underline flex items-center gap-1">View all <ArrowRight size={10} /></Link>
@@ -204,7 +204,7 @@ export default function Overview({ projectId }) {
       )}
 
       {showPayments && payments.length > 0 && (
-        <div className="glass-t p-5">
+        <div className="glass-s p-5">
           <h2 className="text-[14px] font-medium tracking-wide mb-4" style={{ color: 'var(--color-text)' }}>Progress Payments</h2>
           <div className="flex items-center justify-between mb-3">
             <span className="text-[12px] text-[var(--color-muted)]">Contract total</span>
@@ -255,7 +255,7 @@ export default function Overview({ projectId }) {
       )}
 
       {milestones.length > 0 && (
-        <div className="glass-t p-5">
+        <div className="glass-s p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[14px] font-medium tracking-wide" style={{ color: 'var(--color-text)' }}>Timeline</h2>
             <Link to="/timeline" className="text-[10px] font-medium tracking-[1px] uppercase text-[var(--color-accent)] hover:underline flex items-center gap-1">Full timeline <ArrowRight size={10} /></Link>

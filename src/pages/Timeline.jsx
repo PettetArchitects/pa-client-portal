@@ -226,8 +226,17 @@ export default function Timeline({ projectId }) {
                 <div
                   className={`relative flex gap-4 py-3.5 px-2 rounded-xl transition-colors ${
                     isActive ? 'bg-white/40' : 'hover:bg-white/20'
-                  } cursor-pointer`}
+                  } cursor-pointer focus-ring`}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={isExpanded}
                   onClick={() => toggleStage(stage.stage_code)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      toggleStage(stage.stage_code)
+                    }
+                  }}
                 >
                   {/* Node */}
                   <div className="relative z-10 shrink-0">

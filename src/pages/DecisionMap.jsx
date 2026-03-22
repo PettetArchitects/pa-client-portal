@@ -43,7 +43,19 @@ function DecisionCard({ decision, dependencies }) {
   const depOf = dependencies.filter(d => d.depends_on_node_key === decision.node_key)
 
   return (
-    <div className="glass-t p-4 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+    <div
+      className="glass-t p-4 cursor-pointer focus-ring"
+      onClick={() => setExpanded(!expanded)}
+      role="button"
+      tabIndex={0}
+      aria-expanded={expanded}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          setExpanded(!expanded)
+        }
+      }}
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -151,7 +163,14 @@ function DomainGroup({ domain, decisions, dependencies, defaultOpen }) {
     <div className="mb-4">
       <button
         onClick={() => setOpen(!open)}
-        className="glass-s w-full flex items-center justify-between px-4 py-3"
+        className="glass-s w-full flex items-center justify-between px-4 py-3 focus-ring"
+        aria-expanded={open}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setOpen(!open)
+          }
+        }}
       >
         <div className="flex items-center gap-3">
           <h2 className="text-[14px] font-medium uppercase tracking-[1px]" style={{ color: 'var(--color-text)' }}>

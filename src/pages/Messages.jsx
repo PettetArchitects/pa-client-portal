@@ -14,6 +14,24 @@ export default function Messages({ projectId }) {
   useEffect(() => {
     if (!projectId) return
     loadMessages()
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel('messages-' + projectId)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'homeowner_messages',
+        filter: `project_id=eq.${projectId}`,
+      }, (payload) => {
+        setMessages(prev => {
+          if (prev.some(m => m.id === payload.new.id)) return prev
+          return [...prev, payload.new]
+        })
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [projectId])
 
   useEffect(() => {
@@ -100,15 +118,16 @@ export default function Messages({ projectId }) {
       </div>
 
       {/* Messages list */}
-      <div className="flex-1 overflow-y-auto space-y-1 mb-4 pr-2">
-        {messages.length === 0 && (
-          <div className="text-center py-20">
-            <p className="text-[13px] text-[var(--color-muted)] font-light">No messages yet.</p>
-            <p className="text-[11px] text-[var(--color-muted)] font-light mt-1">
-              Send a message to start a conversation.
-            </p>
-          </div>
-        )}
+      <div className="glass-s p-4 mb-4 flex flex-col flex-1 rounded-xl overflow-hidden">
+        <div className="flex-1 overflow-y-auto space-y-1 pr-2">
+          {messages.length === 0 && (
+            <div className="glass-s p-6 rounded-lg text-center py-20">
+              <p className="text-[13px] text-[var(--color-muted)] font-light">No messages yet.</p>
+              <p className="text-[11px] text-[var(--color-muted)] font-light mt-1">
+                Send a message to start a conversation.
+              </p>
+            </div>
+          )}
 
         {messages.map((msg, i) => {
           const dateLabel = getDateLabel(msg.created_at)
@@ -149,8 +168,9 @@ export default function Messages({ projectId }) {
               </div>
             </div>
           )
-        })}
-        <div ref={endRef} />
+          })}
+          <div ref={endRef} />
+        </div>
       </div>
 
       {/* Compose */}
@@ -174,6 +194,7 @@ export default function Messages({ projectId }) {
         <button
           type="submit"
           disabled={!newMsg.trim() || sending}
+          aria-label="Send message"
           className="w-10 h-10 rounded-xl bg-[var(--color-accent)] text-white flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-30 shrink-0"
         >
           <Send size={16} />

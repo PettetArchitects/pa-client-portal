@@ -17,6 +17,7 @@ import ProjectData from './pages/ProjectData'
 import DecisionMap from './pages/DecisionMap'
 import ImageManager from './pages/ImageManager'
 import LogoAnimation from './components/LogoAnimation'
+import { ToastProvider } from './components/Toast'
 
 const MIN_LOADING_MS = 3000
 
@@ -120,18 +121,20 @@ function ProtectedApp() {
 
 export default function App() {
   return (
-    <PracticeProvider>
-      <AuthProvider>
-        <Routes>
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/*" element={
-            <ProjectProvider>
-              <ProtectedApp />
-            </ProjectProvider>
-          } />
-        </Routes>
-      </AuthProvider>
-    </PracticeProvider>
+    <ToastProvider>
+      <PracticeProvider>
+        <AuthProvider>
+          <Routes>
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/*" element={
+              <ProjectProvider>
+                <ProtectedApp />
+              </ProjectProvider>
+            } />
+          </Routes>
+        </AuthProvider>
+      </PracticeProvider>
+    </ToastProvider>
   )
 }
 

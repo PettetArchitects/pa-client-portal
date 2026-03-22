@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { ProjectProvider, useProject } from './hooks/useProject'
@@ -7,17 +7,19 @@ import Shell from './components/Shell'
 import LoginPage from './components/LoginPage'
 import ResetPassword from './pages/ResetPassword'
 import Overview from './pages/Overview'
-import Decisions from './pages/Decisions'
-import Documents from './pages/Documents'
-import Timeline from './pages/Timeline'
-import Messages from './pages/Messages'
-import Profile from './pages/Profile'
-import Admin from './pages/Admin'
-import ProjectData from './pages/ProjectData'
-import DecisionMap from './pages/DecisionMap'
-import ImageManager from './pages/ImageManager'
 import LogoAnimation from './components/LogoAnimation'
 import { ToastProvider } from './components/Toast'
+
+// Lazy-loaded pages: split into separate chunks for faster initial load
+const Decisions = lazy(() => import('./pages/decisions'))
+const Documents = lazy(() => import('./pages/Documents'))
+const Timeline = lazy(() => import('./pages/Timeline'))
+const Messages = lazy(() => import('./pages/Messages'))
+const Profile = lazy(() => import('./pages/Profile'))
+const Admin = lazy(() => import('./pages/Admin'))
+const ProjectData = lazy(() => import('./pages/ProjectData'))
+const DecisionMap = lazy(() => import('./pages/DecisionMap'))
+const ImageManager = lazy(() => import('./pages/ImageManager'))
 
 const MIN_LOADING_MS = 3000
 
@@ -102,20 +104,22 @@ function ProtectedApp() {
   const pname = project.display_name || project.name || 'Your Project'
 
   return (
-    <Routes>
-      <Route element={<Shell projectName={pname} />}>
-        <Route index element={<Overview projectId={pid} />} />
-        <Route path="selections" element={<Decisions projectId={pid} />} />
-        <Route path="documents" element={<Documents projectId={pid} />} />
-        <Route path="timeline" element={<Timeline projectId={pid} />} />
-        <Route path="messages" element={<Messages projectId={pid} />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="data" element={<ProjectData projectId={pid} />} />
-        <Route path="decisions" element={<DecisionMap />} />
-        <Route path="admin" element={<Admin />} />
-        <Route path="images" element={<ImageManager />} />
-      </Route>
-    </Routes>
+    <Suspense fallback={<div className="max-w-4xl animate-pulse p-6"><div className="h-8 w-64 bg-white/40 rounded mb-4" /><div className="h-3 w-48 bg-white/40 rounded mb-8" /></div>}>
+      <Routes>
+        <Route element={<Shell projectName={pname} />}>
+          <Route index element={<Overview projectId={pid} />} />
+          <Route path="selections" element={<Decisions projectId={pid} />} />
+          <Route path="documents" element={<Documents projectId={pid} />} />
+          <Route path="timeline" element={<Timeline projectId={pid} />} />
+          <Route path="messages" element={<Messages projectId={pid} />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="data" element={<ProjectData projectId={pid} />} />
+          <Route path="decisions" element={<DecisionMap />} />
+          <Route path="admin" element={<Admin />} />
+          <Route path="images" element={<ImageManager />} />
+        </Route>
+      </Routes>
+    </Suspense>
   )
 }
 
@@ -192,7 +196,7 @@ function LoadingScreen() {
   }, [])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#E2E0D8]" style={{ overflow: 'hidden' }}>
+    <div className="min-h-screen flex items-center justify-center bg-[#E2E0D8]" style={{ overflow: 'hidden' }} role="status" aria-label="Loading application">
       <div className="text-center max-w-lg px-6" style={{ position: 'relative', zIndex: 2 }}>
 
         <div style={{ marginBottom: 40 }}>

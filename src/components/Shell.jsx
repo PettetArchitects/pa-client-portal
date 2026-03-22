@@ -69,6 +69,7 @@ export default function Shell({ projectName }) {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <a href="#main-content" className="skip-link">Skip to content</a>
       {/* Full-bleed satellite background */}
       <ProjectHero project={project} />
 
@@ -288,7 +289,7 @@ export default function Shell({ projectName }) {
         </nav>
 
         {/* Main content â transparent so satellite shows through */}
-        <main className="flex-1 p-6 md:pl-14 md:pr-10 md:pt-10 md:pb-10 pb-24 overflow-y-auto bg-white/30">
+        <main id="main-content" className="flex-1 p-6 md:pl-14 md:pr-10 md:pt-10 md:pb-10 pb-24 overflow-y-auto bg-white/30">
           <Outlet />
         </main>
       </div>

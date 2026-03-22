@@ -68,11 +68,19 @@ src/
 
 ## Architecture & Patterns
 
+### Context Provider Nesting (App.jsx)
+Providers must be nested in this order (outermost → innermost):
+```
+ToastProvider → PracticeProvider → AuthProvider → ProjectProvider
+```
+`ProjectProvider` depends on `AuthProvider` (needs user), `AuthProvider` depends on `PracticeProvider`, and `ToastProvider` is independent. Changing this order will break the app.
+
 ### Routing (App.jsx)
 - All page routes are **lazy-loaded** with `React.lazy()` + `Suspense` + `PageErrorBoundary`
 - Overview is eagerly loaded (landing page)
 - Architect-only routes: `/data`, `/images`
-- Unauthenticated route: `/reset-password`
+- Unauthenticated route: `/reset-password` (outside `ProjectProvider`)
+- `DecisionMap.jsx` is a separate top-level page (distinct from `decisions/index.jsx` which it may import)
 
 ### Authentication & Access Control
 - Supabase email/password auth via `useAuth` context
@@ -97,6 +105,12 @@ src/
 - Functional components with hooks only (no class components except error boundaries)
 - Error boundaries: `PageErrorBoundary` wraps lazy routes
 - Toast notifications: context-based, max 3 visible, auto-dismiss
+
+### Build-Time Globals
+Vite injects these globals (defined in `vite.config.js`):
+- `__BUILD_HASH__` — short git commit hash
+- `__BUILD_TIME__` — ISO timestamp (YYYY-MM-DD HH:MM)
+These are displayed in the sidebar footer via `Shell.jsx`.
 
 ## Code Conventions
 
@@ -129,8 +143,24 @@ src/
 - Font: **Jost** (400, 500, 600, 700)
 
 ### Z-Index
-- Always use constants from `src/layers.js` — never hardcode z-index values
-- Layers: SATELLITE, CHROME, OVERLAY, etc.
+Always import `Z` from `src/layers.js` — never hardcode z-index values.
+```
+Z.SATELLITE    = 0     // background aerial imagery
+Z.CHROME       = 10    // header, sidebar, main content panels
+Z.ATTRIBUTION  = 11    // Esri satellite attribution text
+Z.OVERLAY      = 100   // dropdown backdrops, modal scrims
+Z.DROPDOWN     = 110   // dropdown menus, popovers
+Z.MODAL        = 200   // modal dialogs
+Z.TOAST        = 300   // toast notifications
+```
+
+## Linting
+
+- **ESLint flat config** (`eslint.config.js`): `@eslint/js` recommended + `react-hooks` + `react-refresh`
+- Custom rule: `no-unused-vars` ignores variables matching `^[A-Z_]` (uppercase constants, React components)
+- Run: `npm run lint`
+- No Prettier — formatting is not enforced
+- No pre-commit hooks — run `npm run lint` and `npm test` manually before pushing
 
 ## Testing
 
@@ -173,10 +203,20 @@ VITE_SUPABASE_ANON_KEY=<supabase anon key>
 
 Use conventional commits: `fix(area): description`, `feat(area): description`, `refactor(area): description`.
 
+## Pre-Push Checklist
+
+```bash
+npm run lint && npm test && npm run build
+```
+
+There are no pre-commit hooks, so always run these manually before pushing. `npm run build` catches import errors and missing exports that lint/tests won't.
+
 ## Common Pitfalls
 
 - **Lazy loading blank page bug**: If a lazily-loaded page renders blank, check the `Suspense` fallback and error boundary in `App.jsx`
 - **Supabase queries**: Always check for `error` in the destructured response `const { data, error } = await ...`
 - **Access control**: Gate architect-only UI with `isArchitect` from `useProject()`, not by checking user email or roles directly
-- **Z-index conflicts**: Never use raw numbers — import from `layers.js`
+- **Z-index conflicts**: Never use raw numbers — import `Z` from `layers.js`
 - **Safari**: Glass morphism uses `-webkit-backdrop-filter` fallback — test on Safari when changing blur effects
+- **Provider ordering**: Context providers in `App.jsx` must stay in their current nesting order (see Architecture section)
+- **Build globals**: `__BUILD_HASH__` and `__BUILD_TIME__` are injected by Vite — don't treat them as undefined

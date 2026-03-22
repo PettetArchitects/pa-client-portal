@@ -59,7 +59,7 @@ function DecisionCard({ decision, dependencies }) {
           <p className="text-[13px] mt-1 leading-relaxed" style={{ color: 'var(--color-muted)' }}>{decision.question}</p>
         </div>
         <div className="ml-3 mt-1 shrink-0" style={{ color: 'var(--color-muted)' }}>
-          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          {expanded ? <ChevronUp size={16} style={{ color: 'var(--color-muted)' }} /> : <ChevronDown size={16} style={{ color: 'var(--color-muted)' }} />}
         </div>
       </div>
 
@@ -81,7 +81,7 @@ function DecisionCard({ decision, dependencies }) {
 
           {decision.source_kind && (
             <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--color-muted)' }}>
-              <Info size={12} />
+              <Info size={12} style={{ color: 'var(--color-muted)' }} />
               <span>Source: {decision.source_kind.replace(/_/g, ' ')}</span>
             </div>
           )}
@@ -162,17 +162,17 @@ function DomainGroup({ domain, decisions, dependencies, defaultOpen }) {
         <div className="flex items-center gap-3">
           {confirmedCount > 0 && (
             <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--color-approved)' }}>
-              <CheckCircle2 size={12} /> {confirmedCount}
+              <CheckCircle2 size={12} style={{ color: 'var(--color-approved)' }} /> {confirmedCount}
             </span>
           )}
           {assumedCount > 0 && (
             <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--color-pending)' }}>
-              <AlertTriangle size={12} /> {assumedCount}
+              <AlertTriangle size={12} style={{ color: 'var(--color-pending)' }} /> {assumedCount}
             </span>
           )}
           {pendingCount > 0 && (
             <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--color-muted)' }}>
-              <Clock size={12} /> {pendingCount}
+              <Clock size={12} style={{ color: 'var(--color-muted)' }} /> {pendingCount}
             </span>
           )}
           <span style={{ color: 'var(--color-muted)' }}>
@@ -290,7 +290,7 @@ export default function DecisionMap() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-sm" style={{ color: 'var(--color-muted)' }}>Loading decisions…</div>
+        <div className="text-[13px]" style={{ color: 'var(--color-muted)' }}>Loading decisions…</div>
       </div>
     )
   }
@@ -322,21 +322,21 @@ export default function DecisionMap() {
           className={`flex items-center gap-1.5 text-[13px] px-3 py-1 rounded-full transition-colors ${filter === 'confirmed' ? 'bg-[var(--color-approved)] text-white' : ''}`}
           style={filter !== 'confirmed' ? { color: 'var(--color-approved)' } : undefined}
         >
-          <CheckCircle2 size={13} /> Confirmed ({confirmedCount})
+          <CheckCircle2 size={13} style={{ color: filter === 'confirmed' ? 'white' : 'var(--color-approved)' }} /> Confirmed ({confirmedCount})
         </button>
         <button
           onClick={() => setFilter('assumed')}
           className={`flex items-center gap-1.5 text-[13px] px-3 py-1 rounded-full transition-colors ${filter === 'assumed' ? 'bg-[var(--color-pending)] text-white' : ''}`}
           style={filter !== 'assumed' ? { color: 'var(--color-pending)' } : undefined}
         >
-          <AlertTriangle size={13} /> Assumed ({assumedCount})
+          <AlertTriangle size={13} style={{ color: filter === 'assumed' ? 'white' : 'var(--color-pending)' }} /> Assumed ({assumedCount})
         </button>
         <button
           onClick={() => setFilter('pending')}
           className={`flex items-center gap-1.5 text-[13px] px-3 py-1 rounded-full transition-colors ${filter === 'pending' ? 'bg-[var(--color-muted)] text-white' : ''}`}
           style={filter !== 'pending' ? { color: 'var(--color-muted)' } : undefined}
         >
-          <Clock size={13} /> Pending ({pendingCount})
+          <Clock size={13} style={{ color: filter === 'pending' ? 'white' : 'var(--color-muted)' }} /> Pending ({pendingCount})
         </button>
       </div>
 
@@ -368,7 +368,7 @@ export default function DecisionMap() {
       ))}
 
       {sortedDomains.length === 0 && (
-        <div className="text-center py-12 text-sm" style={{ color: 'var(--color-muted)' }}>
+        <div className="text-center py-12 text-[13px]" style={{ color: 'var(--color-muted)' }}>
           No decisions match the current filter.
         </div>
       )}

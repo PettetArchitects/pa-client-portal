@@ -258,12 +258,12 @@ export default function Decisions({ projectId }) {
   return (
     <div className="max-w-4xl">
       {/* Progress bar */}
-      <div className="backdrop-blur-xl bg-white/70 rounded-xl border border-white/50 p-4 mb-6">
+      <div className="glass rounded-xl border border-white/50 p-4 mb-6">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[11px] tracking-[1.5px] uppercase text-[var(--color-muted)] font-medium">
             Your selections
           </span>
-          <span className="text-sm font-medium">{progressPct}%</span>
+          <span className="text-[13px] font-medium">{progressPct}%</span>
         </div>
         <p className="text-[11px] text-[var(--color-text)] font-light mb-3">
           {totalPending > 0
@@ -289,7 +289,7 @@ export default function Decisions({ projectId }) {
       </div>
 
       {/* Toolbar — Programa style */}
-      <div className="flex items-center justify-between mb-4 backdrop-blur-xl bg-white/50 rounded-xl border border-white/40 px-2 py-1.5 relative z-30">
+      <div className="flex items-center justify-between mb-4 glass-s rounded-xl border border-white/40 px-2 py-1.5 relative z-30">
         {/* Left: actions */}
         <div className="flex items-center gap-0.5">
           <button
@@ -332,7 +332,7 @@ export default function Decisions({ projectId }) {
               <SlidersHorizontal size={13} />
             </button>
             {showFilter && (
-              <div className="absolute top-full left-0 mt-1 backdrop-blur-2xl bg-white/95 rounded-lg border border-white/60 shadow-xl py-1 z-50 min-w-[140px]">
+              <div className="absolute top-full left-0 mt-1 glass rounded-lg border border-white/60 shadow-xl py-1 z-50 min-w-[140px]">
                 {[
                   { key: 'all', label: 'All items' },
                   { key: 'pending', label: `To review (${totalPending})` },
@@ -426,7 +426,7 @@ export default function Decisions({ projectId }) {
             const hasPending = group.pending > 0 || group.changeReq > 0
 
             return (
-              <div key={group.group_key} className={`backdrop-blur-xl bg-white/50 rounded-xl border overflow-hidden transition-all ${
+              <div key={group.group_key} className={`glass-s rounded-xl border overflow-hidden transition-all ${
                 hasPending ? 'border-[var(--color-pending)]/30' : 'border-white/40'
               }`}>
                 {/* Group header */}
@@ -445,7 +445,7 @@ export default function Decisions({ projectId }) {
                       </span>
                     </div>
                     <div>
-                      <h2 className="text-sm font-medium mt-1">{group.group_name}</h2>
+                      <h2 className="text-[13px] font-medium mt-1">{group.group_name}</h2>
                       <p className="text-[11px] text-[var(--color-text)] font-light mt-0.5">{group.description}</p>
                     </div>
                   </div>
@@ -492,9 +492,9 @@ export default function Decisions({ projectId }) {
       )}
 
       {((sortBy === 'group' && groupedData.length === 0) || (sortBy === 'room' && roomGroupedData.length === 0) || (sortBy === 'component' && componentGroupedData.length === 0) || (sortBy === 'boq' && groupedData.length === 0)) && (
-        <div className="text-center py-20 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
+        <div className="text-center py-20 glass-t rounded-xl border border-white/40">
           <Package size={24} className="mx-auto text-[var(--color-border)] mb-3" />
-          <p className="text-sm text-[var(--color-text)] font-light">
+          <p className="text-[13px] text-[var(--color-text)] font-light">
             {filter !== 'all' ? 'No items match this filter.' : 'No selections yet.'}
           </p>
         </div>
@@ -695,7 +695,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
         const hasPending = room.pending > 0 || room.changeReq > 0
 
         return (
-          <div key={room.roomKey} className={`backdrop-blur-xl bg-white/50 rounded-xl border overflow-hidden transition-all ${
+          <div key={room.roomKey} className={`glass-s rounded-xl border overflow-hidden transition-all ${
             hasPending ? 'border-[var(--color-pending)]/30' : 'border-white/40'
           }`}>
             {/* Room header */}
@@ -714,7 +714,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
                   </span>
                 </div>
                 <div>
-                  <h2 className="text-sm font-medium mt-1">{room.label}</h2>
+                  <h2 className="text-[13px] font-medium mt-1">{room.label}</h2>
                   <p className="text-[10px] text-[var(--color-text)] font-light mt-0.5">
                     {room.elements.map(e => e.label).join(' · ')}
                   </p>
@@ -783,7 +783,7 @@ function RoomGroupedView({ rooms, expandedGroups, toggleGroup, onApproveItem, on
                   <div className="px-5 py-3 border-t border-white/30 bg-white/40">
                     <button
                       onClick={() => onApproveRoom(room.roomKey)}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-accent)] text-white text-xs rounded-lg hover:opacity-90 transition-opacity font-medium"
+                      className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-accent)] text-white text-[12px] rounded-lg hover:opacity-90 transition-opacity font-medium"
                     >
                       <ThumbsUp size={13} /> Approve all {room.pending} in {room.label}
                     </button>
@@ -807,7 +807,7 @@ function ComponentGroupedView({ components, expandedGroups, toggleGroup, onAppro
         const hasPending = comp.pending > 0 || comp.changeReq > 0
 
         return (
-          <div key={comp.parentId} className={`backdrop-blur-xl bg-white/50 rounded-xl border overflow-hidden transition-all ${
+          <div key={comp.parentId} className={`glass-s rounded-xl border overflow-hidden transition-all ${
             hasPending ? 'border-[var(--color-pending)]/30' : 'border-white/40'
           }`}>
             {/* IFC family header */}
@@ -822,7 +822,7 @@ function ComponentGroupedView({ components, expandedGroups, toggleGroup, onAppro
                   </span>
                 </div>
                 <div>
-                  <h2 className="text-sm font-medium mt-0.5">{comp.label}</h2>
+                  <h2 className="text-[13px] font-medium mt-0.5">{comp.label}</h2>
                   <p className="text-[9px] text-[var(--color-muted)] font-mono tracking-wider mt-0.5">
                     {comp.ifcClass}
                   </p>
@@ -879,7 +879,7 @@ function ReviewView({ items, groupKey, hasPending, pendingCount, onApproveItem, 
         <div className="px-5 py-3 border-t border-white/30 bg-white/40">
           <button
             onClick={() => onApproveGroup(groupKey)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-accent)] text-white text-xs rounded-lg hover:opacity-90 transition-opacity font-medium"
+            className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-accent)] text-white text-[12px] rounded-lg hover:opacity-90 transition-opacity font-medium"
           >
             <ThumbsUp size={13} /> Approve all {pendingCount} items
           </button>
@@ -1541,7 +1541,7 @@ function BoQView({ groupedData, natspecMap }) {
       {/* Summary card */}
       <div className="glass p-5">
         <div className="flex justify-between items-baseline mb-3">
-          <h2 className="text-sm font-medium">Bill of Quantities Summary</h2>
+          <h2 className="text-[13px] font-medium">Bill of Quantities Summary</h2>
           <div className="text-right">
             <span className="text-[11px] text-[var(--color-muted)]">Estimated range</span>
           </div>
@@ -1661,7 +1661,7 @@ function PlanView({ items, filteredItems, roomMappings, isArchitect, onApproveIt
 
       {selectedRoom && roomItems.length === 0 && (
         <div className="mt-4 text-center py-8 glass-t">
-          <p className="text-sm text-[var(--color-text)] font-light">No selections mapped to this room yet.</p>
+          <p className="text-[13px] text-[var(--color-text)] font-light">No selections mapped to this room yet.</p>
         </div>
       )}
     </div>

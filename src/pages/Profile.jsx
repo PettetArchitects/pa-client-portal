@@ -83,13 +83,13 @@ export default function Profile() {
   }
 
   if (loading) {
-    return <div className="text-sm text-[var(--color-muted)]">Loading...</div>
+    return <div className="text-[13px] text-[var(--color-muted)]">Loading...</div>
   }
 
   return (
     <div className="max-w-lg">
-      <h1 className="text-lg font-medium text-[var(--color-text)] mb-1">Profile</h1>
-      <p className="text-sm text-[var(--color-muted)] font-light mb-8">
+      <h1 className="text-[18px] font-medium text-[var(--color-text)] mb-1">Profile</h1>
+      <p className="text-[13px] text-[var(--color-muted)] font-light mb-8">
         Manage your account details and preferences.
       </p>
 
@@ -108,7 +108,7 @@ export default function Profile() {
               type="email"
               value={user?.email || ''}
               disabled
-              className="w-full px-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-[#F0F0EE] text-sm text-[var(--color-muted)] cursor-not-allowed"
+              className="w-full px-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-[#F0F0EE] text-[13px] text-[var(--color-muted)] cursor-not-allowed"
             />
           </div>
 
@@ -120,7 +120,7 @@ export default function Profile() {
               type="text"
               value={profile?.full_name || ''}
               onChange={e => setProfile({ ...profile, full_name: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-sm focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+              className="w-full px-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[13px] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
             />
           </div>
 
@@ -132,7 +132,7 @@ export default function Profile() {
               type="tel"
               value={profile?.phone || ''}
               onChange={e => setProfile({ ...profile, phone: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-sm focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+              className="w-full px-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[13px] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
             />
           </div>
 
@@ -144,7 +144,7 @@ export default function Profile() {
                 onChange={e => setProfile({ ...profile, notification_email: e.target.checked })}
                 className="w-4 h-4 rounded border-[var(--color-border)] accent-[var(--color-accent)]"
               />
-              <span className="text-sm text-[var(--color-text)]">Email notifications</span>
+              <span className="text-[13px] text-[var(--color-text)]">Email notifications</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -153,13 +153,13 @@ export default function Profile() {
                 onChange={e => setProfile({ ...profile, notification_sms: e.target.checked })}
                 className="w-4 h-4 rounded border-[var(--color-border)] accent-[var(--color-accent)]"
               />
-              <span className="text-sm text-[var(--color-text)]">SMS notifications</span>
+              <span className="text-[13px] text-[var(--color-text)]">SMS notifications</span>
             </label>
           </div>
         </div>
 
         {message && (
-          <div className={`flex items-center gap-2 mt-4 text-xs ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+          <div className="flex items-center gap-2 mt-4 text-[12px]" style={{ color: message.type === 'success' ? 'var(--color-approved)' : 'var(--color-urgent)' }}>
             {message.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
             {message.text}
           </div>
@@ -168,7 +168,7 @@ export default function Profile() {
         <button
           type="submit"
           disabled={saving}
-          className="mt-4 px-6 py-2.5 bg-[var(--color-text)] text-white text-sm rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="mt-4 px-6 py-2.5 bg-[var(--color-text)] text-white text-[13px] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save changes'}
         </button>
@@ -190,7 +190,7 @@ export default function Profile() {
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
               placeholder="At least 8 characters"
-              className="w-full px-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-sm focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+              className="w-full px-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[13px] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
             />
           </div>
 
@@ -203,12 +203,12 @@ export default function Profile() {
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
               placeholder="Re-enter your password"
-              className="w-full px-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-sm focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+              className="w-full px-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[13px] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
             />
           </div>
 
           {passwordMsg && (
-            <div className={`flex items-center gap-2 text-xs ${passwordMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+            <div className="flex items-center gap-2 text-[12px]" style={{ color: passwordMsg.type === 'success' ? 'var(--color-approved)' : 'var(--color-urgent)' }}>
               {passwordMsg.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
               {passwordMsg.text}
             </div>
@@ -217,7 +217,7 @@ export default function Profile() {
           <button
             type="submit"
             disabled={passwordSaving}
-            className="px-6 py-2.5 bg-[var(--color-text)] text-white text-sm rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="px-6 py-2.5 bg-[var(--color-text)] text-white text-[13px] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {passwordSaving ? 'Updating...' : 'Change password'}
           </button>

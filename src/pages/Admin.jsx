@@ -371,12 +371,15 @@ export default function Admin() {
     <div className="max-w-4xl">
       {/* Status message */}
       {message && (
-        <div className={`flex items-center gap-2 p-3 rounded-lg mb-6 text-sm ${
-          message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-        }`}>
-          {message.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
+        <div className="flex items-center gap-2 p-3 rounded-lg mb-6 text-[13px]"
+          style={
+            message.type === 'success'
+              ? { background: 'color-mix(in srgb, var(--color-approved) 12%, white)', color: 'var(--color-approved)' }
+              : { background: 'color-mix(in srgb, var(--color-urgent) 12%, white)', color: 'var(--color-urgent)' }
+          }>
+          {message.type === 'success' ? <Check size={14} style={{ color: 'var(--color-approved)' }} /> : <AlertCircle size={14} style={{ color: 'var(--color-urgent)' }} />}
           {message.text}
-          <button onClick={() => setMessage(null)} className="ml-auto"><X size={14} /></button>
+          <button onClick={() => setMessage(null)} className="ml-auto"><X size={14} style={{ color: 'inherit' }} /></button>
         </div>
       )}
 
@@ -384,8 +387,8 @@ export default function Admin() {
       <div className="mb-10">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-lg font-medium text-[var(--color-text)] mb-1">Project Team</h1>
-            <p className="text-sm text-[var(--color-muted)] font-light">
+            <h1 className="text-[18px] font-medium text-[var(--color-text)] mb-1">Project Team</h1>
+            <p className="text-[13px] text-[var(--color-muted)] font-light">
               {isArchitect
                 ? `All disciplines required for ${project?.display_name || project?.name || 'this project'}.`
                 : `Your project team for ${project?.display_name || project?.name || 'this project'}.`
@@ -394,9 +397,9 @@ export default function Admin() {
           </div>
           {isArchitect && (
             <div className="flex items-center gap-3 text-[10px] text-[var(--color-muted)]">
-              <span className="flex items-center gap-1"><CircleCheck size={10} className="text-[var(--color-approved)]" /> Engaged</span>
-              <span className="flex items-center gap-1"><Clock size={10} className="text-[var(--color-pending)]" /> Brief issued</span>
-              <span className="flex items-center gap-1"><CircleDashed size={10} /> Required</span>
+              <span className="flex items-center gap-1"><CircleCheck size={10} style={{ color: 'var(--color-approved)' }} /> Engaged</span>
+              <span className="flex items-center gap-1"><Clock size={10} style={{ color: 'var(--color-pending)' }} /> Brief issued</span>
+              <span className="flex items-center gap-1"><CircleDashed size={10} style={{ color: 'var(--color-muted)' }} /> Required</span>
             </div>
           )}
         </div>
@@ -475,8 +478,8 @@ export default function Admin() {
           })}
 
           {consultants.length === 0 && teamContacts.length === 0 && (
-            <div className="text-center py-8 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
-              <p className="text-xs text-[var(--color-muted)] font-light">
+            <div className="text-center py-8 glass-t rounded-xl">
+              <p className="text-[12px] text-[var(--color-muted)] font-light">
                 Team roster loading...
               </p>
             </div>
@@ -488,8 +491,8 @@ export default function Admin() {
       {isArchitect && (
         <div className="mb-10">
           <div className="mb-6">
-            <h2 className="text-lg font-medium text-[var(--color-text)] mb-1">QA Gates</h2>
-            <p className="text-sm text-[var(--color-muted)] font-light">
+            <h2 className="text-[18px] font-medium text-[var(--color-text)] mb-1">QA Gates</h2>
+            <p className="text-[13px] text-[var(--color-muted)] font-light">
               Pre-issue quality checks and consultant deliverable status.
             </p>
           </div>
@@ -508,16 +511,20 @@ export default function Admin() {
               </h3>
               <div className="space-y-1.5">
                 {riskFlags.map(rf => (
-                  <div key={rf.id} className="flex items-start gap-3 px-4 py-3 rounded-lg backdrop-blur-xl bg-white/40 border border-white/30">
-                    <AlertTriangle size={14} className={rf.severity === 'HIGH' ? 'text-red-500 mt-0.5' : rf.severity === 'MED' ? 'text-amber-500 mt-0.5' : 'text-[var(--color-muted)] mt-0.5'} />
+                  <div key={rf.id} className="flex items-start gap-3 px-4 py-3 rounded-lg glass-t border border-white/30">
+                    <AlertTriangle size={14} style={{
+                      marginTop: '0.125rem',
+                      color: rf.severity === 'HIGH' ? 'var(--color-urgent)' : rf.severity === 'MED' ? 'var(--color-pending)' : 'var(--color-muted)'
+                    }} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-[9px] font-mono tracking-wider text-[var(--color-muted)] uppercase">{rf.flag_key}</span>
-                        <span className={`text-[8px] font-medium px-1.5 py-0.5 rounded ${
-                          rf.severity === 'HIGH' ? 'bg-red-50 text-red-600' :
-                          rf.severity === 'MED' ? 'bg-amber-50 text-amber-600' :
-                          'bg-gray-50 text-gray-500'
-                        }`}>{rf.severity}</span>
+                        <span className="text-[8px] font-medium px-1.5 py-0.5 rounded"
+                          style={
+                            rf.severity === 'HIGH' ? { background: 'color-mix(in srgb, var(--color-urgent) 12%, white)', color: 'var(--color-urgent)' } :
+                            rf.severity === 'MED' ? { background: 'color-mix(in srgb, var(--color-pending) 12%, white)', color: 'var(--color-pending)' } :
+                            { background: 'var(--color-border)', color: 'var(--color-muted)' }
+                          }>{rf.severity}</span>
                       </div>
                       <p className="text-[11px] text-[var(--color-text)] font-light mt-0.5 leading-relaxed">{rf.description}</p>
                     </div>
@@ -534,31 +541,31 @@ export default function Admin() {
         <div>
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-lg font-medium text-[var(--color-text)] mb-1">Portal Accounts</h2>
-              <p className="text-sm text-[var(--color-muted)] font-light">
+              <h2 className="text-[18px] font-medium text-[var(--color-text)] mb-1">Portal Accounts</h2>
+              <p className="text-[13px] text-[var(--color-muted)] font-light">
                 Create accounts, manage project access, and reset passwords.
               </p>
             </div>
             <button
               onClick={() => setShowAddForm(!showAddForm)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[var(--color-text)] text-white text-sm rounded-lg hover:opacity-90 transition-opacity"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[var(--color-text)] text-white text-[13px] rounded-lg hover:opacity-90 transition-opacity"
             >
-              <UserPlus size={14} />
+              <UserPlus size={14} style={{ color: 'white' }} />
               Add Client
             </button>
           </div>
 
           {/* Add client form */}
           {showAddForm && (
-            <form onSubmit={handleCreateClient} className="backdrop-blur-xl bg-white/60 border border-white/40 rounded-xl p-6 mb-6">
+            <form onSubmit={handleCreateClient} className="glass rounded-xl p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-medium text-[var(--color-text)]">New Client Account</h2>
+                <h2 className="text-[13px] font-medium text-[var(--color-text)]">New Client Account</h2>
                 <button
                   type="button"
                   onClick={handleOpenCrmPicker}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[var(--color-accent)] border border-[var(--color-accent)] rounded-lg hover:bg-[var(--color-accent)] hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-[var(--color-accent)] border border-[var(--color-accent)] rounded-lg hover:bg-[var(--color-accent)] hover:text-white transition-colors"
                 >
-                  <Link2 size={12} /> Link from CRM
+                  <Link2 size={12} style={{ color: 'var(--color-accent)' }} /> Link from CRM
                 </button>
               </div>
 
@@ -566,22 +573,22 @@ export default function Admin() {
                 <div className="mb-4 border border-white/40 rounded-lg bg-white/40 p-4">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-[11px] tracking-[1.5px] uppercase text-[var(--color-muted)] font-medium">Select CRM Contact</span>
-                    <button type="button" onClick={() => setShowCrmPicker(false)}><X size={14} className="text-[var(--color-muted)]" /></button>
+                    <button type="button" onClick={() => setShowCrmPicker(false)}><X size={14} style={{ color: 'var(--color-muted)' }} /></button>
                   </div>
                   <div className="relative mb-3">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-muted)]" />
+                    <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-muted)' }} />
                     <input
                       type="text"
                       value={crmSearch}
                       onChange={e => setCrmSearch(e.target.value)}
                       placeholder="Search contacts..."
-                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-white/40 bg-white/60 text-sm focus:outline-none focus:border-[var(--color-accent)]"
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-white/40 glass-s text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
                     />
                   </div>
                   {crmLoading ? (
-                    <p className="text-xs text-[var(--color-muted)] py-2">Loading CRM contacts...</p>
+                    <p className="text-[12px] text-[var(--color-muted)] py-2">Loading CRM contacts...</p>
                   ) : filteredCrmContacts.length === 0 ? (
-                    <p className="text-xs text-[var(--color-muted)] py-2">No contacts found.</p>
+                    <p className="text-[12px] text-[var(--color-muted)] py-2">No contacts found.</p>
                   ) : (
                     <div className="max-h-48 overflow-y-auto space-y-1">
                       {filteredCrmContacts.map(c => (
@@ -598,7 +605,7 @@ export default function Admin() {
                         >
                           <div className="flex items-center justify-between">
                             <div>
-                              <span className="text-xs font-medium text-[var(--color-text)] block">{c.full_name}</span>
+                              <span className="text-[12px] font-medium text-[var(--color-text)] block">{c.full_name}</span>
                               <span className="text-[10px] text-[var(--color-muted)]">{c.email || 'No email'}</span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -608,7 +615,8 @@ export default function Admin() {
                                 </span>
                               )}
                               {c.has_portal_account && (
-                                <span className="text-[9px] bg-green-50 text-green-600 px-1.5 py-0.5 rounded-full">
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full"
+                                  style={{ background: 'color-mix(in srgb, var(--color-approved) 12%, white)', color: 'var(--color-approved)' }}>
                                   Has account
                                 </span>
                               )}
@@ -622,13 +630,14 @@ export default function Admin() {
               )}
 
               {selectedCrmContact && (
-                <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-blue-50 rounded-lg">
-                  <Link2 size={12} className="text-blue-600" />
-                  <span className="text-xs text-blue-700">
+                <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg"
+                  style={{ background: 'color-mix(in srgb, var(--color-accent) 12%, white)' }}>
+                  <Link2 size={12} style={{ color: 'var(--color-accent)' }} />
+                  <span className="text-[12px]" style={{ color: 'var(--color-accent)' }}>
                     Linked to CRM: {selectedCrmContact.full_name} (#{selectedCrmContact.id})
                   </span>
                   <button type="button" onClick={() => setSelectedCrmContact(null)} className="ml-auto">
-                    <X size={12} className="text-blue-400" />
+                    <X size={12} style={{ color: 'var(--color-accent)' }} />
                   </button>
                 </div>
               )}
@@ -637,23 +646,23 @@ export default function Admin() {
                 <div>
                   <label className="block text-[11px] tracking-[1.5px] uppercase text-[var(--color-muted)] mb-1.5 font-medium">Full name *</label>
                   <input type="text" value={newName} onChange={e => setNewName(e.target.value)} required
-                    className="w-full px-3 py-2.5 rounded-lg border border-white/40 bg-white/60 text-sm focus:outline-none focus:border-[var(--color-accent)]" />
+                    className="w-full px-3 py-2.5 rounded-lg border border-white/40 glass-s text-[13px] focus:outline-none focus:border-[var(--color-accent)]" />
                 </div>
                 <div>
                   <label className="block text-[11px] tracking-[1.5px] uppercase text-[var(--color-muted)] mb-1.5 font-medium">Email *</label>
                   <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} required
-                    className="w-full px-3 py-2.5 rounded-lg border border-white/40 bg-white/60 text-sm focus:outline-none focus:border-[var(--color-accent)]" />
+                    className="w-full px-3 py-2.5 rounded-lg border border-white/40 glass-s text-[13px] focus:outline-none focus:border-[var(--color-accent)]" />
                 </div>
                 <div>
                   <label className="block text-[11px] tracking-[1.5px] uppercase text-[var(--color-muted)] mb-1.5 font-medium">Phone</label>
                   <input type="tel" value={newPhone} onChange={e => setNewPhone(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg border border-white/40 bg-white/60 text-sm focus:outline-none focus:border-[var(--color-accent)]" />
+                    className="w-full px-3 py-2.5 rounded-lg border border-white/40 glass-s text-[13px] focus:outline-none focus:border-[var(--color-accent)]" />
                 </div>
                 <div>
                   <label className="block text-[11px] tracking-[1.5px] uppercase text-[var(--color-muted)] mb-1.5 font-medium">Password *</label>
                   <input type="text" value={newPassword} onChange={e => setNewPassword(e.target.value)} required
                     placeholder="Min 8 characters"
-                    className="w-full px-3 py-2.5 rounded-lg border border-white/40 bg-white/60 text-sm focus:outline-none focus:border-[var(--color-accent)]" />
+                    className="w-full px-3 py-2.5 rounded-lg border border-white/40 glass-s text-[13px] focus:outline-none focus:border-[var(--color-accent)]" />
                 </div>
               </div>
 
@@ -671,7 +680,7 @@ export default function Admin() {
                             : [...prev, p.project_id]
                         )
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
+                      className={`px-3 py-1.5 rounded-lg text-[12px] border transition-colors ${
                         newProjects.includes(p.project_id)
                           ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]'
                           : 'bg-white/40 text-[var(--color-muted)] border-white/40 hover:border-[var(--color-text)]'
@@ -686,7 +695,7 @@ export default function Admin() {
               <div className="mt-4">
                 <label className="block text-[11px] tracking-[1.5px] uppercase text-[var(--color-muted)] mb-1.5 font-medium">Access level</label>
                 <select value={newAccess} onChange={e => setNewAccess(e.target.value)}
-                  className="px-3 py-2.5 rounded-lg border border-white/40 bg-white/60 text-sm focus:outline-none focus:border-[var(--color-accent)]">
+                  className="px-3 py-2.5 rounded-lg border border-white/40 glass-s text-[13px] focus:outline-none focus:border-[var(--color-accent)]">
                   <option value="viewer">Viewer — read only</option>
                   <option value="approver">Approver — can approve selections</option>
                   <option value="full">Full — all actions</option>
@@ -695,11 +704,11 @@ export default function Admin() {
 
               <div className="flex gap-3 mt-6">
                 <button type="submit" disabled={creating || newProjects.length === 0}
-                  className="px-6 py-2.5 bg-[var(--color-text)] text-white text-sm rounded-lg hover:opacity-90 disabled:opacity-50">
+                  className="px-6 py-2.5 bg-[var(--color-text)] text-white text-[13px] rounded-lg hover:opacity-90 disabled:opacity-50">
                   {creating ? 'Creating...' : 'Create Account'}
                 </button>
                 <button type="button" onClick={() => { setShowAddForm(false); setSelectedCrmContact(null); setShowCrmPicker(false) }}
-                  className="px-6 py-2.5 text-sm text-[var(--color-muted)] hover:text-[var(--color-text)]">
+                  className="px-6 py-2.5 text-[13px] text-[var(--color-muted)] hover:text-[var(--color-text)]">
                   Cancel
                 </button>
               </div>
@@ -708,7 +717,7 @@ export default function Admin() {
 
           {/* Client list */}
           {clients.length === 0 ? (
-            <div className="text-center py-8 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 text-sm text-[var(--color-muted)]">
+            <div className="text-center py-8 glass-t rounded-xl text-[13px] text-[var(--color-muted)]">
               No client accounts yet. Click "Add Client" to create one.
             </div>
           ) : (
@@ -718,15 +727,15 @@ export default function Admin() {
                 const isArch = client.metadata?.role === 'architect'
                 const hasCrm = !!client.crm_contact_id
                 return (
-                  <div key={client.id} className="backdrop-blur-xl bg-white/50 border border-white/40 rounded-xl overflow-hidden">
+                  <div key={client.id} className="glass-s rounded-xl overflow-hidden">
                     <button
                       onClick={() => setExpandedClient(isExpanded ? null : client.id)}
                       className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         <div>
-                          <span className="text-sm font-medium text-[var(--color-text)] block">{client.full_name}</span>
-                          <span className="text-xs text-[var(--color-muted)]">{client.email}</span>
+                          <span className="text-[13px] font-medium text-[var(--color-text)] block">{client.full_name}</span>
+                          <span className="text-[12px] text-[var(--color-muted)]">{client.email}</span>
                         </div>
                         {isArch && (
                           <span className="text-[9px] tracking-[1.5px] bg-[var(--color-text)] text-white px-2 py-0.5 rounded-full font-medium">
@@ -734,8 +743,9 @@ export default function Admin() {
                           </span>
                         )}
                         {hasCrm && (
-                          <span className="text-[9px] tracking-[1px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
-                            <Link2 size={8} /> CRM
+                          <span className="text-[9px] tracking-[1px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1"
+                            style={{ background: 'color-mix(in srgb, var(--color-accent) 12%, white)', color: 'var(--color-accent)' }}>
+                            <Link2 size={8} style={{ color: 'var(--color-accent)' }} /> CRM
                           </span>
                         )}
                       </div>
@@ -743,35 +753,37 @@ export default function Admin() {
                         <span className="text-[10px] text-[var(--color-muted)]">
                           {client.projects?.filter(p => p.active).length || 0} project{client.projects?.filter(p => p.active).length !== 1 ? 's' : ''}
                         </span>
-                        {isExpanded ? <ChevronUp size={14} className="text-[var(--color-muted)]" /> : <ChevronDown size={14} className="text-[var(--color-muted)]" />}
+                        {isExpanded ? <ChevronUp size={14} style={{ color: 'var(--color-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-muted)' }} />}
                       </div>
                     </button>
 
                     {isExpanded && (
                       <div className="border-t border-white/30 px-5 py-4">
-                        <div className="flex gap-8 text-xs text-[var(--color-muted)] mb-4">
+                        <div className="flex gap-8 text-[12px] text-[var(--color-muted)] mb-4">
                           {client.phone && <span>Phone: {client.phone}</span>}
                           <span>Created: {new Date(client.created_at).toLocaleDateString()}</span>
                         </div>
 
                         {client.crm && (
-                          <div className="mb-4 px-3 py-3 bg-blue-50/50 rounded-lg border border-blue-100">
-                            <h3 className="text-[11px] tracking-[1.5px] uppercase text-blue-600 mb-2 font-medium flex items-center gap-1.5">
-                              <Link2 size={10} /> CRM Record
+                          <div className="mb-4 px-3 py-3 rounded-lg border"
+                            style={{ background: 'color-mix(in srgb, var(--color-accent) 8%, white)', borderColor: 'color-mix(in srgb, var(--color-accent) 30%, white)' }}>
+                            <h3 className="text-[11px] tracking-[1.5px] uppercase mb-2 font-medium flex items-center gap-1.5"
+                              style={{ color: 'var(--color-accent)' }}>
+                              <Link2 size={10} style={{ color: 'var(--color-accent)' }} /> CRM Record
                             </h3>
                             <div className="space-y-1.5">
-                              <div className="flex gap-6 text-xs">
+                              <div className="flex gap-6 text-[12px]">
                                 <span className="text-[var(--color-muted)]">Contact type:</span>
                                 <span className="text-[var(--color-text)] font-medium">{client.crm.contact_type || '\u2014'}</span>
                               </div>
                               {client.crm.notes && (
-                                <div className="text-xs">
+                                <div className="text-[12px]">
                                   <span className="text-[var(--color-muted)]">Notes: </span>
                                   <span className="text-[var(--color-text)]">{client.crm.notes}</span>
                                 </div>
                               )}
                               {client.crm.project_links?.length > 0 && (
-                                <div className="text-xs">
+                                <div className="text-[12px]">
                                   <span className="text-[var(--color-muted)]">CRM projects: </span>
                                   {client.crm.project_links.map((pl, i) => (
                                     <span key={i} className="text-[var(--color-text)]">
@@ -791,7 +803,7 @@ export default function Admin() {
                           {client.projects?.map(pa => (
                             <div key={pa.project_id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/30">
                               <div>
-                                <span className="text-xs font-medium text-[var(--color-text)]">
+                                <span className="text-[12px] font-medium text-[var(--color-text)]">
                                   {pa.metadata?.project_name || pa.project_id}
                                 </span>
                                 <span className="text-[10px] text-[var(--color-muted)] ml-2">
@@ -800,11 +812,30 @@ export default function Admin() {
                               </div>
                               <button
                                 onClick={() => handleToggleAccess(client.id, pa.project_id, pa.active)}
-                                className={`text-[10px] px-2.5 py-1 rounded-full font-medium ${
+                                className="text-[10px] px-2.5 py-1 rounded-full font-medium transition-colors"
+                                style={
                                   pa.active
-                                    ? 'bg-green-50 text-green-700 hover:bg-red-50 hover:text-red-700'
-                                    : 'bg-red-50 text-red-700 hover:bg-green-50 hover:text-green-700'
-                                } transition-colors`}
+                                    ? { background: 'color-mix(in srgb, var(--color-approved) 12%, white)', color: 'var(--color-approved)' }
+                                    : { background: 'color-mix(in srgb, var(--color-urgent) 12%, white)', color: 'var(--color-urgent)' }
+                                }
+                                onMouseEnter={e => {
+                                  if (pa.active) {
+                                    e.target.style.background = 'color-mix(in srgb, var(--color-urgent) 12%, white)';
+                                    e.target.style.color = 'var(--color-urgent)';
+                                  } else {
+                                    e.target.style.background = 'color-mix(in srgb, var(--color-approved) 12%, white)';
+                                    e.target.style.color = 'var(--color-approved)';
+                                  }
+                                }}
+                                onMouseLeave={e => {
+                                  if (pa.active) {
+                                    e.target.style.background = 'color-mix(in srgb, var(--color-approved) 12%, white)';
+                                    e.target.style.color = 'var(--color-approved)';
+                                  } else {
+                                    e.target.style.background = 'color-mix(in srgb, var(--color-urgent) 12%, white)';
+                                    e.target.style.color = 'var(--color-urgent)';
+                                  }
+                                }}
                               >
                                 {pa.active ? 'Active' : 'Disabled'}
                               </button>
@@ -824,7 +855,7 @@ export default function Admin() {
                                     onClick={() => handleAddProjectAccess(client.id, p.project_id)}
                                     className="flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-dashed border-white/50 text-[var(--color-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
                                   >
-                                    <Plus size={10} /> {p.display_name || p.name}
+                                    <Plus size={10} style={{ color: 'inherit' }} /> {p.display_name || p.name}
                                   </button>
                                 ))}
                             </div>
@@ -839,21 +870,21 @@ export default function Admin() {
                                 value={resetPw}
                                 onChange={e => setResetPw(e.target.value)}
                                 placeholder="New password (min 8)"
-                                className="px-3 py-2 rounded-lg border border-white/40 bg-white/60 text-sm w-48 focus:outline-none focus:border-[var(--color-accent)]"
+                                className="px-3 py-2 rounded-lg border border-white/40 glass-s text-[13px] w-48 focus:outline-none focus:border-[var(--color-accent)]"
                               />
                               <button onClick={() => handleResetPassword(client.id)}
-                                className="px-3 py-2 bg-[var(--color-text)] text-white text-xs rounded-lg hover:opacity-90">
+                                className="px-3 py-2 bg-[var(--color-text)] text-white text-[12px] rounded-lg hover:opacity-90">
                                 Set
                               </button>
                               <button onClick={() => { setResetUserId(null); setResetPw('') }}
-                                className="text-xs text-[var(--color-muted)]">Cancel</button>
+                                className="text-[12px] text-[var(--color-muted)]">Cancel</button>
                             </>
                           ) : (
                             <button
                               onClick={() => setResetUserId(client.id)}
-                              className="flex items-center gap-1.5 text-xs text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
+                              className="flex items-center gap-1.5 text-[12px] text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
                             >
-                              <Key size={12} /> Reset password
+                              <Key size={12} style={{ color: 'inherit' }} /> Reset password
                             </button>
                           )}
                         </div>
@@ -876,7 +907,7 @@ function TeamRow({ iconComponent: IconComp, discipline, name, org, status, scope
   const StatusIcon = cfg.icon
 
   return (
-    <div className="flex items-start gap-4 px-5 py-4 rounded-xl backdrop-blur-xl bg-white/50 border border-white/40 hover:bg-white/60 transition-colors">
+    <div className="flex items-start gap-4 px-5 py-4 rounded-xl glass-s hover:bg-white/60 transition-colors">
       {/* Icon */}
       <div className="w-10 h-10 rounded-lg bg-white/70 flex items-center justify-center shrink-0 mt-0.5 border border-white/50">
         <IconComp size={18} />
@@ -904,16 +935,16 @@ function TeamRow({ iconComponent: IconComp, discipline, name, org, status, scope
           )}
         </div>
         {name && (
-          <span className="text-sm font-light text-[var(--color-text)] block">
+          <span className="text-[13px] font-light text-[var(--color-text)] block">
             {name}
             {org && <span className="text-[var(--color-muted)]"> · {org}</span>}
           </span>
         )}
         {!name && org && (
-          <span className="text-sm font-light text-[var(--color-muted)] block">{org}</span>
+          <span className="text-[13px] font-light text-[var(--color-muted)] block">{org}</span>
         )}
         {!name && !org && (
-          <span className="text-sm font-light text-[var(--color-muted)] italic block">To be appointed</span>
+          <span className="text-[13px] font-light text-[var(--color-muted)] italic block">To be appointed</span>
         )}
         {scope && (
           <p className="text-[11px] text-[var(--color-muted)] font-light mt-1 leading-relaxed">{scope}</p>
@@ -949,7 +980,7 @@ function GateRow({ gate }) {
   const StatusIcon = cfg.icon
 
   return (
-    <div className="flex items-center gap-4 px-5 py-3.5 rounded-xl backdrop-blur-xl bg-white/50 border border-white/40">
+    <div className="flex items-center gap-4 px-5 py-3.5 rounded-xl glass-s">
       <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
         style={{ background: cfg.bg }}>
         <StatusIcon size={16} style={{ color: cfg.color }} />

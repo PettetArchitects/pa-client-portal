@@ -83,7 +83,7 @@ export default function InteractivePlan({ roomMappings, items, onSelectRoom, sel
       {/* Selected room banner */}
       {selectedRoom && (
         <div className="flex items-center justify-between glass-t px-3 py-2 mb-3">
-          <span className="text-xs font-medium">
+          <span className="text-[12px] font-medium">
             {ROOM_ZONES.find(z => z.key === selectedRoom)?.label || selectedRoom}
             <span className="text-[var(--color-muted)] font-light ml-2">{roomCounts[selectedRoom] || 0} selections</span>
           </span>

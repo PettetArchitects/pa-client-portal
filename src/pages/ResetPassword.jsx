@@ -55,11 +55,11 @@ export default function ResetPassword() {
             </h1>
           </div>
           <div className="bg-white rounded-xl border border-[var(--color-border)] p-8">
-            <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
-              <Check size={18} className="text-green-600" />
+            <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(45, 74, 38, 0.1)' }}>
+              <Check size={18} style={{ color: 'var(--color-approved)' }} />
             </div>
-            <p className="text-sm font-medium text-[var(--color-text)] mb-2">Password updated</p>
-            <p className="text-xs text-[var(--color-muted)]">Redirecting to your portal...</p>
+            <p className="text-[13px] font-medium text-[var(--color-text)] mb-2">Password updated</p>
+            <p className="text-[12px] text-[var(--color-muted)]">Redirecting to your portal...</p>
           </div>
         </div>
       </div>
@@ -80,8 +80,8 @@ export default function ResetPassword() {
         </div>
 
         <form onSubmit={handleReset} className="bg-white rounded-xl border border-[var(--color-border)] p-8">
-          <h2 className="text-base font-medium mb-1">Set new password</h2>
-          <p className="text-sm text-[var(--color-muted)] font-light mb-6">
+          <h2 className="text-[15px] font-medium mb-1">Set new password</h2>
+          <p className="text-[13px] text-[var(--color-muted)] font-light mb-6">
             Choose a password with at least 8 characters.
           </p>
 
@@ -94,7 +94,7 @@ export default function ResetPassword() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="At least 8 characters"
             required
-            className="w-full px-4 py-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-sm font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+            className="w-full px-4 py-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[13px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors"
           />
 
           <label className="block text-[11px] tracking-[1.5px] uppercase text-[var(--color-muted)] mb-2 mt-4 font-medium">
@@ -106,17 +106,17 @@ export default function ResetPassword() {
             onChange={(e) => setConfirm(e.target.value)}
             placeholder="Re-enter your password"
             required
-            className="w-full px-4 py-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-sm font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+            className="w-full px-4 py-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[13px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors"
           />
 
           {error && (
-            <p className="text-xs text-red-600 mt-3">{error}</p>
+            <p className="text-[12px] mt-3" style={{ color: 'var(--color-urgent)' }}>{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-5 bg-[var(--color-accent)] text-white py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="w-full mt-5 bg-[var(--color-accent)] text-white py-3 rounded-lg text-[13px] font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {loading ? 'Updating...' : 'Set password'}
             {!loading && <ArrowRight size={14} />}

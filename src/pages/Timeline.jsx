@@ -152,8 +152,8 @@ export default function Timeline({ projectId }) {
   return (
     <div className="max-w-2xl">
       <div className="mb-8">
-        <h1 className="text-lg font-medium text-[var(--color-text)] mb-1">Project Timeline</h1>
-        <p className="text-sm text-[var(--color-muted)] font-light">
+        <h1 className="text-[18px] font-medium text-[var(--color-text)] mb-1">Project Timeline</h1>
+        <p className="text-[13px] text-[var(--color-muted)] font-light">
           {activeStage
             ? `Currently in ${activeStage.stage_label} — ${completed} of ${total} stages complete.`
             : `${completed} of ${total} stages complete.`
@@ -163,12 +163,12 @@ export default function Timeline({ projectId }) {
 
       {/* Progress bar */}
       {total > 0 && (
-        <div className="backdrop-blur-xl bg-white/70 rounded-xl border border-white/50 p-4 mb-6">
+        <div className="glass p-4 mb-6">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] tracking-[1.5px] uppercase text-[var(--color-muted)] font-medium">
               Progress
             </span>
-            <span className="text-sm font-medium">{progress}%</span>
+            <span className="text-[13px] font-medium" style={{ color: 'var(--color-text)' }}>{progress}%</span>
           </div>
           <div className="h-2 bg-white/50 rounded-full overflow-hidden">
             <div
@@ -250,7 +250,7 @@ export default function Timeline({ projectId }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-[9px] font-mono text-[var(--color-muted)] tabular-nums">{stage.stage_code}</span>
-                      <h3 className={`text-sm ${isCompleted || isActive ? 'font-medium text-[var(--color-text)]' : 'font-light text-[var(--color-muted)]'}`}>
+                      <h3 className={`text-[13px] ${isCompleted || isActive ? 'font-medium text-[var(--color-text)]' : 'font-light text-[var(--color-muted)]'}`}>
                         {stage.stage_label}
                       </h3>
                       {isActive && (
@@ -260,7 +260,7 @@ export default function Timeline({ projectId }) {
                         </span>
                       )}
                       <span className="ml-auto text-[var(--color-muted)]">
-                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        {isExpanded ? <ChevronDown size={14} style={{ color: 'var(--color-muted)' }} /> : <ChevronRight size={14} style={{ color: 'var(--color-muted)' }} />}
                       </span>
                     </div>
 
@@ -268,7 +268,7 @@ export default function Timeline({ projectId }) {
                     <div className="flex items-center gap-4 mt-1">
                       {stage.start_date && (
                         <span className="flex items-center gap-1 text-[10px] text-[var(--color-muted)]">
-                          <CalendarDays size={10} />
+                          <CalendarDays size={10} style={{ color: 'var(--color-muted)' }} />
                           {new Date(stage.start_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       )}
@@ -346,7 +346,7 @@ export default function Timeline({ projectId }) {
 
                     {/* Empty state */}
                     {stageDecisions.length === 0 && stageDocs.length === 0 && stageGates.length === 0 && (
-                      <div className="px-4 py-3 rounded-lg backdrop-blur-xl bg-white/30 border border-white/30">
+                      <div className="px-4 py-3 rounded-lg glass-t">
                         <p className="text-[11px] text-[var(--color-muted)] font-light italic">
                           {isPending ? 'This stage hasn\'t started yet.' : 'No items recorded for this stage.'}
                         </p>
@@ -370,10 +370,10 @@ export default function Timeline({ projectId }) {
       </div>
 
       {stages.length === 0 && (
-        <div className="text-center py-16 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
+        <div className="text-center py-16 glass-t">
           <Clock size={24} className="mx-auto text-[var(--color-border)] mb-3" />
-          <p className="text-sm text-[var(--color-muted)] font-light">Timeline not yet available.</p>
-          <p className="text-xs text-[var(--color-muted)] font-light mt-1">
+          <p className="text-[13px] text-[var(--color-muted)] font-light">Timeline not yet available.</p>
+          <p className="text-[11px] text-[var(--color-muted)] font-light mt-1">
             Service stages will appear here once your project is set up.
           </p>
         </div>
@@ -384,12 +384,13 @@ export default function Timeline({ projectId }) {
 
 /* ── Decision row ── */
 function DecisionRow({ decision }) {
-  const statusColor = {
-    confirmed: 'bg-green-50 text-green-600',
-    assumed: 'bg-amber-50 text-amber-600',
-    deferred: 'bg-gray-50 text-gray-500',
-    open: 'bg-blue-50 text-blue-600',
+  const statusStyle = {
+    confirmed: { background: 'color-mix(in srgb, var(--color-approved) 12%, white)', color: 'var(--color-approved)' },
+    assumed:   { background: 'color-mix(in srgb, var(--color-pending) 12%, white)', color: 'var(--color-pending)' },
+    deferred:  { background: 'var(--color-border)', color: 'var(--color-muted)' },
+    open:      { background: 'color-mix(in srgb, var(--color-accent) 10%, white)', color: 'var(--color-accent)' },
   }
+  const defaultStatusStyle = { background: 'var(--color-border)', color: 'var(--color-muted)' }
 
   // Format the selected option for display
   const optionDisplay = decision.selected_option_key
@@ -397,11 +398,11 @@ function DecisionRow({ decision }) {
     : null
 
   return (
-    <div className="flex items-start gap-3 px-4 py-2.5 rounded-lg backdrop-blur-xl bg-white/40 border border-white/30">
+    <div className="flex items-start gap-3 px-4 py-2.5 rounded-lg glass-t">
       <div className="mt-0.5 shrink-0">
         <GitBranch size={12} className={
           decision.decision_status === 'confirmed' ? 'text-[var(--color-approved)]' :
-          decision.decision_status === 'assumed' ? 'text-amber-500' :
+          decision.decision_status === 'assumed' ? 'text-[var(--color-pending)]' :
           'text-[var(--color-muted)]'
         } />
       </div>
@@ -432,9 +433,8 @@ function DecisionRow({ decision }) {
           )}
         </div>
       </div>
-      <span className={`text-[8px] font-medium px-1.5 py-0.5 rounded shrink-0 ${
-        statusColor[decision.decision_status] || 'bg-gray-50 text-gray-500'
-      }`}>
+      <span className="text-[8px] font-medium px-1.5 py-0.5 rounded shrink-0"
+        style={statusStyle[decision.decision_status] || defaultStatusStyle}>
         {decision.decision_status || 'open'}
       </span>
     </div>
@@ -443,24 +443,25 @@ function DecisionRow({ decision }) {
 
 /* ── Document row ── */
 function DocumentRow({ doc }) {
-  const statusColor = {
-    approved: 'bg-green-50 text-green-600',
-    for_review: 'bg-amber-50 text-amber-600',
-    draft: 'bg-gray-50 text-gray-500',
-    issued: 'bg-blue-50 text-blue-600',
-    superseded: 'bg-red-50 text-red-400',
+  const statusStyle = {
+    approved:   { background: 'color-mix(in srgb, var(--color-approved) 12%, white)', color: 'var(--color-approved)' },
+    for_review: { background: 'color-mix(in srgb, var(--color-pending) 12%, white)', color: 'var(--color-pending)' },
+    draft:      { background: 'var(--color-border)', color: 'var(--color-muted)' },
+    issued:     { background: 'color-mix(in srgb, var(--color-accent) 10%, white)', color: 'var(--color-accent)' },
+    superseded: { background: 'color-mix(in srgb, var(--color-urgent) 12%, white)', color: 'var(--color-urgent)' },
   }
+  const defaultStatusStyle = { background: 'var(--color-border)', color: 'var(--color-muted)' }
 
   const typeLabel = doc.doc_type
     ? doc.doc_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
     : ''
 
   return (
-    <div className="flex items-start gap-3 px-4 py-2.5 rounded-lg backdrop-blur-xl bg-white/40 border border-white/30">
+    <div className="flex items-start gap-3 px-4 py-2.5 rounded-lg glass-t">
       <div className="mt-0.5 shrink-0">
         <FileText size={12} className={
           doc.status === 'approved' ? 'text-[var(--color-approved)]' :
-          doc.status === 'issued' ? 'text-blue-500' :
+          doc.status === 'issued' ? 'text-[var(--color-accent)]' :
           'text-[var(--color-muted)]'
         } />
       </div>
@@ -491,9 +492,8 @@ function DocumentRow({ doc }) {
           </p>
         )}
       </div>
-      <span className={`text-[8px] font-medium px-1.5 py-0.5 rounded shrink-0 ${
-        statusColor[doc.status] || 'bg-gray-50 text-gray-500'
-      }`}>
+      <span className="text-[8px] font-medium px-1.5 py-0.5 rounded shrink-0"
+        style={statusStyle[doc.status] || defaultStatusStyle}>
         {(doc.status || 'draft').replace(/_/g, ' ')}
       </span>
     </div>
@@ -507,14 +507,14 @@ function GateItem({ item }) {
   const isWarning = item.item_status === 'warning'
 
   return (
-    <div className="flex items-start gap-3 px-4 py-2.5 rounded-lg backdrop-blur-xl bg-white/40 border border-white/30">
+    <div className="flex items-start gap-3 px-4 py-2.5 rounded-lg glass-t">
       <div className="mt-0.5 shrink-0">
         {isComplete ? (
           <Check size={12} className="text-[var(--color-approved)]" />
         ) : isBlocked ? (
-          <AlertTriangle size={12} className="text-red-500" />
+          <AlertTriangle size={12} style={{ color: 'var(--color-urgent)' }} />
         ) : isWarning ? (
-          <AlertTriangle size={12} className="text-amber-500" />
+          <AlertTriangle size={12} style={{ color: 'var(--color-pending)' }} />
         ) : (
           <FileText size={12} className="text-[var(--color-muted)]" />
         )}
@@ -538,12 +538,13 @@ function GateItem({ item }) {
           )}
         </div>
       </div>
-      <span className={`text-[8px] font-medium px-1.5 py-0.5 rounded shrink-0 ${
-        isComplete ? 'bg-green-50 text-green-600' :
-        isBlocked ? 'bg-red-50 text-red-600' :
-        isWarning ? 'bg-amber-50 text-amber-600' :
-        'bg-gray-50 text-gray-500'
-      }`}>
+      <span className="text-[8px] font-medium px-1.5 py-0.5 rounded shrink-0"
+        style={
+          isComplete ? { background: 'color-mix(in srgb, var(--color-approved) 12%, white)', color: 'var(--color-approved)' } :
+          isBlocked  ? { background: 'color-mix(in srgb, var(--color-urgent) 12%, white)', color: 'var(--color-urgent)' } :
+          isWarning  ? { background: 'color-mix(in srgb, var(--color-pending) 12%, white)', color: 'var(--color-pending)' } :
+                       { background: 'var(--color-border)', color: 'var(--color-muted)' }
+        }>
         {item.item_status || 'pending'}
       </span>
     </div>

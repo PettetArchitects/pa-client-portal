@@ -93,8 +93,8 @@ export default function Messages({ projectId }) {
   return (
     <div className="max-w-2xl h-[calc(100vh-120px)] flex flex-col">
       <div className="mb-6 shrink-0">
-        <h1 className="text-2xl font-light tracking-tight mb-1">Messages</h1>
-        <p className="text-sm text-[var(--color-muted)] font-light">
+        <h1 className="text-[18px] font-light tracking-tight mb-1" style={{ color: 'var(--color-text)' }}>Messages</h1>
+        <p className="text-[13px] text-[var(--color-muted)] font-light">
           Direct communication with your architect.
         </p>
       </div>
@@ -103,8 +103,8 @@ export default function Messages({ projectId }) {
       <div className="flex-1 overflow-y-auto space-y-1 mb-4 pr-2">
         {messages.length === 0 && (
           <div className="text-center py-20">
-            <p className="text-sm text-[var(--color-muted)] font-light">No messages yet.</p>
-            <p className="text-xs text-[var(--color-muted)] font-light mt-1">
+            <p className="text-[13px] text-[var(--color-muted)] font-light">No messages yet.</p>
+            <p className="text-[11px] text-[var(--color-muted)] font-light mt-1">
               Send a message to start a conversation.
             </p>
           </div>
@@ -134,14 +134,14 @@ export default function Messages({ projectId }) {
                 <div className={`max-w-[75%] ${
                   isOwn
                     ? 'bg-[var(--color-accent)] text-white rounded-2xl rounded-br-md'
-                    : 'backdrop-blur-xl bg-white/40 border border-white/40 rounded-2xl rounded-bl-md'
+                    : 'glass-t rounded-2xl rounded-bl-md'
                 } px-4 py-2.5`}>
                   {isFromPractice && (
                     <p className="text-[10px] tracking-[1px] uppercase font-medium mb-1 opacity-60">
                       Sean Pettet
                     </p>
                   )}
-                  <p className="text-sm font-light leading-relaxed whitespace-pre-wrap">{msg.body}</p>
+                  <p className="text-[13px] font-light leading-relaxed whitespace-pre-wrap">{msg.body}</p>
                   <p className={`text-[10px] mt-1 font-light ${isOwn ? 'text-white/50' : 'text-[var(--color-muted)]'}`}>
                     {formatTime(msg.created_at)}
                   </p>
@@ -155,7 +155,7 @@ export default function Messages({ projectId }) {
 
       {/* Compose */}
       <form onSubmit={handleSend} className="shrink-0 flex gap-2 items-end">
-        <div className="flex-1 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 flex items-end">
+        <div className="flex-1 glass-t flex items-end">
           <textarea
             value={newMsg}
             onChange={e => setNewMsg(e.target.value)}
@@ -167,7 +167,7 @@ export default function Messages({ projectId }) {
             }}
             placeholder="Type a message…"
             rows={1}
-            className="flex-1 px-4 py-3 bg-transparent text-sm font-light resize-none focus:outline-none"
+            className="flex-1 px-4 py-3 bg-transparent text-[13px] font-light resize-none focus:outline-none"
             style={{ maxHeight: '120px' }}
           />
         </div>

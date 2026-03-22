@@ -106,12 +106,12 @@ export default function Overview({ projectId }) {
     <div className="relative max-w-3xl space-y-6">
 
       {/* Project Status Hero */}
-      <div className="backdrop-blur-xl bg-white/60 rounded-xl border border-white/40 p-5">
+      <div className="glass p-5">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-xl font-light tracking-tight mb-1">{project?.name || 'Your Project'}</h1>
+            <h1 className="text-[18px] font-light tracking-tight mb-1" style={{ color: 'var(--color-text)' }}>{project?.name || 'Your Project'}</h1>
             {currentMilestone && (
-              <p className="text-sm text-[var(--color-muted)] font-light">
+              <p className="text-[13px] text-[var(--color-muted)] font-light">
                 Currently: <span className="text-[var(--color-text)] font-medium">{currentMilestone.title}</span>
               </p>
             )}
@@ -126,61 +126,61 @@ export default function Overview({ projectId }) {
           <div className="flex-1 h-2 bg-white/50 rounded-full overflow-hidden">
             <div className="h-full bg-[var(--color-accent)] rounded-full transition-all duration-700" style={{ width: `${progress}%` }} />
           </div>
-          <span className="text-xs text-[var(--color-muted)] font-medium shrink-0">{progress}%</span>
+          <span className="text-[12px] text-[var(--color-muted)] font-medium shrink-0">{progress}%</span>
         </div>
         <p className="text-[10px] text-[var(--color-muted)] mt-1.5">{completed} of {total} milestones complete</p>
       </div>
 
       {stats?.urgentItems > 0 && (
-        <Link to="/selections" className="flex items-center gap-3 p-4 rounded-xl border border-[var(--color-urgent)]/30 backdrop-blur-xl bg-[var(--color-urgent)]/10 hover:bg-[var(--color-urgent)]/15 transition-colors">
+        <Link to="/selections" className="glass-t flex items-center gap-3 p-4" style={{ borderColor: 'color-mix(in srgb, var(--color-urgent) 30%, transparent)', background: 'color-mix(in srgb, var(--color-urgent) 8%, white 90%)' }}>
           <AlertCircle size={18} className="text-[var(--color-urgent)] shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-medium">{stats.urgentItems} item{stats.urgentItems > 1 ? 's' : ''} need{stats.urgentItems === 1 ? 's' : ''} your attention</p>
+            <p className="text-[13px] font-medium" style={{ color: 'var(--color-text)' }}>{stats.urgentItems} item{stats.urgentItems > 1 ? 's' : ''} need{stats.urgentItems === 1 ? 's' : ''} your attention</p>
           </div>
           <ChevronRight size={16} className="text-[var(--color-muted)]" />
         </Link>
       )}
 
       <div className="grid grid-cols-3 gap-3">
-        <Link to="/selections" className="group backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 p-4 hover:bg-white/50 transition-all">
+        <Link to="/selections" className="group glass-t glass-t-hover p-4 transition-all">
           <div className="flex items-center justify-between mb-2">
             <div className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center"><CheckSquare size={13} strokeWidth={1.5} className="text-[var(--color-muted)]" /></div>
             <ChevronRight size={12} className="text-[var(--color-border)] group-hover:text-[var(--color-muted)] transition-colors" />
           </div>
-          <p className="text-2xl font-light">{stats.pendingApproval}</p>
+          <p className="text-[18px] font-light" style={{ color: 'var(--color-text)' }}>{stats.pendingApproval}</p>
           <p className="text-[10px] font-medium tracking-[1px] uppercase text-[var(--color-muted)] mt-0.5">Pending Decisions</p>
           <p className="text-[10px] text-[var(--color-muted)] font-light mt-1">{stats.approvedSelections} of {stats.totalSelections} confirmed</p>
         </Link>
-        <Link to="/documents" className="group backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 p-4 hover:bg-white/50 transition-all">
+        <Link to="/documents" className="group glass-t glass-t-hover p-4 transition-all">
           <div className="flex items-center justify-between mb-2">
             <div className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center"><FileText size={13} strokeWidth={1.5} className="text-[var(--color-muted)]" /></div>
             <ChevronRight size={12} className="text-[var(--color-border)] group-hover:text-[var(--color-muted)] transition-colors" />
           </div>
-          <p className="text-2xl font-light">{stats.documents}</p>
+          <p className="text-[18px] font-light" style={{ color: 'var(--color-text)' }}>{stats.documents}</p>
           <p className="text-[10px] font-medium tracking-[1px] uppercase text-[var(--color-muted)] mt-0.5">Documents</p>
           <p className="text-[10px] text-[var(--color-muted)] font-light mt-1">Shared with you</p>
         </Link>
-        <Link to="/messages" className="group backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 p-4 hover:bg-white/50 transition-all">
+        <Link to="/messages" className="group glass-t glass-t-hover p-4 transition-all">
           <div className="flex items-center justify-between mb-2">
             <div className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center"><MessageCircle size={13} strokeWidth={1.5} className="text-[var(--color-muted)]" /></div>
             <ChevronRight size={12} className="text-[var(--color-border)] group-hover:text-[var(--color-muted)] transition-colors" />
           </div>
-          <p className="text-2xl font-light">{stats.messages}</p>
+          <p className="text-[18px] font-light" style={{ color: 'var(--color-text)' }}>{stats.messages}</p>
           <p className="text-[10px] font-medium tracking-[1px] uppercase text-[var(--color-muted)] mt-0.5">Messages</p>
           <p className="text-[10px] text-[var(--color-muted)] font-light mt-1">Conversations</p>
         </Link>
       </div>
 
       {groups.length > 0 && (
-        <div className="backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 p-5">
+        <div className="glass-t p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-medium tracking-wide">Selection Progress</h2>
+            <h2 className="text-[14px] font-medium tracking-wide" style={{ color: 'var(--color-text)' }}>Selection Progress</h2>
             <Link to="/selections" className="text-[10px] font-medium tracking-[1px] uppercase text-[var(--color-accent)] hover:underline flex items-center gap-1">View all <ArrowRight size={10} /></Link>
           </div>
           <div className="mb-5">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs text-[var(--color-muted)]">{stats.approvedSelections} confirmed of {stats.totalSelections}</span>
-              <span className="text-xs font-medium text-[var(--color-accent)]">{selectionPct}%</span>
+              <span className="text-[12px] text-[var(--color-muted)]">{stats.approvedSelections} confirmed of {stats.totalSelections}</span>
+              <span className="text-[12px] font-medium text-[var(--color-accent)]">{selectionPct}%</span>
             </div>
             <div className="h-2.5 bg-white/60 rounded-full overflow-hidden">
               <div className="h-full rounded-full transition-all duration-700" style={{ width: `${selectionPct}%`, background: selectionPct > 50 ? 'var(--color-approved)' : 'var(--color-accent)' }} />
@@ -191,7 +191,7 @@ export default function Overview({ projectId }) {
               const pct = g.total > 0 ? Math.round((g.approved / g.total) * 100) : 0
               return (
                 <div key={g.key} className="flex items-center gap-3">
-                  <span className="text-xs font-light w-36 shrink-0 truncate capitalize">{g.label}</span>
+                  <span className="text-[12px] font-light w-36 shrink-0 truncate capitalize" style={{ color: 'var(--color-text)' }}>{g.label}</span>
                   <div className="flex-1 h-1.5 bg-white/50 rounded-full overflow-hidden">
                     <div className="h-full bg-[var(--color-accent)] rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                   </div>
@@ -204,11 +204,11 @@ export default function Overview({ projectId }) {
       )}
 
       {showPayments && payments.length > 0 && (
-        <div className="backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 p-5">
-          <h2 className="text-sm font-medium tracking-wide mb-4">Progress Payments</h2>
+        <div className="glass-t p-5">
+          <h2 className="text-[14px] font-medium tracking-wide mb-4" style={{ color: 'var(--color-text)' }}>Progress Payments</h2>
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs text-[var(--color-muted)]">Contract total</span>
-            <span className="text-sm font-medium">${totalContract.toLocaleString()} inc GST</span>
+            <span className="text-[12px] text-[var(--color-muted)]">Contract total</span>
+            <span className="text-[13px] font-medium" style={{ color: 'var(--color-text)' }}>${totalContract.toLocaleString()} inc GST</span>
           </div>
           <div className="h-3 bg-white/50 rounded-full overflow-hidden flex mb-2">
             {paidAmount > 0 && (<div className="h-full bg-[var(--color-approved)]" style={{ width: `${(paidAmount / totalContract) * 100}%` }} title="Paid" />)}
@@ -238,10 +238,10 @@ export default function Overview({ projectId }) {
                      p.claim_status === 'claimed' ? <Clock size={10} className="text-white" /> :
                      <Circle size={6} className="text-white" />}
                   </div>
-                  <span className="text-xs font-light">{p.stage_name}</span>
+                  <span className="text-[12px] font-light" style={{ color: 'var(--color-text)' }}>{p.stage_name}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-light">${Number(p.amount_inc_gst).toLocaleString()}</span>
+                  <span className="text-[12px] font-light" style={{ color: 'var(--color-text)' }}>${Number(p.amount_inc_gst).toLocaleString()}</span>
                   <span className={`block text-[9px] tracking-wide uppercase font-medium ${
                     p.claim_status === 'paid' ? 'text-[var(--color-approved)]' :
                     p.claim_status === 'certified' ? 'text-[var(--color-accent)]' :
@@ -255,9 +255,9 @@ export default function Overview({ projectId }) {
       )}
 
       {milestones.length > 0 && (
-        <div className="backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 p-5">
+        <div className="glass-t p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-medium tracking-wide">Timeline</h2>
+            <h2 className="text-[14px] font-medium tracking-wide" style={{ color: 'var(--color-text)' }}>Timeline</h2>
             <Link to="/timeline" className="text-[10px] font-medium tracking-[1px] uppercase text-[var(--color-accent)] hover:underline flex items-center gap-1">Full timeline <ArrowRight size={10} /></Link>
           </div>
           {currentMilestone && (
@@ -266,9 +266,9 @@ export default function Overview({ projectId }) {
                 <div className="w-2.5 h-2.5 rounded-full bg-[var(--color-accent)] animate-pulse" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{currentMilestone.title}</p>
+                <p className="text-[13px] font-medium" style={{ color: 'var(--color-text)' }}>{currentMilestone.title}</p>
                 {currentMilestone.description && (
-                  <p className="text-xs text-[var(--color-muted)] font-light mt-0.5 leading-relaxed">{currentMilestone.description}</p>
+                  <p className="text-[12px] text-[var(--color-muted)] font-light mt-0.5 leading-relaxed">{currentMilestone.description}</p>
                 )}
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className="text-[10px] tracking-[1px] uppercase px-2 py-0.5 rounded bg-[var(--color-pending)]/10 text-[var(--color-pending)] font-medium">In Progress</span>
@@ -294,7 +294,7 @@ export default function Overview({ projectId }) {
                     <div className="w-5 h-5 rounded-full border border-[var(--color-border)] bg-white flex items-center justify-center shrink-0">
                       <Circle size={6} className="text-[var(--color-border)]" />
                     </div>
-                    <span className="text-xs font-light flex-1">{m.title}</span>
+                    <span className="text-[12px] font-light flex-1" style={{ color: 'var(--color-text)' }}>{m.title}</span>
                     {m.stage && (<span className="text-[9px] tracking-[1px] uppercase text-[var(--color-muted)] font-light">{m.stage}</span>)}
                   </div>
                 ))}

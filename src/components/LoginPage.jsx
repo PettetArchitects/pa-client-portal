@@ -65,13 +65,13 @@ export default function LoginPage() {
             <div className="w-10 h-10 rounded-full bg-[#F0F0EE] flex items-center justify-center mx-auto mb-4">
               <Mail size={18} className="text-[var(--color-muted)]" />
             </div>
-            <h2 className="text-base font-medium mb-2">Check your email</h2>
-            <p className="text-sm text-[var(--color-muted)] font-light leading-relaxed mb-4">
+            <h2 className="text-[15px] font-medium mb-2">Check your email</h2>
+            <p className="text-[13px] text-[var(--color-muted)] font-light leading-relaxed mb-4">
               We've sent a password reset link to <span className="font-normal text-[var(--color-text)]">{email}</span>.
             </p>
             <button
               onClick={() => { setMode('login'); setError('') }}
-              className="text-xs text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
+              className="text-[12px] text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
             >
               Back to sign in
             </button>
@@ -99,10 +99,10 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={mode === 'forgot' ? handleForgotPassword : handleLogin} className="bg-white rounded-xl border border-[var(--color-border)] p-8">
-          <h2 className="text-base font-medium mb-1">
+          <h2 className="text-[15px] font-medium mb-1">
             {mode === 'forgot' ? 'Reset password' : 'Sign in'}
           </h2>
-          <p className="text-sm text-[var(--color-muted)] font-light mb-6">
+          <p className="text-[13px] text-[var(--color-muted)] font-light mb-6">
             {mode === 'forgot'
               ? 'Enter your email and we\'ll send a reset link.'
               : 'Sign in with the details provided by your architect.'}
@@ -117,7 +117,7 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             required
-            className="w-full px-4 py-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-sm font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+            className="w-full px-4 py-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[13px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors"
           />
 
           {mode === 'login' && (
@@ -131,19 +131,19 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
-                className="w-full px-4 py-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-sm font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-[13px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors"
               />
             </>
           )}
 
           {error && (
-            <p className="text-xs text-red-600 mt-3">{error}</p>
+            <p className="text-[12px] mt-3" style={{ color: 'var(--color-urgent)' }}>{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-5 bg-[var(--color-accent)] text-white py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="w-full mt-5 bg-[var(--color-accent)] text-white py-3 rounded-lg text-[13px] font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {loading ? 'Please wait...' : mode === 'forgot' ? 'Send reset link' : 'Sign in'}
             {!loading && <ArrowRight size={14} />}
@@ -154,7 +154,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => { setMode('forgot'); setError('') }}
-                className="text-xs text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
+                className="text-[12px] text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
               >
                 Forgot your password?
               </button>
@@ -162,7 +162,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => { setMode('login'); setError('') }}
-                className="text-xs text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
+                className="text-[12px] text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
               >
                 Back to sign in
               </button>

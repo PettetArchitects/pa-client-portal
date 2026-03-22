@@ -60,7 +60,7 @@ export default function ProjectData({ projectId }) {
     return (
       <div className="text-center py-20">
         <Database size={24} className="mx-auto text-[var(--color-border)] mb-3" />
-        <p className="text-sm text-[var(--color-muted)] font-light">Architect access required.</p>
+        <p className="text-[13px] text-[var(--color-muted)] font-light">Architect access required.</p>
       </div>
     )
   }
@@ -102,17 +102,17 @@ export default function ProjectData({ projectId }) {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-light tracking-tight mb-1 flex items-center gap-2">
+          <h1 className="text-[18px] font-light tracking-tight mb-1 flex items-center gap-2">
             <Database size={20} strokeWidth={1.5} /> Project Data
           </h1>
-          <p className="text-sm text-[var(--color-muted)] font-light">
+          <p className="text-[13px] text-[var(--color-muted)] font-light">
             Full Supabase schema for this project — {data.selections?.length || 0} selections, {data.decisions?.length || 0} decisions, {data.risks?.length || 0} risk flags
           </p>
         </div>
         <button
           onClick={handleSync}
           disabled={syncing}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--color-accent)] text-white text-xs rounded-lg hover:opacity-90 transition-opacity font-medium disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--color-accent)] text-white text-[12px] rounded-lg hover:opacity-90 transition-opacity font-medium disabled:opacity-50"
         >
           <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
           {syncing ? 'Syncing…' : 'Sync Portal'}
@@ -128,14 +128,14 @@ export default function ProjectData({ projectId }) {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 mb-6 backdrop-blur-xl bg-white/40 rounded-xl p-1 border border-white/40 overflow-x-auto">
+      <div className="flex gap-1 mb-6 glass-t p-1 overflow-x-auto">
         {TABS.map(tab => {
           const Icon = tab.icon
           return (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-medium transition-all whitespace-nowrap ${
                 activeTab === tab.key
                   ? 'bg-[var(--color-accent)] text-white shadow-sm'
                   : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-white/50'
@@ -158,7 +158,7 @@ export default function ProjectData({ projectId }) {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search selections…"
-              className="w-full pl-9 pr-4 py-2.5 text-xs backdrop-blur-xl bg-white/40 border border-white/40 rounded-xl focus:outline-none focus:border-[var(--color-accent)]/30"
+              className="w-full pl-9 pr-4 py-2.5 text-[12px] glass-t focus:outline-none focus:border-[var(--color-accent)]/30"
             />
           </div>
           {Object.entries(selectionsByKind).map(([kind, items]) => {
@@ -167,10 +167,10 @@ export default function ProjectData({ projectId }) {
               <div key={kind} className="mb-2">
                 <button
                   onClick={() => setExpandedKind(isExpanded ? null : kind)}
-                  className="w-full flex items-center justify-between px-4 py-3 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 hover:bg-white/50 transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 glass-t-hover transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium">{kind}</span>
+                    <span className="text-[12px] font-medium">{kind}</span>
                     <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-2 py-0.5 rounded-full">{items.length}</span>
                   </div>
                   {isExpanded ? <ChevronDown size={14} className="text-[var(--color-muted)]" /> : <ChevronRight size={14} className="text-[var(--color-muted)]" />}
@@ -204,10 +204,10 @@ export default function ProjectData({ projectId }) {
       {activeTab === 'decisions' && (
         <div className="space-y-2">
           {(data.decisions || []).map(d => (
-            <div key={d.id} className="flex items-start gap-3 px-5 py-3 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
+            <div key={d.id} className="flex items-start gap-3 px-5 py-3 glass-t">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium">{d.node_key || d.decision_key || d.id}</span>
+                  <span className="text-[12px] font-medium">{d.node_key || d.decision_key || d.id}</span>
                   <StatusPill status={d.status} />
                 </div>
                 {d.domain && <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-2 py-0.5 rounded-full mt-1 inline-block">{d.domain}</span>}
@@ -224,10 +224,10 @@ export default function ProjectData({ projectId }) {
       {activeTab === 'risks' && (
         <div className="space-y-2">
           {(data.risks || []).map(r => (
-            <div key={r.id} className={`flex items-start gap-3 px-5 py-3 backdrop-blur-xl bg-white/40 rounded-xl border ${
+            <div key={r.id} className={`flex items-start gap-3 px-5 py-3 glass-t ${
               r.severity === 'high' ? 'border-[var(--color-urgent)]/30' :
               r.severity === 'medium' ? 'border-[var(--color-pending)]/30' :
-              'border-white/40'
+              ''
             }`}>
               <AlertTriangle size={14} className={
                 r.severity === 'high' ? 'text-[var(--color-urgent)] shrink-0 mt-0.5' :
@@ -236,7 +236,7 @@ export default function ProjectData({ projectId }) {
               } />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium">{r.flag_key || r.title || r.id}</span>
+                  <span className="text-[12px] font-medium">{r.flag_key || r.title || r.id}</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                     r.severity === 'high' ? 'bg-[var(--color-urgent)]/10 text-[var(--color-urgent)]' :
                     r.severity === 'medium' ? 'bg-[var(--color-pending)]/10 text-[var(--color-pending)]' :
@@ -256,10 +256,10 @@ export default function ProjectData({ projectId }) {
       {activeTab === 'documents' && (
         <div className="space-y-2">
           {(data.documents || []).map(d => (
-            <div key={d.id} className="flex items-start gap-3 px-5 py-3 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
+            <div key={d.id} className="flex items-start gap-3 px-5 py-3 glass-t">
               <FileText size={14} className="text-[var(--color-muted)] shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
-                <span className="text-xs font-medium">{d.document_type || d.title || d.id}</span>
+                <span className="text-[12px] font-medium">{d.document_type || d.title || d.id}</span>
                 {d.source && <span className="text-[10px] text-[var(--color-muted)] ml-2">{d.source}</span>}
                 {d.notes && <p className="text-[11px] text-[var(--color-muted)] mt-1">{d.notes}</p>}
               </div>
@@ -281,10 +281,10 @@ export default function ProjectData({ projectId }) {
               const changeReq = gItems.filter(p => p.approval_status === 'change_requested').length
 
               return (
-                <div key={g.group_key} className="px-5 py-3 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
+                <div key={g.group_key} className="px-5 py-3 glass-t">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-medium">{g.group_name}</span>
+                      <span className="text-[12px] font-medium">{g.group_name}</span>
                       <span className="text-[10px] text-[var(--color-muted)] ml-2">{g.group_key}</span>
                     </div>
                     <span className="text-[10px] text-[var(--color-muted)]">{gItems.length} items</span>
@@ -307,9 +307,9 @@ export default function ProjectData({ projectId }) {
 
 function SummaryCard({ label, value, sub, accent }) {
   return (
-    <div className={`backdrop-blur-xl bg-white/40 rounded-xl border px-4 py-3 ${accent ? 'border-[var(--color-urgent)]/30' : 'border-white/40'}`}>
+    <div className={`glass-t px-4 py-3 ${accent ? 'border-[var(--color-urgent)]/30' : ''}`}>
       <p className="text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-medium">{label}</p>
-      <p className="text-xl font-light mt-0.5">{value}</p>
+      <p className="text-[18px] font-light mt-0.5">{value}</p>
       {sub && <p className="text-[10px] text-[var(--color-muted)] mt-0.5">{sub}</p>}
     </div>
   )
@@ -346,7 +346,7 @@ function EmptyState({ text }) {
   return (
     <div className="text-center py-12">
       <Settings size={20} className="mx-auto text-[var(--color-border)] mb-2" />
-      <p className="text-xs text-[var(--color-muted)] font-light">{text}</p>
+      <p className="text-[12px] text-[var(--color-muted)] font-light">{text}</p>
     </div>
   )
 }

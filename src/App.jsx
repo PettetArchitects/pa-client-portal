@@ -87,7 +87,7 @@ function ProtectedApp() {
           <p className="text-[11px] font-medium tracking-[4px] uppercase text-[var(--color-text)] mb-6">
             Pettet Architects
           </p>
-          <p className="text-sm text-[var(--color-muted)]">
+          <p className="text-[13px] text-[var(--color-muted)]">
             No projects have been assigned to your account yet.
             Please contact the studio if you believe this is an error.
           </p>
@@ -199,7 +199,7 @@ function LoadingScreen() {
             transition: 'opacity 0.8s ease-out, transform 0.8s ease-out' }}>
           Pettet Architects
         </p>
-        <p className="text-base text-[var(--color-text)] font-light leading-relaxed italic mb-3"
+        <p className="text-[15px] text-[var(--color-text)] font-light leading-relaxed italic mb-3"
           style={{ opacity: textVisible ? 1 : 0, transform: textVisible ? 'translateY(0)' : 'translateY(10px)',
             transition: 'opacity 0.8s ease-out 0.3s, transform 0.8s ease-out 0.3s' }}>
           "{quote.text}"

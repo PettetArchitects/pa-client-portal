@@ -168,7 +168,7 @@ export default function Documents({ projectId }) {
     <div className="max-w-4xl">
       {/* Tab bar */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <div className="flex gap-1 backdrop-blur-xl bg-white/40 rounded-lg p-0.5 border border-white/40">
+        <div className="flex gap-1 glass-t rounded-lg p-0.5">
           {[
             { key: 'documents', label: 'Documents', icon: FileText, count: totalDocs },
             { key: 'schedules', label: 'Schedules', icon: Grid3X3, count: totalScheduleItems },
@@ -201,7 +201,7 @@ export default function Documents({ projectId }) {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={activeTab === 'schedules' ? 'Search selections\u2026' : 'Search documents\u2026'}
-            className="pl-7 pr-3 py-1.5 rounded-lg border border-white/40 backdrop-blur-xl bg-white/40 text-[11px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors w-48"
+            className="pl-7 pr-3 py-1.5 glass-t text-[11px] font-light focus:outline-none focus:border-[var(--color-accent)] transition-colors w-48"
           />
         </div>
       </div>
@@ -237,13 +237,13 @@ export default function Documents({ projectId }) {
           )}
 
           {filteredDocs.length === 0 && (
-            <div className="text-center py-20 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
+            <div className="text-center py-20 glass-t">
               <FileText size={24} className="mx-auto text-[var(--color-border)] mb-3" />
-              <p className="text-sm text-[var(--color-muted)] font-light">
+              <p className="text-[13px] text-[var(--color-muted)] font-light">
                 {search ? 'No documents match your search.' : 'No documents shared yet.'}
               </p>
               {!isArchitect && (
-                <p className="text-xs text-[var(--color-muted)] font-light mt-1">
+                <p className="text-[11px] text-[var(--color-muted)] font-light mt-1">
                   Documents will appear here when your architect shares them.
                 </p>
               )}
@@ -258,14 +258,14 @@ export default function Documents({ projectId }) {
           {groupedSchedule.map(group => {
             const isExpanded = expandedGroups.has(group.group_key)
             return (
-              <div key={group.group_key} className="backdrop-blur-xl bg-white/40 rounded-xl border border-white/40 overflow-hidden">
+              <div key={group.group_key} className="glass-t overflow-hidden">
                 <button
                   onClick={() => toggleGroup(group.group_key)}
                   className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/40 transition-colors"
                 >
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-medium">{group.group_name}</h2>
+                      <h2 className="text-[13px] font-medium" style={{ color: 'var(--color-text)' }}>{group.group_name}</h2>
                       <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded">
                         {group.items.length}
                       </span>
@@ -274,8 +274,8 @@ export default function Documents({ projectId }) {
                   </div>
                   <div className="flex items-center gap-2">
                     {isExpanded
-                      ? <ChevronDown size={14} className="text-[var(--color-muted)]" />
-                      : <ChevronRight size={14} className="text-[var(--color-muted)]" />}
+                      ? <ChevronDown size={14} style={{ color: 'var(--color-muted)' }} />
+                      : <ChevronRight size={14} style={{ color: 'var(--color-muted)' }} />}
                   </div>
                 </button>
 
@@ -339,9 +339,9 @@ export default function Documents({ projectId }) {
           })}
 
           {groupedSchedule.length === 0 && (
-            <div className="text-center py-20 backdrop-blur-xl bg-white/40 rounded-xl border border-white/40">
+            <div className="text-center py-20 glass-t">
               <ListChecks size={24} className="mx-auto text-[var(--color-border)] mb-3" />
-              <p className="text-sm text-[var(--color-muted)] font-light">
+              <p className="text-[13px] text-[var(--color-muted)] font-light">
                 {search ? 'No items match your search.' : 'No schedule data yet.'}
               </p>
             </div>
@@ -364,13 +364,13 @@ function ArchitectDocRow({ doc }) {
   }[doc.status] || 'var(--color-muted)'
 
   return (
-    <div className="flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-white/50 border border-white/40 hover:bg-white/60 transition-all">
+    <div className="flex items-center gap-4 p-4 glass-s glass-s-hover transition-all">
       <div className="w-9 h-9 rounded-lg bg-white/60 flex items-center justify-center shrink-0">
         <FileText size={16} strokeWidth={1.5} className="text-[var(--color-muted)]" />
       </div>
 
       <div className="flex-1 min-w-0">
-        <h3 className="text-sm font-normal truncate text-[var(--color-text)]">{doc.title}</h3>
+        <h3 className="text-[13px] font-normal truncate text-[var(--color-text)]">{doc.title}</h3>
         <div className="flex items-center gap-3 mt-0.5">
           <span className="text-[10px] text-[var(--color-muted)] bg-white/50 px-1.5 py-0.5 rounded">{typeLabel}</span>
           <span className="text-[10px] font-medium" style={{ color: statusColor }}>
@@ -395,7 +395,7 @@ function ClientDocRow({ doc, onView }) {
   const typeLabel = DOC_TYPE_LABELS[pd.doc_type] || (pd.doc_type || '').replace(/_/g, ' ') || 'Document'
 
   return (
-    <div className={`flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-white/40 border transition-all hover:shadow-sm ${
+    <div className={`flex items-center gap-4 p-4 glass-t glass-t-hover transition-all ${
       isNew ? 'border-[var(--color-pending)]/40 border-l-[3px]' : 'border-white/40'
     }`}>
       <div className="w-9 h-9 rounded-lg bg-white/50 flex items-center justify-center shrink-0">
@@ -404,7 +404,7 @@ function ClientDocRow({ doc, onView }) {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-normal truncate">{pd.title || 'Untitled'}</h3>
+          <h3 className="text-[13px] font-normal truncate" style={{ color: 'var(--color-text)' }}>{pd.title || 'Untitled'}</h3>
           {isNew && (
             <span className="text-[9px] font-medium tracking-wider uppercase px-1.5 py-0.5 rounded bg-[var(--color-pending)]/10 text-[var(--color-pending)]">
               New
@@ -413,14 +413,14 @@ function ClientDocRow({ doc, onView }) {
         </div>
         <div className="flex items-center gap-3 mt-0.5">
           {typeLabel && <span className="text-[10px] text-[var(--color-muted)] bg-white/40 px-1.5 py-0.5 rounded">{typeLabel}</span>}
-          {pd.version && <span className="text-xs text-[var(--color-muted)] font-light">{pd.version}</span>}
-          {pd.file_size_bytes && <span className="text-xs text-[var(--color-muted)] font-light">{formatSize(pd.file_size_bytes)}</span>}
-          <span className="text-xs text-[var(--color-muted)] font-light flex items-center gap-1">
-            <Clock size={10} /> {formatDate(doc.shared_at)}
+          {pd.version && <span className="text-[12px] text-[var(--color-muted)] font-light">{pd.version}</span>}
+          {pd.file_size_bytes && <span className="text-[12px] text-[var(--color-muted)] font-light">{formatSize(pd.file_size_bytes)}</span>}
+          <span className="text-[12px] text-[var(--color-muted)] font-light flex items-center gap-1">
+            <Clock size={10} style={{ color: 'var(--color-muted)' }} /> {formatDate(doc.shared_at)}
           </span>
         </div>
         {doc.share_note && (
-          <p className="text-xs text-[var(--color-muted)] font-light mt-1 italic">{doc.share_note}</p>
+          <p className="text-[12px] text-[var(--color-muted)] font-light mt-1 italic">{doc.share_note}</p>
         )}
       </div>
 
@@ -429,7 +429,7 @@ function ClientDocRow({ doc, onView }) {
         className="shrink-0 w-8 h-8 rounded-lg border border-white/40 flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)] hover:border-[var(--color-accent)] transition-colors"
         title="View document"
       >
-        <Eye size={14} />
+        <Eye size={14} style={{ color: 'var(--color-muted)' }} />
       </button>
     </div>
   )

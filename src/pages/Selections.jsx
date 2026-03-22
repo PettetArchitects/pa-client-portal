@@ -71,8 +71,8 @@ export default function Selections({ projectId }) {
     <div className="max-w-4xl">
       <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-light tracking-tight mb-1">Selections</h1>
-          <p className="text-sm text-[var(--color-muted)] font-light">
+          <h1 className="text-[18px] font-light tracking-tight mb-1">Selections</h1>
+          <p className="text-[13px] text-[var(--color-muted)] font-light">
             {counts.pending > 0
               ? `${counts.pending} item${counts.pending > 1 ? 's' : ''} awaiting your approval`
               : 'All selections confirmed'}
@@ -86,7 +86,7 @@ export default function Selections({ projectId }) {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-full text-xs tracking-wide transition-all ${
+            className={`px-4 py-1.5 rounded-full text-[12px] tracking-wide transition-all ${
               filter === f
                 ? 'bg-[var(--color-accent)] text-white font-medium'
                 : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-text)]'
@@ -103,8 +103,8 @@ export default function Selections({ projectId }) {
         {groupedItems.map(group => (
           <section key={group.id}>
             <div className="flex items-baseline justify-between pb-3 border-b border-[var(--color-accent)] mb-5">
-              <h2 className="text-base font-normal tracking-wide">{group.group_name}</h2>
-              <span className="text-xs text-[var(--color-muted)]">{group.items.length} items</span>
+              <h2 className="text-[15px] font-normal tracking-wide">{group.group_name}</h2>
+              <span className="text-[12px] text-[var(--color-muted)]">{group.items.length} items</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -124,7 +124,7 @@ export default function Selections({ projectId }) {
       {groupedItems.length === 0 && (
         <div className="text-center py-20">
           <Filter size={24} className="mx-auto text-[var(--color-border)] mb-3" />
-          <p className="text-sm text-[var(--color-muted)] font-light">No items match this filter.</p>
+          <p className="text-[13px] text-[var(--color-muted)] font-light">No items match this filter.</p>
         </div>
       )}
     </div>
@@ -152,7 +152,7 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
         {/* Header */}
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium leading-snug truncate">{item.selection_title}</h3>
+            <h3 className="text-[13px] font-medium leading-snug truncate">{item.selection_title}</h3>
             <span className="text-[10px] tracking-[1px] uppercase text-[var(--color-muted)] font-light">
               {item.selection_kind?.replace('_', ' ')}
             </span>
@@ -172,7 +172,7 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
 
         {/* Notes */}
         {item.selection_notes && (
-          <p className="text-xs text-[var(--color-muted)] font-light mt-3 px-3 py-2 bg-[var(--color-bg)] rounded-lg italic">
+          <p className="text-[12px] text-[var(--color-muted)] font-light mt-3 px-3 py-2 bg-[var(--color-bg)] rounded-lg italic">
             {item.selection_notes}
           </p>
         )}
@@ -183,7 +183,7 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
             href={productUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-[var(--color-text)] mt-3 hover:underline"
+            className="inline-flex items-center gap-1 text-[12px] text-[var(--color-text)] mt-3 hover:underline"
           >
             View product <ArrowUpRight size={12} />
           </a>
@@ -193,7 +193,7 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
         {isChangeReq && item.approval_note && (
           <div className="flex items-start gap-2 mt-3 p-3 bg-[var(--color-change)]/5 rounded-lg">
             <MessageSquare size={12} className="text-[var(--color-change)] mt-0.5 shrink-0" />
-            <p className="text-xs text-[var(--color-change)] font-light">{item.approval_note}</p>
+            <p className="text-[12px] text-[var(--color-change)] font-light">{item.approval_note}</p>
           </div>
         )}
       </div>
@@ -203,14 +203,14 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
         <div className="flex border-t border-[var(--color-border)]">
           <button
             onClick={onApprove}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-medium text-[var(--color-approved)] hover:bg-[var(--color-approved)]/5 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-[12px] font-medium text-[var(--color-approved)] hover:bg-[var(--color-approved)]/5 transition-colors"
           >
             <Check size={14} /> Approve
           </button>
           <div className="w-px bg-[var(--color-border)]" />
           <button
             onClick={onRequestChange}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-light text-[var(--color-muted)] hover:text-[var(--color-change)] hover:bg-[var(--color-change)]/5 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-[12px] font-light text-[var(--color-muted)] hover:text-[var(--color-change)] hover:bg-[var(--color-change)]/5 transition-colors"
           >
             Request change
           </button>
@@ -220,7 +220,7 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
       {isApproved && (
         <div className="flex items-center justify-center gap-2 py-2.5 border-t border-[var(--color-border)] bg-[var(--color-approved)]/5">
           <Check size={12} className="text-[var(--color-approved)]" />
-          <span className="text-xs text-[var(--color-approved)] font-medium">Approved</span>
+          <span className="text-[12px] text-[var(--color-approved)] font-medium">Approved</span>
         </div>
       )}
     </div>
@@ -229,7 +229,7 @@ function SelectionCard({ item, onApprove, onRequestChange }) {
 
 function Detail({ label, value }) {
   return (
-    <div className="flex justify-between text-xs">
+    <div className="flex justify-between text-[12px]">
       <span className="text-[var(--color-muted)] font-light">{label}</span>
       <span className="font-normal text-right max-w-[60%] truncate">{value}</span>
     </div>

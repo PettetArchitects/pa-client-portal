@@ -72,7 +72,7 @@ export default function Shell({ projectName }) {
       <ProjectHero project={project} />
 
       {/* Top bar Ã¢ÂÂ glass */}
-      <header className="h-14 border-b border-white/20 backdrop-blur-xl bg-white/50 flex items-center px-6 shrink-0" style={{ position: 'relative', zIndex: Z.CHROME }}>
+      <header className="h-14 border-b border-white/20 glass-nav flex items-center px-6 shrink-0" style={{ position: 'relative', zIndex: Z.CHROME }}>
         <div className="flex items-center gap-3 flex-1">
           {/* Logo + practice name */}
           {logoUrl && (
@@ -93,7 +93,7 @@ export default function Shell({ projectName }) {
                 className="flex items-center gap-1.5 text-[11px] font-light tracking-[2px] uppercase text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
               >
                 {projectName}
-                <ChevronDown size={12} />
+                <ChevronDown size={12} style={{ color: 'var(--color-muted)' }} />
               </button>
 
               {showSwitcher && createPortal(
@@ -164,20 +164,20 @@ export default function Shell({ projectName }) {
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="text-xs text-[var(--color-muted)] hidden sm:inline">{user?.email}</span>
+          <span className="text-[12px] text-[var(--color-muted)] hidden sm:inline">{user?.email}</span>
           <button
             onClick={signOut}
             className="text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
             title="Sign out"
           >
-            <LogOut size={16} />
+            <LogOut size={16} style={{ color: 'var(--color-muted)' }} />
           </button>
         </div>
       </header>
 
       {/* Project info strip Ã¢ÂÂ stage + coordinates + north point */}
       {project && (
-        <div className="h-9 border-b border-white/15 backdrop-blur-xl bg-white/35 flex items-center justify-between px-6 shrink-0" style={{ position: 'relative', zIndex: Z.CHROME }}>
+        <div className="h-9 border-b border-white/15 glass-nav flex items-center justify-between px-6 shrink-0" style={{ position: 'relative', zIndex: Z.CHROME }}>
           <div className="flex items-center gap-4">
             {/* Stage */}
             <span className="text-[10px] font-medium tracking-[1.5px] uppercase text-[var(--color-text)]">
@@ -206,7 +206,7 @@ export default function Shell({ projectName }) {
                 }`}
                 title={clientPreview ? 'Viewing as client Ã¢ÂÂ click to return to architect view' : 'Preview what the client sees'}
               >
-                <Eye size={11} />
+                <Eye size={11} style={{ color: clientPreview ? 'white' : 'var(--color-muted)' }} />
                 {clientPreview ? 'Client view' : 'Preview'}
               </button>
             )}
@@ -225,7 +225,7 @@ export default function Shell({ projectName }) {
 
       <div className="flex flex-1" style={{ position: 'relative', zIndex: Z.CHROME }}>
         {/* Sidebar Ã¢ÂÂ glass */}
-        <nav className="w-52 border-r border-white/20 backdrop-blur-xl bg-white/50 py-6 px-3 shrink-0 hidden md:flex md:flex-col md:justify-between">
+        <nav className="w-52 border-r border-white/20 glass-nav py-6 px-3 shrink-0 hidden md:flex md:flex-col md:justify-between">
           <div className="space-y-0.5">
             {navItems.map(({ to, icon: Icon, label }) => (
               <NavLink
@@ -268,7 +268,7 @@ export default function Shell({ projectName }) {
         </nav>
 
         {/* Mobile nav Ã¢ÂÂ glass */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 backdrop-blur-xl bg-white/50 border-t border-white/20 z-50 flex justify-around py-2 px-4">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-nav border-t border-white/20 z-50 flex justify-around py-2 px-4">
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
